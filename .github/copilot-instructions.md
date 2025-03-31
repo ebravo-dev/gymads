@@ -20,6 +20,8 @@ Esta es una aplicación usando flutter para gestión del gym, su uso esta enfoca
    - `Obx` para reactividad en widgets
    - Inyección de dependencias con `Bindings`
    - Buenas practicas de programación
+   - Providers para consumir API de Firebase Firestore
+   - Respeta el orden de carpetas que de provee y observa el getx pattern de kauemurakami
 
 ## 🏋️ Descripción de la Aplicación
 Sistema integral para gestión de:
@@ -35,7 +37,7 @@ Sistema integral para gestión de:
 | Frontend            | Flutter (Multiplataforma)   |
 | State Management    | GetX                        |
 | Autenticación       | Firebase Auth               |
-| Base de Datos       | Cloud Firestore             |
+| Base de Datos       | Cloud Firestore SOLO API    |
 | QR.                 | mobile_scanner              |
 | Pagos               | local(de manera fisica)     |
 
