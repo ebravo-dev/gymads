@@ -2,6 +2,8 @@
 
 Esta es una aplicación usando flutter para gestión del gym, su uso esta enfocado en el staff y admin del gym el cual permitira gestionar usuarios con sus respectivos checkin, se piensa usar firebase en forma de API desacoplada por si en dado caso se puede cambiar a otro tipo de endpoint en otra URL, de igual forma se planea usar base de datos no relacional para este caso, por lo que si no es firebase tal vez pueda ser supabase, turso, u algún otro.
 
+Solo respondeme en español tanto agente, como chat, como edit, pero en código usa ingles, y español también para los textos de la aplicación
+
 ## 📜 Estándares de Código
 1. **Nomenclatura:**
    - `lowerCamelCase` para variables y funciones
