@@ -1,23 +1,36 @@
 import 'package:get/get.dart';
+import '../../../routes/app_pages.dart';
 
 class HomeController extends GetxController {
-  //TODO: Implement HomeController
+  // Estado observable para controlar cuando se está creando un usuario
+  final RxBool isCreatingUser = false.obs;
 
-  final count = 0.obs;
-  @override
-  void onInit() {
-    super.onInit();
+  // Lista observable de mensajes de estado
+  final RxList<String> statusMessages = <String>[].obs;
+
+  // Funciones para manejar las opciones del menú
+  void goToCheckIns() {
+    statusMessages.add('Navegando a la pantalla de Check-Ins...');
+    Get.toNamed(Routes.CHECADOR);
   }
 
-  @override
-  void onReady() {
-    super.onReady();
+  void goToPaymentRegistration() {
+    statusMessages.add('Navegando a Registro de Pagos...');
+    Get.toNamed(Routes.INGRESOS);
   }
 
-  @override
-  void onClose() {
-    super.onClose();
+  void goToClientes() {
+    statusMessages.add('Navegando a Gestión de Clientes...');
+    Get.toNamed(Routes.CLIENTES);
   }
 
-  void increment() => count.value++;
+  void goToInventario() {
+    statusMessages.add('Navegando a Inventario...');
+    Get.toNamed(Routes.INVENTARIO);
+  }
+
+  /// Limpia los mensajes de estado
+  void clearMessages() {
+    statusMessages.clear();
+  }
 }

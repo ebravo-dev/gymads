@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Converts a Dart map to Firestore's format with typed values.
 ///
 /// This function transforms a standard Dart Map into the specialized
@@ -96,7 +98,9 @@ Map<String, dynamic> fromFirestoreValues(Map<String, dynamic> data) {
 
     return values;
   } catch (e) {
-    print('Error parsing Firestore values: $e');
+    if (kDebugMode) {
+      print('Error parsing Firestore values: $e');
+    }
     return {};
   }
 }
@@ -112,8 +116,8 @@ Map<String, dynamic> _extractFieldValues(
   String? id,
 }) {
   Map<String, dynamic> values = {};
-
-  fields.forEach((key, value) {
+  for (var key in fields.keys) {
+    var value = fields[key];
     if (value.containsKey('nullValue')) {
       values[key] = null;
     } else if (value.containsKey('stringValue')) {
@@ -121,7 +125,6 @@ Map<String, dynamic> _extractFieldValues(
     } else if (value.containsKey('doubleValue')) {
       values[key] = value['doubleValue'];
     } else if (value.containsKey('integerValue')) {
-      // Firestore returns integers as strings
       values[key] =
           int.tryParse(value['integerValue'].toString()) ??
           double.tryParse(value['integerValue'].toString());
@@ -150,11 +153,8 @@ Map<String, dynamic> _extractFieldValues(
         values[key] = {};
       }
     }
-  });
-
-  //id
+  }
   if (id != null) values['id'] = id;
-
   return values;
 }
 

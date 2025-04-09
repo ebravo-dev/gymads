@@ -1,7 +1,15 @@
 import 'package:get/get.dart';
 
+import '../modules/checador/bindings/checador_binding.dart';
+import '../modules/checador/views/checador_view.dart';
+import '../modules/clientes/bindings/clientes_binding.dart';
+import '../modules/clientes/views/clientes_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
+import '../modules/ingresos/bindings/ingresos_binding.dart';
+import '../modules/ingresos/views/ingresos_view.dart';
+import '../modules/inventario/bindings/inventario_binding.dart';
+import '../modules/inventario/views/inventario_view.dart';
 
 part 'app_routes.dart';
 
@@ -15,6 +23,26 @@ class AppPages {
       name: _Paths.HOME,
       page: () => const HomeView(),
       binding: HomeBinding(),
+    ),
+    GetPage(
+      name: _Paths.CHECADOR,
+      page: () => const ChecadorView(),
+      binding: ChecadorBinding(),
+    ),
+    GetPage(
+      name: _Paths.CLIENTES,
+      page: () => const ClientesView(),
+      binding: ClientesBinding(),
+    ),
+    GetPage(
+      name: _Paths.INVENTARIO,
+      page: () => const InventarioView(),
+      binding: InventarioBinding(),
+    ),
+    GetPage(
+      name: _Paths.INGRESOS,
+      page: () => const IngresosView(),
+      binding: IngresosBinding(),
     ),
   ];
 }

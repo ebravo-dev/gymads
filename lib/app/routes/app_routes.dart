@@ -4,9 +4,17 @@ part of 'app_pages.dart';
 abstract class Routes {
   Routes._();
   static const HOME = _Paths.HOME;
+  static const CHECADOR = _Paths.CHECADOR;
+  static const CLIENTES = _Paths.CLIENTES;
+  static const INVENTARIO = _Paths.INVENTARIO;
+  static const INGRESOS = _Paths.INGRESOS;
 }
 
 abstract class _Paths {
   _Paths._();
   static const HOME = '/home';
+  static const CHECADOR = '/checador';
+  static const CLIENTES = '/clientes';
+  static const INVENTARIO = '/inventario';
+  static const INGRESOS = '/ingresos';
 }

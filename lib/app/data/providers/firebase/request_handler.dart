@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -81,21 +82,40 @@ Future<Map<String, dynamic>> sendRequest(
   final uri = Uri.parse(url);
   final requestHeaders = {"Content-Type": "application/json", ...?headers};
   final body = data != null ? json.encode(toFirestoreValues(data)) : null;
-
   http.Response response;
-  switch (method) {
-    case Method.GET:
-      response = await http.get(uri, headers: requestHeaders);
-      break;
-    case Method.POST:
-      response = await http.post(uri, headers: requestHeaders, body: body);
-      break;
-    case Method.PATCH:
-      response = await http.patch(uri, headers: requestHeaders, body: body);
-      break;
-    case Method.DELETE:
-      response = await http.delete(uri, headers: requestHeaders);
-      break;
+  try {
+    switch (method) {
+      case Method.GET:
+        response = await http
+            .get(uri, headers: requestHeaders)
+            .timeout(Duration(seconds: 10));
+        break;
+      case Method.POST:
+        response = await http
+            .post(uri, headers: requestHeaders, body: body)
+            .timeout(Duration(seconds: 10));
+        break;
+      case Method.PATCH:
+        response = await http
+            .patch(uri, headers: requestHeaders, body: body)
+            .timeout(Duration(seconds: 10));
+        break;
+      case Method.DELETE:
+        response = await http
+            .delete(uri, headers: requestHeaders)
+            .timeout(Duration(seconds: 10));
+        break;
+    }
+    return handleResponse(response);
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error: $e');
+    }
+    return Response(
+      error: true,
+      statusCode: -1,
+      message: 'Error de conexión: ${e.toString()}',
+      data: null,
+    ).toMap();
   }
-  return handleResponse(response);
 }
