@@ -84,22 +84,31 @@ Map<String, dynamic> fromFirestoreValues(Map<String, dynamic> data) {
   try {
     Map<String, dynamic> values = {};
 
+    // Si es un listado de documentos
     if (data.containsKey('documents')) {
+      Map<String, dynamic> documents = {};
       for (var document in data['documents']) {
-        String docId = document['name'].toString().split('/').last;
-        values[docId] = _extractFieldValues(
-          document['fields'] ?? {},
-          id: docId,
-        );
+        if (document != null && document.containsKey('fields')) {
+          String docId = document['name'].toString().split('/').last;
+          documents[docId] = {
+            'fields': document['fields'],
+            'name': document['name'],
+            // Otros metadatos si son necesarios
+          };
+        }
       }
-    } else if (data.containsKey('fields')) {
-      values = _extractFieldValues(data['fields']);
+      return documents;
+    }
+    // Si es un solo documento
+    else if (data.containsKey('fields')) {
+      return data;
     }
 
     return values;
   } catch (e) {
     if (kDebugMode) {
       print('Error parsing Firestore values: $e');
+      print('Data received: $data');
     }
     return {};
   }
@@ -116,45 +125,38 @@ Map<String, dynamic> _extractFieldValues(
   String? id,
 }) {
   Map<String, dynamic> values = {};
-  for (var key in fields.keys) {
-    var value = fields[key];
-    if (value.containsKey('nullValue')) {
+  fields.forEach((key, value) {
+    if (value == null) {
       values[key] = null;
-    } else if (value.containsKey('stringValue')) {
-      values[key] = value['stringValue'];
-    } else if (value.containsKey('doubleValue')) {
-      values[key] = value['doubleValue'];
-    } else if (value.containsKey('integerValue')) {
-      values[key] =
-          int.tryParse(value['integerValue'].toString()) ??
-          double.tryParse(value['integerValue'].toString());
-    } else if (value.containsKey('booleanValue')) {
-      values[key] = value['booleanValue'];
-    } else if (value.containsKey('timestampValue')) {
-      values[key] = DateTime.tryParse(value['timestampValue']);
-    } else if (value.containsKey('arrayValue')) {
-      final arrayValue = value['arrayValue'];
-      if (arrayValue != null && arrayValue.containsKey('values')) {
-        values[key] =
-            (arrayValue['values'] as List?)
-                ?.map(
-                  (e) => e is Map<String, dynamic> ? _extractSingleValue(e) : e,
-                )
-                .toList() ??
-            [];
-      } else {
-        values[key] = [];
-      }
-    } else if (value.containsKey('mapValue')) {
-      final mapValue = value['mapValue'];
-      if (mapValue != null && mapValue.containsKey('fields')) {
-        values[key] = _extractFieldValues(mapValue['fields']);
-      } else {
-        values[key] = {};
+    } else if (value is Map<String, dynamic>) {
+      // Extraer el valor directamente del tipo correspondiente
+      if (value.containsKey('stringValue')) {
+        values[key] = value['stringValue'];
+      } else if (value.containsKey('integerValue')) {
+        values[key] = int.tryParse(value['integerValue'].toString());
+      } else if (value.containsKey('doubleValue')) {
+        values[key] = value['doubleValue'];
+      } else if (value.containsKey('booleanValue')) {
+        values[key] = value['booleanValue'];
+      } else if (value.containsKey('arrayValue')) {
+        final arrayValues = value['arrayValue']?['values'] ?? [];
+        values[key] = List.from(arrayValues.map((v) => _extractSingleValue(v)));
+      } else if (value.containsKey('mapValue')) {
+        values[key] = _extractFieldValues(value['mapValue']?['fields'] ?? {});
+      } else if (value.containsKey('nullValue')) {
+        values[key] = null;
       }
     }
+  });
+
+  if (id != null) {
+    values['id'] = id;
   }
-  if (id != null) values['id'] = id;
+
+  if (kDebugMode) {
+    print('Campos extraídos en _extractFieldValues: $values');
+  }
+
   return values;
 }
 
@@ -172,7 +174,15 @@ dynamic _extractSingleValue(Map<String, dynamic> value) {
   } else if (value.containsKey('booleanValue')) {
     return value['booleanValue'];
   } else if (value.containsKey('timestampValue')) {
-    return DateTime.tryParse(value['timestampValue']);
+    final timestamp = value['timestampValue'] as String;
+    try {
+      return DateTime.parse(timestamp).toIso8601String();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error procesando timestamp en _extractSingleValue: $e');
+      }
+      return timestamp;
+    }
   } else if (value.containsKey('nullValue')) {
     return null;
   }

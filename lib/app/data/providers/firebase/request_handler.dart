@@ -21,14 +21,50 @@ class Response {
 
   factory Response.fromHttpResponse(http.Response response) {
     try {
+      if (kDebugMode) {
+        print('Response body raw: ${response.body}');
+      }
+
       final bodyJson = json.decode(response.body);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return Response(
-          error: false,
-          statusCode: response.statusCode,
-          data: getFirestoreValues(bodyJson),
-        );
+        // Para peticiones GET que devuelven listados
+        if (bodyJson.containsKey('documents')) {
+          final documents = bodyJson['documents'];
+          final Map<String, dynamic> processedData = {};
+
+          for (var doc in documents) {
+            final String docId = doc['name'].toString().split('/').last;
+            final fields = doc['fields'] as Map<String, dynamic>;
+
+            processedData[docId] = {'fields': fields, 'name': doc['name']};
+
+            if (kDebugMode) {
+              print('Documento procesado - ID: $docId');
+              print('Campos: $fields');
+            }
+          }
+
+          return Response(
+            error: false,
+            statusCode: response.statusCode,
+            data: processedData,
+          );
+        }
+        // Para peticiones GET de un solo documento
+        else if (bodyJson.containsKey('fields')) {
+          return Response(
+            error: false,
+            statusCode: response.statusCode,
+            data: {'fields': bodyJson['fields']},
+          );
+        } else {
+          return Response(
+            error: false,
+            statusCode: response.statusCode,
+            data: bodyJson,
+          );
+        }
       } else {
         String errorMessage;
         switch (response.statusCode) {
@@ -50,10 +86,13 @@ class Response {
         );
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('Error procesando respuesta: $e');
+      }
       return Response(
         error: true,
         statusCode: response.statusCode,
-        message: 'Sin acceso a internet',
+        message: 'Error procesando la respuesta',
         data: response.body,
       );
     }

@@ -27,6 +27,81 @@ class UserRepository {
     }
   }
 
+  /// Obtiene un usuario por su número de usuario (userNumber)
+  Future<UserModel?> getUserByNumber(String userNumber) async {
+    try {
+      final response = await _apiProvider.getAll();
+
+      if (response['error'] == true || response['data'] == null) {
+        if (kDebugMode) {
+          print('Error en la respuesta de Firebase o datos nulos');
+          print('Response: $response');
+        }
+        return null;
+      }
+
+      final data = response['data'];
+      if (data is! Map<String, dynamic>) {
+        if (kDebugMode) {
+          print('Data no es un Map<String, dynamic>');
+        }
+        return null;
+      }
+
+      // Buscar el documento que coincida con el userNumber
+      UserModel? matchedUser;
+      data.forEach((docId, document) {
+        if (document is Map<String, dynamic> &&
+            document['fields'] is Map<String, dynamic>) {
+          final fields = document['fields'] as Map<String, dynamic>;
+
+          final docUserNumber = fields['userNumber']?['stringValue'];
+
+          if (docUserNumber == userNumber) {
+            final Map<String, dynamic> userData = {
+              'id': docId,
+              'accessHistory':
+                  (fields['accessHistory']?['arrayValue']?['values'] ?? []).map(
+                    (item) {
+                      return item['stringValue'] ?? '';
+                    },
+                  ).toList(),
+              'expirationDate': fields['expirationDate']?['stringValue'],
+              'isActive': fields['isActive']?['booleanValue'] ?? true,
+              'joinDate': fields['joinDate']?['stringValue'],
+              'lastPaymentDate': fields['lastPaymentDate']?['stringValue'],
+              'membershipType':
+                  fields['membershipType']?['stringValue'] ?? 'normal',
+              'name': fields['name']?['stringValue'] ?? '',
+              'phone': fields['phone']?['stringValue'] ?? '',
+              'photoUrl': fields['photoUrl']?['stringValue'],
+              'qrCode': fields['qrCode']?['stringValue'],
+              'userNumber': docUserNumber,
+            };
+
+            if (kDebugMode) {
+              print('Usuario encontrado. Datos extraídos:');
+              print(userData);
+            }
+
+            matchedUser = UserModel.fromJson(userData);
+          }
+        }
+      });
+
+      if (matchedUser == null && kDebugMode) {
+        print('No se encontró ningún usuario con el número: $userNumber');
+      }
+
+      return matchedUser;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error al obtener usuario por número: $e');
+      }
+      return null;
+    }
+  }
+
   /// Obtiene todos los usuarios disponibles
   Future<List<UserModel>> getAllUsers() async {
     try {
@@ -38,9 +113,41 @@ class UserRepository {
       final Map<String, dynamic> data = response['data'];
       final List<UserModel> users = [];
 
-      data.forEach((key, value) {
-        value['id'] = key;
-        users.add(UserModel.fromJson(value));
+      data.forEach((key, document) {
+        if (document != null && document is Map<String, dynamic>) {
+          if (document['fields'] != null &&
+              document['fields'] is Map<String, dynamic>) {
+            final fields = document['fields'] as Map<String, dynamic>;
+
+            final Map<String, dynamic> userData = {
+              'id': key,
+              'accessHistory':
+                  (fields['accessHistory']?['arrayValue']?['values'] ?? []).map(
+                    (item) {
+                      return item['stringValue'] ?? '';
+                    },
+                  ).toList(),
+              'expirationDate': fields['expirationDate']?['stringValue'],
+              'isActive': fields['isActive']?['booleanValue'] ?? true,
+              'joinDate': fields['joinDate']?['stringValue'],
+              'lastPaymentDate': fields['lastPaymentDate']?['stringValue'],
+              'membershipType':
+                  fields['membershipType']?['stringValue'] ?? 'normal',
+              'name': fields['name']?['stringValue'] ?? '',
+              'phone': fields['phone']?['stringValue'] ?? '',
+              'photoUrl': fields['photoUrl']?['stringValue'],
+              'qrCode': fields['qrCode']?['stringValue'],
+              'userNumber': fields['userNumber']?['stringValue'] ?? '',
+            };
+
+            if (kDebugMode) {
+              print('Procesando usuario con ID: $key');
+              print('Datos extraídos: $userData');
+            }
+
+            users.add(UserModel.fromJson(userData));
+          }
+        }
       });
 
       return users;

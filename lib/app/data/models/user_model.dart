@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class UserModel {
   final String? id;
   final String name;
@@ -40,63 +42,80 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    // Calcular días restantes de membresía
-    int calculateDaysRemaining(DateTime? expDate) {
-      if (expDate == null) return 0;
-      final now = DateTime.now();
-      final difference = expDate.difference(now).inDays;
-      return difference > 0 ? difference : 0;
+    if (kDebugMode) {
+      print('Datos recibidos en fromJson: $json');
     }
 
-    DateTime? expDate =
-        json['expirationDate'] != null
-            ? json['expirationDate'] is DateTime
-                ? json['expirationDate']
-                : DateTime.parse(json['expirationDate'])
-            : null;
+    // Función para parsear fechas
+    DateTime? parseDateTime(dynamic value) {
+      if (value == null) return null;
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error parseando fecha: $value - Error: $e');
+        }
+        return null;
+      }
+    }
 
-    int daysLeft = calculateDaysRemaining(expDate);
+    // Parsear las fechas asegurándose de que sean válidas
+    final DateTime? expDate = parseDateTime(json['expirationDate']);
+    final DateTime joinDate = parseDateTime(json['joinDate']) ?? DateTime.now();
+    final DateTime? lastPaymentDate = parseDateTime(json['lastPaymentDate']);
+
+    if (kDebugMode) {
+      print('DEBUG! Fecha de registro: $joinDate');
+      print('DEBUG! Fecha de expiración: $expDate');
+      print('DEBUG! Fecha último pago: $lastPaymentDate');
+    }
+
+    // Calcular días restantes considerando también las horas
+    int daysLeft = 0;
+    if (expDate != null) {
+      final now = DateTime.now();
+      final difference = expDate.difference(now);
+      daysLeft = difference.inHours > 0 ? (difference.inHours / 24).ceil() : 0;
+
+      if (kDebugMode) {
+        print('Días restantes calculados: $daysLeft');
+      }
+    }
 
     return UserModel(
-      id: json['id'],
-      name: json['name'],
-      phone: json['phone'] ?? '',
-      membershipType: json['membershipType'] ?? 'normal',
-      joinDate:
-          json['joinDate'] != null
-              ? json['joinDate'] is DateTime
-                  ? json['joinDate']
-                  : DateTime.parse(json['joinDate'])
-              : DateTime.now(),
+      id: json['id']?.toString(),
+      name: (json['name'] ?? '').toString().trim(),
+      phone: (json['phone'] ?? '').toString().trim(),
+      membershipType:
+          (json['membershipType'] ?? 'normal').toString().toLowerCase(),
+      joinDate: joinDate,
       expirationDate: expDate,
-      isActive: json['isActive'] ?? true,
-      photoUrl: json['photoUrl'],
-      qrCode: json['qrCode'],
-      userNumber: (json['userNumber'] ?? '').toString(), // Convertir a String
-      accessHistory: json['accessHistory'] ?? [],
-      lastPaymentDate:
-          json['lastPaymentDate'] != null
-              ? json['lastPaymentDate'] is DateTime
-                  ? json['lastPaymentDate']
-                  : DateTime.parse(json['lastPaymentDate'])
-              : null,
+      isActive: json['isActive'] == true,
+      photoUrl: json['photoUrl']?.toString(),
+      qrCode: json['qrCode']?.toString(),
+      userNumber: (json['userNumber'] ?? '').toString().trim(),
+      accessHistory: List<dynamic>.from(json['accessHistory'] ?? []),
+      lastPaymentDate: lastPaymentDate,
       daysRemaining: daysLeft,
     );
   }
 
   Map<String, dynamic> toJson() {
+    if (kDebugMode) {
+      print('Convirtiendo a JSON con fecha de expiración: $expirationDate');
+    }
     return {
       'name': name,
       'phone': phone,
       'membershipType': membershipType,
-      'joinDate': joinDate.toIso8601String(),
-      'expirationDate': expirationDate?.toIso8601String(),
+      'joinDate': joinDate.toUtc().toIso8601String(),
+      'expirationDate': expirationDate?.toUtc().toIso8601String(),
       'isActive': isActive,
       'photoUrl': photoUrl,
       'qrCode': qrCode,
       'userNumber': userNumber,
       'accessHistory': accessHistory,
-      'lastPaymentDate': lastPaymentDate?.toIso8601String(),
+      'lastPaymentDate': lastPaymentDate?.toUtc().toIso8601String(),
     };
   }
 

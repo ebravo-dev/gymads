@@ -10,6 +10,8 @@ import '../modules/ingresos/bindings/ingresos_binding.dart';
 import '../modules/ingresos/views/ingresos_view.dart';
 import '../modules/inventario/bindings/inventario_binding.dart';
 import '../modules/inventario/views/inventario_view.dart';
+import '../modules/checkin/bindings/checkin_binding.dart';
+import '../modules/checkin/views/checkin_view.dart';
 
 part 'app_routes.dart';
 
@@ -43,6 +45,11 @@ class AppPages {
       name: _Paths.INGRESOS,
       page: () => const IngresosView(),
       binding: IngresosBinding(),
+    ),
+    GetPage(
+      name: _Paths.CHECKIN,
+      page: () => const CheckinView(),
+      binding: CheckinBinding(),
     ),
   ];
 }

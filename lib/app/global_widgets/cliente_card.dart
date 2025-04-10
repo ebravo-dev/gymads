@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/core/theme/app_colors.dart';
@@ -26,11 +27,17 @@ class ClienteCard extends StatelessWidget {
         cliente.membershipType[0].toUpperCase() +
         cliente.membershipType.substring(1);
 
+    if (kDebugMode) {
+      //imprime la expiracion
+      print('DEBUG! Expiracion: ${cliente.expirationDate}');
+    }
+
     // Formatear fecha de expiración
-    final expirationDate =
+    final dateFormatter = DateFormat('dd/MM/yyyy');
+    final String expirationDateText =
         cliente.expirationDate != null
-            ? DateFormat('dd/MM/yyyy').format(cliente.expirationDate!)
-            : 'N/A';
+            ? dateFormatter.format(cliente.expirationDate!)
+            : 'Sin fecha de expiración';
 
     // Determinar colores según el estado
     final Color primaryColor =
@@ -113,7 +120,7 @@ class ClienteCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      if (cliente.isActive && cliente.expirationDate != null)
+                      if (cliente.daysRemaining > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -164,13 +171,6 @@ class ClienteCard extends StatelessWidget {
                               color: primaryColor.withOpacity(0.5),
                               width: 2,
                             ),
-                            // boxShadow: [
-                            //   BoxShadow(
-                            //     color: primaryColor.withOpacity(0.2),
-                            //     blurRadius: 3,
-                            //     spreadRadius: 5,
-                            //   ),
-                            // ],
                           ),
                           child: CircleAvatar(
                             radius: 32,
@@ -227,7 +227,7 @@ class ClienteCard extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
-                                    'ID: ${cliente.userNumber}',
+                                    cliente.userNumber,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -248,7 +248,7 @@ class ClienteCard extends StatelessWidget {
                             const SizedBox(height: 6),
                             _buildInfoRow(
                               Icons.event_available_rounded,
-                              'Expira: $expirationDate',
+                              'Expira: $expirationDateText',
                               primaryColor,
                             ),
                             const SizedBox(height: 6),
@@ -284,7 +284,7 @@ class ClienteCard extends StatelessWidget {
                         onEdit,
                         Icons.edit_rounded,
                         'Editar',
-                        Colors.green.shade300,
+                        Colors.blue.shade300,
                       ),
                       _buildActionButton(
                         onDelete,
@@ -292,12 +292,12 @@ class ClienteCard extends StatelessWidget {
                         'Eliminar',
                         Colors.red.shade300,
                       ),
-                      // _buildActionButton(
-                      //   onRenovar,
-                      //   Icons.update_rounded,
-                      //   'Renovar',
-                      //   Colors.yellow.shade300,
-                      // ),
+                      _buildActionButton(
+                        onRenovar,
+                        Icons.autorenew_rounded,
+                        'Renovar',
+                        Colors.green.shade300,
+                      ),
                     ],
                   ),
                 ),
@@ -334,22 +334,20 @@ class ClienteCard extends StatelessWidget {
     String label,
     Color color,
   ) {
-    return Expanded(
-      child: TextButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 18, color: color),
-        label: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18, color: color),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
         ),
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      ),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
