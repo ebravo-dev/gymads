@@ -1,5 +1,5 @@
+import 'dart:io';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
@@ -96,10 +96,13 @@ class ClientesController extends GetxController {
   }
 
   // Método para añadir un nuevo cliente
-  Future<bool> addCliente(UserModel newClient) async {
+  Future<bool> addCliente(UserModel newClient, {File? photoFile}) async {
     isLoading.value = true;
     try {
-      final success = await userRepository.addUser(newClient);
+      final success = await userRepository.addUser(
+        newClient,
+        photoFile: photoFile,
+      );
       if (success) {
         await fetchClientes();
         Get.back(); // Cerrar el diálogo de creación
@@ -147,10 +150,18 @@ class ClientesController extends GetxController {
   }
 
   // Método para actualizar un cliente existente
-  Future<bool> updateCliente(String id, UserModel updatedClient) async {
+  Future<bool> updateCliente(
+    String id,
+    UserModel updatedClient, {
+    File? photoFile,
+  }) async {
     isLoading.value = true;
     try {
-      final success = await userRepository.updateUser(id, updatedClient);
+      final success = await userRepository.updateUser(
+        id,
+        updatedClient,
+        photoFile: photoFile,
+      );
       if (success) {
         // Actualizar la lista local para reflejar los cambios
         final index = clientes.indexWhere((client) => client.id == id);

@@ -328,8 +328,8 @@ class ClientesView extends GetView<ClientesController> {
         membershipCost: controller.membershipCost,
         registrationFee: controller.registrationFee,
         totalAmount: controller.totalAmount,
-        onSave: (user) {
-          controller.addCliente(user);
+        onSave: (user, photoFile) {
+          controller.addCliente(user, photoFile: photoFile);
         },
       ),
     );
@@ -357,7 +357,8 @@ class ClientesView extends GetView<ClientesController> {
         membershipCost: controller.membershipCost,
         registrationFee: controller.registrationFee,
         totalAmount: controller.totalAmount,
-        onSave: (updatedUser) {
+        currentPhotoUrl: cliente.photoUrl,
+        onSave: (updatedUser, photoFile) {
           // Preservar ID y otros campos que no deberían cambiar
           final user = updatedUser.copyWith(
             id: cliente.id,
@@ -365,7 +366,7 @@ class ClientesView extends GetView<ClientesController> {
             accessHistory: cliente.accessHistory,
           );
 
-          controller.updateCliente(cliente.id!, user);
+          controller.updateCliente(cliente.id!, user, photoFile: photoFile);
         },
       ),
     );
@@ -413,7 +414,7 @@ class ClientesView extends GetView<ClientesController> {
         membershipCost: controller.membershipCost,
         registrationFee: controller.registrationFee,
         totalAmount: controller.totalAmount,
-        onSave: (updatedUser) {
+        onSave: (updatedUser, photoFile) {
           controller.renewMembership(
             cliente,
             controller.selectedMembershipType.value,

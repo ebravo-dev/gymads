@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import '../modules/shared/widgets/photo_capture_widget.dart';
 
 class ClienteFormDialog extends StatelessWidget {
   final TextEditingController nombreController;
@@ -14,10 +16,11 @@ class ClienteFormDialog extends StatelessWidget {
   final List<String> paymentMethods;
   final bool isEditing;
   final bool isRenewing;
-  final Function(UserModel) onSave;
+  final Function(UserModel, File?) onSave;
   final RxDouble membershipCost;
   final RxDouble registrationFee;
   final RxDouble totalAmount;
+  final String? currentPhotoUrl;
 
   const ClienteFormDialog({
     super.key,
@@ -34,6 +37,7 @@ class ClienteFormDialog extends StatelessWidget {
     required this.membershipCost,
     required this.registrationFee,
     required this.totalAmount,
+    this.currentPhotoUrl,
   });
 
   @override
@@ -41,6 +45,7 @@ class ClienteFormDialog extends StatelessWidget {
     final formKey = GlobalKey<FormState>();
     final bool isNewRegistration = !isEditing || isRenewing;
     final phoneNumberController = TextEditingController();
+    final Rx<File?> photoFile = Rx<File?>(null);
 
     if (phoneController.text.isNotEmpty) {
       try {
@@ -57,7 +62,7 @@ class ClienteFormDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 0,
       backgroundColor: Colors.transparent,
-      child: contentBox(context, formKey, isNewRegistration),
+      child: contentBox(context, formKey, isNewRegistration, photoFile),
     );
   }
 
@@ -65,6 +70,7 @@ class ClienteFormDialog extends StatelessWidget {
     BuildContext context,
     GlobalKey<FormState> formKey,
     bool isNewRegistration,
+    Rx<File?> photoFile,
   ) {
     final initialPhoneNumber = PhoneNumber(isoCode: 'MX');
     String formattedPhoneNumber = '';
@@ -72,38 +78,24 @@ class ClienteFormDialog extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(0),
       decoration: BoxDecoration(
-        shape: BoxShape.rectangle,
-        color: const Color.fromARGB(255, 34, 34, 34),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(77),
-            offset: const Offset(0, 10),
-            blurRadius: 10,
-          ),
-        ],
       ),
       child: Form(
         key: formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
+          children: [
+            // Encabezado
             Container(
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
               child: Row(
                 children: [
                   Icon(
                     isEditing
                         ? (isRenewing ? Icons.autorenew : Icons.edit)
                         : Icons.person_add,
-                    color: AppColors.textPrimary,
+                    color: AppColors.accent,
                     size: 30,
                   ),
                   const SizedBox(width: 16),
@@ -127,6 +119,14 @@ class ClienteFormDialog extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     if (!isRenewing) ...[
+                      // Widget de captura de foto
+                      PhotoCaptureWidget(
+                        currentPhotoUrl: currentPhotoUrl,
+                        onPhotoTaken: (file) {
+                          photoFile.value = file;
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: userNumberController,
                         decoration: InputDecoration(
@@ -399,7 +399,7 @@ class ClienteFormDialog extends StatelessWidget {
                                 lastPaymentDate: now,
                               );
 
-                              onSave(user);
+                              onSave(user, photoFile.value);
                               Get.back();
                             }
                           },

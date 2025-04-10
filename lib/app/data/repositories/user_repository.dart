@@ -1,12 +1,15 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/providers/api_provider.dart';
+import 'package:gymads/app/data/providers/storage_provider.dart';
 
 /// Repositorio para la gestión de usuarios
 /// Esta clase implementa la lógica de negocio relacionada con usuarios
 /// y utiliza un ApiProvider para acceder a los datos
 class UserRepository {
   final ApiProvider _apiProvider;
+  final StorageProvider _storageProvider = StorageProvider();
 
   UserRepository(this._apiProvider);
 
@@ -159,9 +162,27 @@ class UserRepository {
     }
   }
 
-  /// Agrega un nuevo usuario
-  Future<bool> addUser(UserModel user) async {
+  /// Agrega un nuevo usuario con foto
+  Future<bool> addUser(UserModel user, {File? photoFile}) async {
     try {
+      // Si se proporciona una foto, primero la subimos a Supabase
+      if (photoFile != null) {
+        final photoUrl = await _storageProvider.uploadUserPhoto(
+          photoFile,
+          DateTime.now().millisecondsSinceEpoch.toString(),
+        );
+
+        if (photoUrl != null) {
+          // Actualizar el modelo de usuario con la URL de la foto
+          user = user.copyWith(photoUrl: photoUrl);
+        } else {
+          if (kDebugMode) {
+            print('Error al subir la foto del usuario');
+          }
+          return false;
+        }
+      }
+
       final response = await _apiProvider.add(user.toJson());
       return !response['error'];
     } catch (e) {
@@ -186,8 +207,26 @@ class UserRepository {
   }
 
   /// Actualiza un usuario existente
-  Future<bool> updateUser(String id, UserModel user) async {
+  Future<bool> updateUser(String id, UserModel user, {File? photoFile}) async {
     try {
+      // Si se proporciona una nueva foto, primero subirla
+      if (photoFile != null) {
+        final photoUrl = await _storageProvider.uploadUserPhoto(
+          photoFile,
+          DateTime.now().millisecondsSinceEpoch.toString(),
+        );
+
+        if (photoUrl != null) {
+          // Actualizar el modelo de usuario con la URL de la nueva foto
+          user = user.copyWith(photoUrl: photoUrl);
+        } else {
+          if (kDebugMode) {
+            print('Error al subir la foto del usuario');
+          }
+          return false;
+        }
+      }
+
       final response = await _apiProvider.update(id, user.toJson());
       return !response['error'];
     } catch (e) {
