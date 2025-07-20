@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
@@ -10,6 +11,7 @@ class ClienteFormDialog extends StatelessWidget {
   final TextEditingController nombreController;
   final TextEditingController phoneController;
   final TextEditingController userNumberController;
+  final TextEditingController rfidController; // Añadido controlador para RFID
   final RxString selectedMembershipType;
   final List<String> membershipTypes;
   final RxString selectedPaymentMethod;
@@ -27,6 +29,7 @@ class ClienteFormDialog extends StatelessWidget {
     required this.nombreController,
     required this.phoneController,
     required this.userNumberController,
+    required this.rfidController, // Añadido parámetro
     required this.selectedMembershipType,
     required this.membershipTypes,
     required this.selectedPaymentMethod,
@@ -147,6 +150,40 @@ class ClienteFormDialog extends StatelessWidget {
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: 16),
+                      // Campo para la tarjeta RFID
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: rfidController,
+                              decoration: InputDecoration(
+                                labelText: 'Tarjeta RFID',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                prefixIcon: const Icon(Icons.credit_card),
+                                filled: true,
+                                fillColor: AppColors.containerBackground,
+                              ),
+                              style: TextStyle(color: AppColors.textPrimary),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () {
+                              // Generar un código RFID aleatorio
+                              final random = Random();
+                              final rfidCode = List.generate(10, 
+                                  (_) => random.nextInt(10)).join();
+                              rfidController.text = rfidCode;
+                            },
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Generar RFID aleatorio',
+                            color: AppColors.accent,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -396,6 +433,7 @@ class ClienteFormDialog extends StatelessWidget {
                                 expirationDate: expirationDate,
                                 isActive: true,
                                 userNumber: userNumberController.text,
+                                rfidCard: rfidController.text.isEmpty ? null : rfidController.text,
                                 lastPaymentDate: now,
                               );
 

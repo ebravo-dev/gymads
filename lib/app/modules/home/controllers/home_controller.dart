@@ -14,6 +14,11 @@ class HomeController extends GetxController {
     Get.toNamed(Routes.CHECADOR);
   }
 
+  void goToRfidCheckIn() {
+    statusMessages.add('Navegando a Control de Acceso RFID...');
+    Get.toNamed(Routes.RFID_CHECKIN);
+  }
+
   void goToPaymentRegistration() {
     statusMessages.add('Navegando a Registro de Pagos...');
     Get.toNamed(Routes.INGRESOS);

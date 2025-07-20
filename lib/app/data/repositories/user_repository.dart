@@ -140,7 +140,7 @@ class UserRepository {
           if (kDebugMode) {
             print('Error al subir la foto del usuario');
           }
-          return false;
+          // Continuamos con la creación del usuario aunque no se pudo subir la foto
         }
       }
 
@@ -184,7 +184,7 @@ class UserRepository {
           if (kDebugMode) {
             print('Error al subir la foto del usuario');
           }
-          return false;
+          // Continuamos con la actualización del usuario aunque no se pudo subir la foto
         }
       }
 

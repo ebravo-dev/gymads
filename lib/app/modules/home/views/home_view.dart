@@ -149,30 +149,6 @@ class HomeView extends GetView<HomeController> {
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
                             // Opción de Check-ins
-
-                            // Opción de Registrar Pago
-                            ButtonMenuWidget(
-                              icon: Icons.inventory,
-                              label: 'Inventario',
-                              description: 'Mis productos',
-                              color: Colors.green.shade300,
-                              onTap: controller.goToInventario,
-                            ),
-                            ButtonMenuWidget(
-                              icon: Icons.attach_money,
-                              label: 'Ingresos',
-                              description: 'Registro de pago',
-                              color: Colors.cyan.shade300,
-                              onTap: controller.goToPaymentRegistration,
-                            ),
-                            // Opción de Clientes - Corregida para llamar a la función correcta
-                            ButtonMenuWidget(
-                              icon: Icons.person_add,
-                              label: 'Clientes',
-                              description: 'Gestión de clientes',
-                              color: Colors.green.shade300,
-                              onTap: controller.goToClientes,
-                            ),
                             ButtonMenuWidget(
                               icon: Icons.qr_code_scanner,
                               label: 'Checador',
@@ -180,8 +156,44 @@ class HomeView extends GetView<HomeController> {
                               color: Colors.cyan.shade300,
                               onTap: controller.goToCheckIns,
                             ),
+                            
+                            // Opción de Check-in con RFID
+                            ButtonMenuWidget(
+                              icon: Icons.contactless,
+                              label: 'RFID',
+                              description: 'Acceso con tarjeta',
+                              color: Colors.indigo.shade300,
+                              onTap: controller.goToRfidCheckIn,
+                            ),
 
-                            // Opción de Inventario - Corregida para llamar a la función correcta
+                            // Opción de Inventario
+                            ButtonMenuWidget(
+                              icon: Icons.inventory,
+                              label: 'Inventario',
+                              description: 'Mis productos',
+                              color: Colors.green.shade300,
+                              onTap: controller.goToInventario,
+                            ),
+                            
+                            // Opción de Registrar Pago
+                            ButtonMenuWidget(
+                              icon: Icons.attach_money,
+                              label: 'Ingresos',
+                              description: 'Registro de pago',
+                              color: Colors.amber.shade300,
+                              onTap: controller.goToPaymentRegistration,
+                            ),
+                            
+                            // Opción de Clientes
+                            ButtonMenuWidget(
+                              icon: Icons.person_add,
+                              label: 'Clientes',
+                              description: 'Gestión de clientes',
+                              color: Colors.green.shade300,
+                              onTap: controller.goToClientes,
+                            ),
+
+                            // Espacio para futuras opciones
                           ],
                         ),
                       ),

@@ -27,6 +27,7 @@ class ClientesController extends GetxController {
   final nombreController = TextEditingController();
   final phoneController = TextEditingController();
   final userNumberController = TextEditingController();
+  final rfidController = TextEditingController(); // Añadido controlador para RFID
   final membershipTypeList = ['normal', 'estudiante', 'profesor'].obs;
   final selectedMembershipType = 'normal'.obs;
   final paymentMethodList = ['Efectivo', 'Tarjeta', 'Transferencia'].obs;
@@ -48,6 +49,7 @@ class ClientesController extends GetxController {
     nombreController.dispose();
     phoneController.dispose();
     userNumberController.dispose();
+    rfidController.dispose(); // Añadir disposición del controlador RFID
     super.onClose();
   }
 
@@ -336,6 +338,7 @@ class ClientesController extends GetxController {
     nombreController.text = client.name;
     phoneController.text = client.phone;
     userNumberController.text = client.userNumber.toString();
+    rfidController.text = client.rfidCard ?? ''; // Añadido para RFID
     selectedMembershipType.value = client.membershipType;
   }
 
@@ -344,6 +347,7 @@ class ClientesController extends GetxController {
     nombreController.clear();
     phoneController.clear();
     userNumberController.clear();
+    rfidController.clear(); // Añadido para RFID
     selectedMembershipType.value = 'normal';
     selectedPaymentMethod.value = 'Efectivo';
     membershipCost.value = UserModel.membershipPrices['normal']!;

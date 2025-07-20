@@ -186,6 +186,14 @@ class ClientesView extends GetView<ClientesController> {
               // Información de contacto
               _detailItem(Icons.phone, 'Teléfono:', cliente.phone),
 
+              // Información de RFID
+              _detailItem(
+                Icons.credit_card,
+                'Tarjeta RFID:',
+                cliente.rfidCard ?? 'No asignada',
+                textColor: cliente.rfidCard != null ? Colors.green : Colors.grey,
+              ),
+
               // Información de membresía
               _detailItem(
                 Icons.calendar_today,
@@ -321,6 +329,7 @@ class ClientesView extends GetView<ClientesController> {
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
+        rfidController: controller.rfidController,
         selectedMembershipType: controller.selectedMembershipType,
         membershipTypes: controller.membershipTypeList,
         selectedPaymentMethod: controller.selectedPaymentMethod,
@@ -349,6 +358,7 @@ class ClientesView extends GetView<ClientesController> {
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
+        rfidController: controller.rfidController,
         selectedMembershipType: controller.selectedMembershipType,
         membershipTypes: controller.membershipTypeList,
         selectedPaymentMethod: controller.selectedPaymentMethod,
@@ -405,6 +415,7 @@ class ClientesView extends GetView<ClientesController> {
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
+        rfidController: controller.rfidController,
         selectedMembershipType: controller.selectedMembershipType,
         membershipTypes: controller.membershipTypeList,
         selectedPaymentMethod: controller.selectedPaymentMethod,
