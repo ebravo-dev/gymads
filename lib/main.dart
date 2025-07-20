@@ -18,16 +18,14 @@ void main() async {
   // );
 
   await Supabase.initialize(
-    url: 'https://ndaczglktyfoequrdbkl.supabase.co',
+    url: 'https://hizdsbhzxgdfjchenjem.supabase.co',
     anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kYWN6Z2xrdHlmb2VxdXJkYmtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0NTU2NTYsImV4cCI6MjA1OTAzMTY1Nn0.J45cOZAeF2ozU4yYcPg9yph3p3D1QCbwyBGc7Lf3sx4',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpemRzYmh6eGdkZmpjaGVuamVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5Njc1MTMsImV4cCI6MjA2ODU0MzUxM30.2-k9qLi7ufwIR33RC-PnF2p8jh5Q1uAtXiUMO1UT-VA',
     // debug: true,
   );
 
-  await Supabase.instance.client.auth.signInWithPassword(
-    email: 'ederjgb94@gmail.com',
-    password: 'asdqwe123',
-  );
+  // ✅ Ya no hacemos login automático aquí
+  // El login se manejará en la pantalla de autenticación
   runApp(
     GetMaterialApp(
       title: "GymAds - Gestión de Gimnasio",
