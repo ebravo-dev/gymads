@@ -12,16 +12,9 @@ void main() async {
   await dotenv.load(fileName: ".env");
 
   // Inicializar Supabase
-  // await Supabase.initialize(
-  //   url: dotenv.env['SUPABASE_URL'] ?? '',
-  //   anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-  // );
-
   await Supabase.initialize(
-    url: 'https://hizdsbhzxgdfjchenjem.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpemRzYmh6eGdkZmpjaGVuamVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5Njc1MTMsImV4cCI6MjA2ODU0MzUxM30.2-k9qLi7ufwIR33RC-PnF2p8jh5Q1uAtXiUMO1UT-VA',
-    // debug: true,
+    url: dotenv.env['SUPABASE_URL'] ?? '',
+    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
   // ✅ Ya no hacemos login automático aquí
