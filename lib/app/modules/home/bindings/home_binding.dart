@@ -1,18 +1,16 @@
 import 'package:get/get.dart';
 import '../controllers/home_controller.dart';
 import '../../../data/providers/api_provider.dart';
-import '../../../data/providers/firebase/firebase_api_provider.dart';
+import '../../../data/providers/supabase/supabase_api_provider.dart';
 import '../../../data/repositories/user_repository.dart';
 
 class HomeBinding extends Bindings {
   @override
   void dependencies() {
-    // Registrar el provider concreto (FirebaseApiProvider) como implementación de ApiProvider
-    // Si en el futuro quieres cambiar a otro proveedor, solo debes modificar esta línea
+    // Registrar el provider concreto (SupabaseApiProvider) como implementación de ApiProvider
     Get.put<ApiProvider>(
-      FirebaseApiProvider(
-        model: 'users', // Nombre de la colección en Firebase
-        idProject: 'gymads-1f6e6',
+      SupabaseApiProvider(
+        table: 'users', // Nombre de la tabla en Supabase
       ),
       permanent: true,
     );

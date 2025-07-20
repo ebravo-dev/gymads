@@ -2,9 +2,9 @@ import 'package:get/get.dart';
 import '../../../data/providers/api_provider.dart';
 import '../../../data/providers/supabase/supabase_api_provider.dart';
 import '../../../data/repositories/user_repository.dart';
-import '../controllers/checador_controller.dart';
+import '../controllers/rfid_checkin_controller.dart';
 
-class ChecadorBinding extends Bindings {
+class RfidCheckinBinding extends Bindings {
   @override
   void dependencies() {
     // Usar el ApiProvider si ya está registrado, si no, crear uno nuevo
@@ -25,8 +25,8 @@ class ChecadorBinding extends Bindings {
       );
     }
 
-    Get.lazyPut<ChecadorController>(
-      () => ChecadorController(userRepository: Get.find<UserRepository>()),
+    Get.lazyPut<RfidCheckinController>(
+      () => RfidCheckinController(userRepository: Get.find<UserRepository>()),
     );
   }
 }

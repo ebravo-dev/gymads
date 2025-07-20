@@ -11,6 +11,7 @@ class UserModel {
   final String? photoUrl;
   final String? qrCode;
   final String userNumber; // Cambiado de int a String
+  final String? rfidCard; // Identificador de tarjeta RFID
   final List<dynamic> accessHistory;
   final DateTime? lastPaymentDate;
   final int daysRemaining;
@@ -35,6 +36,7 @@ class UserModel {
     this.isActive = true,
     this.photoUrl,
     this.qrCode,
+    this.rfidCard,
     required this.userNumber,
     this.accessHistory = const [],
     this.lastPaymentDate,
@@ -59,10 +61,10 @@ class UserModel {
       }
     }
 
-    // Parsear las fechas asegurándose de que sean válidas
-    final DateTime? expDate = parseDateTime(json['expirationDate']);
-    final DateTime joinDate = parseDateTime(json['joinDate']) ?? DateTime.now();
-    final DateTime? lastPaymentDate = parseDateTime(json['lastPaymentDate']);
+    // Parsear las fechas asegurándose de que sean válidas (manejando snake_case y camelCase)
+    final DateTime? expDate = parseDateTime(json['expiration_date'] ?? json['expirationDate']);
+    final DateTime joinDate = parseDateTime(json['join_date'] ?? json['joinDate']) ?? DateTime.now();
+    final DateTime? lastPaymentDate = parseDateTime(json['last_payment_date'] ?? json['lastPaymentDate']);
 
     if (kDebugMode) {
       print('DEBUG! Fecha de registro: $joinDate');
@@ -87,13 +89,14 @@ class UserModel {
       name: (json['name'] ?? '').toString().trim(),
       phone: (json['phone'] ?? '').toString().trim(),
       membershipType:
-          (json['membershipType'] ?? 'normal').toString().toLowerCase(),
+          (json['membership_type'] ?? json['membershipType'] ?? 'normal').toString().toLowerCase(),
       joinDate: joinDate,
       expirationDate: expDate,
-      isActive: json['isActive'] == true,
-      photoUrl: json['photoUrl']?.toString(),
-      qrCode: json['qrCode']?.toString(),
-      userNumber: (json['userNumber'] ?? '').toString().trim(),
+      isActive: json['is_active'] ?? json['isActive'] == true,
+      photoUrl: (json['photo_url'] ?? json['photoUrl'])?.toString(),
+      qrCode: (json['qr_code'] ?? json['qrCode'])?.toString(),
+      rfidCard: (json['rfid_card'] ?? json['rfidCard'])?.toString(),
+      userNumber: ((json['user_number'] ?? json['userNumber'] ?? '')).toString().trim(),
       accessHistory: List<dynamic>.from(json['accessHistory'] ?? []),
       lastPaymentDate: lastPaymentDate,
       daysRemaining: daysLeft,
@@ -104,19 +107,24 @@ class UserModel {
     if (kDebugMode) {
       print('Convirtiendo a JSON con fecha de expiración: $expirationDate');
     }
-    return {
+    
+    // Adaptamos los nombres de las columnas a la estructura real de la base de datos
+    // y omitimos accessHistory que no existe en la tabla
+    final Map<String, dynamic> jsonMap = {
       'name': name,
       'phone': phone,
-      'membershipType': membershipType,
-      'joinDate': joinDate.toUtc().toIso8601String(),
-      'expirationDate': expirationDate?.toUtc().toIso8601String(),
-      'isActive': isActive,
-      'photoUrl': photoUrl,
-      'qrCode': qrCode,
-      'userNumber': userNumber,
-      'accessHistory': accessHistory,
-      'lastPaymentDate': lastPaymentDate?.toUtc().toIso8601String(),
+      'membership_type': membershipType, // snake_case para la base de datos
+      'join_date': joinDate.toUtc().toIso8601String(), // snake_case
+      'expiration_date': expirationDate?.toUtc().toIso8601String(), // snake_case
+      'is_active': isActive, // snake_case
+      'photo_url': photoUrl, // snake_case
+      'qr_code': qrCode, // snake_case
+      'rfid_card': rfidCard, // snake_case
+      'user_number': userNumber, // snake_case
+      'last_payment_date': lastPaymentDate?.toUtc().toIso8601String(), // snake_case
     };
+    
+    return jsonMap;
   }
 
   // Método para copiar el modelo con algunos cambios
@@ -130,6 +138,7 @@ class UserModel {
     bool? isActive,
     String? photoUrl,
     String? qrCode,
+    String? rfidCard,
     String? userNumber, // Cambiado de int? a String?
     List<dynamic>? accessHistory,
     DateTime? lastPaymentDate,
@@ -144,6 +153,7 @@ class UserModel {
       isActive: isActive ?? this.isActive,
       photoUrl: photoUrl ?? this.photoUrl,
       qrCode: qrCode ?? this.qrCode,
+      rfidCard: rfidCard ?? this.rfidCard,
       userNumber: userNumber ?? this.userNumber,
       accessHistory: accessHistory ?? this.accessHistory,
       lastPaymentDate: lastPaymentDate ?? this.lastPaymentDate,
@@ -152,6 +162,8 @@ class UserModel {
 
   // Método para registrar un nuevo acceso
   UserModel addAccessRecord() {
+    // Actualizamos el modelo en memoria, aunque el acceso no se guardará en Supabase
+    // Debido a que hemos eliminado accessHistory del toJson
     final now = DateTime.now();
     final newHistory = List<dynamic>.from(accessHistory);
     newHistory.add(now.toIso8601String());
