@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import '../../../data/providers/api_provider.dart';
-import '../../../data/providers/firebase/firebase_api_provider.dart';
+import '../../../data/providers/supabase/supabase_api_provider.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../controllers/checador_controller.dart';
 
@@ -10,9 +10,8 @@ class ChecadorBinding extends Bindings {
     // Usar el ApiProvider si ya está registrado, si no, crear uno nuevo
     if (!Get.isPrepared<ApiProvider>()) {
       Get.put<ApiProvider>(
-        FirebaseApiProvider(
-          model: 'users',
-          idProject: 'gymads-1f6e6',
+        SupabaseApiProvider(
+          table: 'users',
         ),
         permanent: true,
       );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:gymads/app/data/config/supabase_client.dart';
 import 'app/routes/app_pages.dart';
 import 'core/theme/app_theme.dart';
 
@@ -11,14 +11,18 @@ void main() async {
   // Cargar variables de entorno
   await dotenv.load(fileName: ".env");
 
-  // Inicializar Supabase
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-  );
-
-  // ✅ Ya no hacemos login automático aquí
-  // El login se manejará en la pantalla de autenticación
+  try {
+    // Inicializar Supabase usando nuestro servicio configurado
+    await SupabaseService.initialize();
+    print('Supabase inicializado correctamente');
+    
+    // Verificar conexión a la base de datos
+    await SupabaseService.testDatabaseConnection();
+    print('Conexión a la base de datos verificada');
+  } catch (e) {
+    print('Error al inicializar Supabase: $e');
+  }
+  
   runApp(
     GetMaterialApp(
       title: "GymAds - Gestión de Gimnasio",
