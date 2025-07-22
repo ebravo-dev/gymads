@@ -3,7 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
+import 'package:gymads/app/data/services/rfid_reader_service.dart';
+import 'package:gymads/app/modules/shared/widgets/rfid_reader_animation.dart';
 import 'package:gymads/core/theme/app_colors.dart';
+import 'package:gymads/app/data/config/rfid_config.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import '../modules/shared/widgets/photo_capture_widget.dart';
 
@@ -61,11 +64,13 @@ class ClienteFormDialog extends StatelessWidget {
       }
     }
 
-    return Dialog(
+    // Usar AlertDialog en lugar de Dialog para evitar conflictos de parámetros
+    return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 0,
       backgroundColor: Colors.transparent,
-      child: contentBox(context, formKey, isNewRegistration, photoFile),
+      contentPadding: EdgeInsets.zero,
+      content: contentBox(context, formKey, isNewRegistration, photoFile),
     );
   }
 
@@ -160,10 +165,11 @@ class ClienteFormDialog extends StatelessWidget {
                               controller: rfidController,
                               decoration: InputDecoration(
                                 labelText: 'Tarjeta RFID',
+                                hintText: 'Código RFID o use el lector',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                prefixIcon: const Icon(Icons.credit_card),
+                                prefixIcon: const Icon(Icons.contactless),
                                 filled: true,
                                 fillColor: AppColors.containerBackground,
                               ),
@@ -171,17 +177,53 @@ class ClienteFormDialog extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () {
-                              // Generar un código RFID aleatorio
-                              final random = Random();
-                              final rfidCode = List.generate(10, 
-                                  (_) => random.nextInt(10)).join();
-                              rfidController.text = rfidCode;
-                            },
-                            icon: const Icon(Icons.refresh),
-                            tooltip: 'Generar RFID aleatorio',
+                          // Botón mejorado para el lector RFID con Material Design 3
+                          Material(
                             color: AppColors.accent,
+                            borderRadius: BorderRadius.circular(10),
+                            elevation: 2,
+                            child: InkWell(
+                              onTap: () => _showRfidReaderDialog(context),
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.sensor_door,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Botón para generar RFID aleatorio
+                          Material(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(10),
+                            elevation: 2,
+                            child: InkWell(
+                              onTap: () {
+                                final random = Random();
+                                final rfidCode = List.generate(10, 
+                                    (_) => random.nextInt(10)).join();
+                                rfidController.text = rfidCode;
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.casino,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -492,5 +534,73 @@ class ClienteFormDialog extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  // Método para mostrar el diálogo del lector RFID
+  Future<void> _showRfidReaderDialog(BuildContext context) async {
+    final isReading = true.obs;
+    final detectedUid = Rx<String?>(null);
+
+    // Mostrar el diálogo con la animación
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Obx(
+        () => RfidReaderAnimation(
+          isReading: isReading.value,
+          detectedUid: detectedUid.value,
+          onCancel: () {
+            // Si ya detectamos un UID y el usuario acepta, cerramos el diálogo
+            if (detectedUid.value != null) {
+              // Asignar el UID detectado al controlador de texto
+              rfidController.text = detectedUid.value!;
+              Get.back();
+            } else {
+              // Si el usuario cancela durante la lectura, también cerramos
+              isReading.value = false;
+              Get.back();
+            }
+          },
+        ),
+      ),
+    );
+
+    // Iniciar la lectura del RFID (en modo real o simulado)
+    try {
+      // Intentar iniciar el lector ESP32 real
+      bool readerStarted = await RfidReaderService.startReading();
+      
+      if (readerStarted) {
+        // Si el lector inició correctamente, revisar periódicamente si hay una tarjeta
+        int attempts = 0;
+        final maxAttempts = RfidConfig.maxReadingTimeoutSeconds * 1000 ~/ RfidConfig.pollingIntervalMs;
+        
+        while (isReading.value && attempts < maxAttempts && detectedUid.value == null) {
+          // Verificar si hay una tarjeta según el intervalo de polling configurado
+          final uid = await RfidReaderService.checkForCard();
+          if (uid != null) {
+            detectedUid.value = uid;
+            isReading.value = false;
+            break;
+          }
+          attempts++;
+          await Future.delayed(Duration(milliseconds: RfidConfig.pollingIntervalMs));
+        }
+      } else {
+        // Si no se pudo iniciar el lector real, usar el simulador
+        final simulatedUid = await RfidReaderService.simulateCardReading();
+        if (isReading.value) {  // Verificar que el usuario no haya cancelado
+          detectedUid.value = simulatedUid;
+          isReading.value = false;
+        }
+      }
+    } catch (e) {
+      // En caso de error, usar el simulador como fallback
+      if (isReading.value) {
+        final simulatedUid = await RfidReaderService.simulateCardReading();
+        detectedUid.value = simulatedUid;
+        isReading.value = false;
+      }
+    }
   }
 }
