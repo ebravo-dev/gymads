@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/services/rfid_reader_service.dart';
 
-class RfidCheckinController extends GetxController {
+class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;
 
   RfidCheckinController({required this.userRepository});
+  
+  // Controlador para las animaciones de onda
+  late AnimationController animationController;
 
   final isLoading = false.obs;
   final errorMessage = ''.obs;
@@ -20,6 +25,31 @@ class RfidCheckinController extends GetxController {
   final daysLeft = 0.obs;
   final userPhotoUrl = ''.obs;
   final membershipType = ''.obs;
+  
+  // Timer para verificar periódicamente la tarjeta RFID
+  Timer? _rfidCheckTimer;
+  
+  @override
+  void onInit() {
+    super.onInit();
+    // Inicializar el controlador de animación
+    animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+    startRfidChecking();
+  }
+  
+  void startRfidChecking() {
+    _rfidCheckTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
+      if (!isShowingDialog.value && !isLoading.value) {
+        final uid = await RfidReaderService.checkForCard();
+        if (uid != null) {
+          checkAccessByRfid(uid);
+        }
+      }
+    });
+  }
 
   // Controlador para el campo de entrada RFID
   final TextEditingController rfidTextController = TextEditingController();
@@ -27,6 +57,8 @@ class RfidCheckinController extends GetxController {
   @override
   void onClose() {
     rfidTextController.dispose();
+    _rfidCheckTimer?.cancel();
+    animationController.dispose();
     super.onClose();
   }
 
@@ -81,16 +113,18 @@ class RfidCheckinController extends GetxController {
         await userRepository.updateUser(user.id!, updatedUser);
       }
       
-      // Mostrar mensaje de éxito
-      successMessage.value = '¡Acceso registrado!';
+      // Mostrar mensaje de bienvenida personalizado
+      successMessage.value = '¡Bienvenido(a)!';
       isShowingDialog.value = true;
       
       // Limpiar el campo de RFID después de un acceso exitoso
       rfidTextController.clear();
       rfidInput.value = '';
       
-      // Cerrar el diálogo después de 4 segundos
-      await Future.delayed(const Duration(seconds: 4));
+      // Reproducir sonido de bienvenida si lo deseas aquí
+      
+      // Cerrar la pantalla de bienvenida después de 3 segundos
+      await Future.delayed(const Duration(seconds: 3));
       isShowingDialog.value = false;
       
     } catch (e) {

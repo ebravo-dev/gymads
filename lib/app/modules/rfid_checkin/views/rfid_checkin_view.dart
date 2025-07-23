@@ -3,6 +3,45 @@ import 'package:get/get.dart';
 import '../controllers/rfid_checkin_controller.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 
+// Painter personalizado para el patrón de la llave
+class KeyPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    
+    final path = Path();
+    
+    // Patrón de llave (como una onda con dientes)
+    final double startX = 0;
+    final double endX = size.width;
+    final double midY = size.height / 2;
+    
+    path.moveTo(startX, midY);
+    
+    // Primer diente
+    path.lineTo(size.width * 0.2, midY);
+    path.lineTo(size.width * 0.3, midY - 15);
+    path.lineTo(size.width * 0.4, midY);
+    
+    // Segundo diente
+    path.lineTo(size.width * 0.5, midY);
+    path.lineTo(size.width * 0.6, midY + 15);
+    path.lineTo(size.width * 0.7, midY);
+    
+    // Final recto
+    path.lineTo(endX, midY);
+    
+    // Dibujar el patrón
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
 class RfidCheckinView extends GetView<RfidCheckinController> {
   const RfidCheckinView({super.key});
 
@@ -10,7 +49,7 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Acceso con Tarjeta RFID'),
+        title: const Text('Acceso con Tarjeta'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
       ),
@@ -26,9 +65,9 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                 )
               : const SizedBox.shrink()),
           
-          // Información del usuario cuando se detecta acceso
+          // Pantalla de bienvenida cuando se detecta una tarjeta
           Obx(() => controller.isShowingDialog.value
-              ? _buildUserInfoOverlay()
+              ? _buildWelcomeScreen()
               : const SizedBox.shrink()),
         ],
       ),
@@ -41,9 +80,8 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Título e instrucciones
           const Text(
-            'Control de Acceso RFID',
+            'Control de Acceso',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -52,43 +90,17 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Ingrese el código de la tarjeta RFID o acerque la tarjeta al lector',
-            style: TextStyle(fontSize: 16),
+            'Acerque la tarjeta al lector para registrar su entrada',
+            style: TextStyle(fontSize: 18),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
           
-          // Campo para ingresar el código RFID manualmente
-          TextField(
-            controller: controller.rfidTextController,
-            decoration: InputDecoration(
-              labelText: 'Código RFID',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              prefixIcon: const Icon(Icons.credit_card),
-              filled: true,
-              fillColor: Colors.white,
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: () {
-                  if (controller.rfidTextController.text.isNotEmpty) {
-                    controller.checkAccessByRfid(controller.rfidTextController.text);
-                  }
-                },
-              ),
-            ),
-            keyboardType: TextInputType.number,
-            onSubmitted: (value) {
-              if (value.isNotEmpty) {
-                controller.checkAccessByRfid(value);
-              }
-            },
-            autofocus: true,
-          ),
-          const SizedBox(height: 24),
+          // Animación de tarjeta RFID con ondas
+          const SizedBox(height: 40),
+          _buildRfidAnimation(),
+          const Spacer(),
           
-          // Mensajes de error o éxito
+          // Mensajes de error
           Obx(() => controller.errorMessage.isNotEmpty
               ? Container(
                   padding: const EdgeInsets.all(16),
@@ -105,30 +117,12 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                 )
               : const SizedBox.shrink()),
           
-          Obx(() => controller.successMessage.isNotEmpty
-              ? Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade100,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.green.shade300),
-                  ),
-                  child: Text(
-                    controller.successMessage.value,
-                    style: TextStyle(color: Colors.green.shade800),
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              : const SizedBox.shrink()),
+          const SizedBox(height: 16),
           
-          const Spacer(),
-          
-          // Botón para simular lectura de RFID (para pruebas)
+          // Botón para simular lectura (solo en desarrollo)
           ElevatedButton.icon(
             onPressed: () {
-              // Generar un código aleatorio para pruebas
-              final random = List.generate(10, (_) => '${DateTime.now().millisecondsSinceEpoch}'.substring(10, 11)).join();
-              controller.rfidTextController.text = random;
+              final random = DateTime.now().millisecondsSinceEpoch.toString();
               controller.checkAccessByRfid(random);
             },
             icon: const Icon(Icons.contactless),
@@ -144,123 +138,292 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
     );
   }
 
-  Widget _buildUserInfoOverlay() {
-    return GestureDetector(
-      onTap: () {
-        controller.isShowingDialog.value = false;
-      },
-      child: Container(
-        color: Colors.black54,
-        child: Center(
+  // Construir onda animada
+  Widget _buildWave({required int delay, required double size}) {
+    return AnimatedBuilder(
+      animation: controller.animationController,
+      builder: (context, child) {
+        // Ajustar el valor para que sea entre 0 y 1 considerando el retraso
+        final delayedValue = ((controller.animationController.value * 1000) + delay) % 2000 / 2000;
+        // Escalar de 0.4 a 1.0 para un efecto mejor
+        final scale = 0.4 + (delayedValue * 0.6);
+        
+        return Opacity(
+          opacity: (1.0 - delayedValue).clamp(0.0, 0.7),
           child: Container(
-            margin: const EdgeInsets.all(32),
-            padding: const EdgeInsets.all(24),
+            width: size,
+            height: 4,  // Altura fija para crear efecto wifi
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(
+                color: AppColors.accent,
+                width: 2,
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          ),
+        );
+      },
+    );
+  }
+
+  // Animación de tarjeta RFID con ondas
+  Widget _buildRfidAnimation() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Contenedor para la animación
+          SizedBox(
+            height: 260,
+            width: 260,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                // Icono de éxito
-                const Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 60,
+                // Ondas de señal animadas (como las del WiFi)
+                Positioned(
+                  top: 10,
+                  child: Column(
+                    children: [
+                      _buildWave(delay: 0, size: 100),
+                      const SizedBox(height: 10),
+                      _buildWave(delay: 600, size: 80),
+                      const SizedBox(height: 10),
+                      _buildWave(delay: 1200, size: 60),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
                 
-                // Foto del usuario si está disponible
-                Obx(() => controller.userPhotoUrl.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(50),
-                        child: Image.network(
-                          controller.userPhotoUrl.value,
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, error, _) => const CircleAvatar(
-                            radius: 50,
-                            child: Icon(Icons.person, size: 50),
+                // Tarjeta RFID con efecto de llave
+                Positioned(
+                  bottom: 10,
+                  child: Container(
+                    height: 120,
+                    width: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        // Borde separador
+                        Positioned(
+                          top: 40,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 3,
+                            color: Colors.grey[800],
                           ),
                         ),
-                      )
-                    : CircleAvatar(
-                        radius: 50,
-                        backgroundColor: AppColors.accent.withOpacity(0.1),
-                        child: Icon(
-                          Icons.person,
-                          size: 50,
-                          color: AppColors.accent,
+                        
+                        // Llave RFID
+                        Row(
+                          children: [
+                            // Cabeza de la llave
+                            Container(
+                              width: 60,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(
+                                    color: Colors.white.withOpacity(0.4),
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 35,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: Colors.transparent,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            
+                            // Patrón de la llave
+                            Expanded(
+                              child: Center(
+                                child: CustomPaint(
+                                  size: const Size(100, 50),
+                                  painter: KeyPatternPainter(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      )),
-                const SizedBox(height: 16),
-                
-                // Información del usuario
-                Text(
-                  controller.userName.value,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                      ],
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                
-                // Tipo de membresía
-                Obx(() => Text(
-                  'Membresía: ${controller.membershipType.value.toUpperCase()}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                )),
-                const SizedBox(height: 8),
-                
-                // Días restantes
-                Obx(() => Text(
-                  'Días restantes: ${controller.daysLeft.value}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: controller.daysLeft.value <= 5
-                        ? Colors.orange
-                        : Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )),
-                const SizedBox(height: 24),
-                
-                // Mensaje
-                Text(
-                  controller.successMessage.value,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                
-                // Mensaje de cierre
-                const Text(
-                  'Toca en cualquier lugar para cerrar',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 20),
+          // Texto animado con puntos suspensivos
+          _buildLoadingText(),
+        ],
+      ),
+    );
+  }
+  
+  // Texto animado de carga
+  Widget _buildLoadingText() {
+    return AnimatedBuilder(
+      animation: controller.animationController,
+      builder: (context, child) {
+        final dots = '.'.padRight(
+          ((controller.animationController.value * 3) % 3 + 1).toInt(), 
+          '.'
+        );
+        return Text(
+          'Esperando tarjeta$dots',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWelcomeScreen() {
+    return Container(
+      color: Colors.black.withOpacity(0.95),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Título de bienvenida
+            Text(
+              '¡Bienvenido!',
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.5),
+                    offset: const Offset(2, 2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            
+            // Foto del usuario
+            Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.5),
+                    spreadRadius: 5,
+                    blurRadius: 15,
+                  ),
+                ],
+              ),
+              child: Obx(() => controller.userPhotoUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(125),
+                      child: Image.network(
+                        controller.userPhotoUrl.value,
+                        width: 250,
+                        height: 250,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, error, _) => const CircleAvatar(
+                          radius: 125,
+                          child: Icon(Icons.person, size: 125),
+                        ),
+                      ),
+                    )
+                  : CircleAvatar(
+                      radius: 125,
+                      backgroundColor: Colors.grey[200],
+                      child: Icon(
+                        Icons.person,
+                        size: 125,
+                        color: AppColors.primary,
+                      ),
+                    )),
+            ),
+            const SizedBox(height: 24),
+            
+            // Nombre del usuario
+            Obx(() => Text(
+              controller.userName.value,
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            )),
+            const SizedBox(height: 16),
+            
+            // Tipo de membresía
+            Obx(() => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                controller.membershipType.value.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )),
+            
+            const SizedBox(height: 16),
+            
+            // Días restantes con icono
+            Obx(() => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.event_available,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Días restantes: ${controller.daysLeft.value}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            )),
+          ],
         ),
       ),
     );
