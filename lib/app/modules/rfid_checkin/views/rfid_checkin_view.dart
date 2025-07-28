@@ -4,44 +4,7 @@ import 'dart:math';
 import '../controllers/rfid_checkin_controller.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 
-// Painter personalizado para el patrón de la llave
-class KeyPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    
-    final path = Path();
-    
-    // Patrón de llave (como una onda con dientes)
-    final double startX = 0;
-    final double endX = size.width;
-    final double midY = size.height / 2;
-    
-    path.moveTo(startX, midY);
-    
-    // Primer diente
-    path.lineTo(size.width * 0.2, midY);
-    path.lineTo(size.width * 0.3, midY - 15);
-    path.lineTo(size.width * 0.4, midY);
-    
-    // Segundo diente
-    path.lineTo(size.width * 0.5, midY);
-    path.lineTo(size.width * 0.6, midY + 15);
-    path.lineTo(size.width * 0.7, midY);
-    
-    // Final recto
-    path.lineTo(endX, midY);
-    
-    // Dibujar el patrón
-    canvas.drawPath(path, paint);
-  }
 
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
 
 class RfidCheckinView extends GetView<RfidCheckinController> {
   const RfidCheckinView({super.key});
@@ -53,14 +16,7 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
         title: const Text('Acceso con Tarjeta'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
-        actions: [
-          // Botón de configuración para cambiar IP del lector RFID
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => _showRfidConfigDialog(context),
-            tooltip: 'Configurar lector RFID',
-          ),
-        ],
+
       ),
       body: Stack(
         children: [
@@ -83,75 +39,7 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
     );
   }
   
-  // Diálogo para configurar la dirección IP del lector RFID
-  void _showRfidConfigDialog(BuildContext context) {
-    final TextEditingController ipController = TextEditingController(
-      text: controller.getReaderIpAddress(),
-    );
-    
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Configurar Lector RFID'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Configura la dirección IP del lector RFID:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ipController,
-              decoration: const InputDecoration(
-                labelText: 'Dirección IP',
-                hintText: 'Ej: 192.168.1.100',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.wifi),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Nota: Asegúrate de que el dispositivo está en la misma red.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newIp = ipController.text.trim();
-              if (newIp.isNotEmpty) {
-                controller.updateReaderIpAddress(newIp);
-                Get.back();
-                Get.snackbar(
-                  'Configuración actualizada',
-                  'Dirección IP del lector RFID actualizada a: $newIp',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: Colors.green,
-                  colorText: Colors.white,
-                  duration: const Duration(seconds: 3),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildMainContent() {
     return Container(
@@ -169,7 +57,7 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Acerque la tarjeta al lector para registrar su entrada',
+            'Acerque la tarjeta o llavero al lector para registrar su entrada',
             style: TextStyle(fontSize: 18),
             textAlign: TextAlign.center,
           ),
@@ -334,7 +222,7 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Esperando tarjeta$dots',
+                  'Esperando tarjeta o llavero$dots',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
