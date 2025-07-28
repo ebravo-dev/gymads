@@ -217,36 +217,38 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
     );
   }
 
-  // Construir ondas circulares (ripple) con mejor visibilidad
-  Widget _buildRipple({required int delay, required Color color}) {
+  // Construir ondas circulares (ripple) que rodean la tarjeta
+  Widget _buildRipple({required int delay, required Color color, double size = 120}) {
     return AnimatedBuilder(
       animation: controller.animationController,
       builder: (context, child) {
         // Calcula el valor de la animación con retraso
-        final delayedValue = ((controller.animationController.value * 3000) + delay) % 3000 / 3000;
+        final delayedValue = ((controller.animationController.value * 4000) + delay) % 4000 / 4000;
         
-        // Opacidad que se desvanece más lentamente para mejor visibilidad
-        // Usamos un rango más amplio para que sea más visible (0.2 a 0.9)
-        final opacity = (1.0 - delayedValue * 0.8).clamp(0.2, 0.9);
+        // Opacidad que pulsa suavemente para mejor visibilidad
+        // El seno nos da un efecto de pulso más natural
+        final pulseValue = sin(delayedValue * pi * 2).clamp(-1.0, 1.0);
+        final opacity = (0.6 + (pulseValue * 0.3)).clamp(0.3, 0.9);
         
-        // Escala que crece desde el centro, con un tamaño inicial mayor
-        final scale = 0.4 + (delayedValue * 0.6);
+        // Escala con valores fijos - las ondas solo pulsarán levemente (no crecen)
+        // Se mantiene casi constante para dar efecto de "rodear" en lugar de "salir desde"
+        final scale = 0.97 + (pulseValue * 0.03);
         
         return Opacity(
           opacity: opacity,
           child: Transform.scale(
             scale: scale,
             child: Container(
-              width: 120,  // Tamaño más grande para mejor visibilidad
-              height: 120,
+              width: size,  // Tamaño personalizable - cada onda tiene su propio tamaño fijo
+              height: size, // Tamaño personalizable - cada onda tiene su propio tamaño fijo
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                // Usamos un borde más grueso para mejor visibilidad
+                // Borde más fino para efecto de onda
                 border: Border.all(
                   color: color,
-                  width: 3,
+                  width: 2.5,
                 ),
-                // Añadimos un efecto de brillo para mejorar la visibilidad
+                // Añadimos un efecto de brillo más sutil
                 boxShadow: [
                   BoxShadow(
                     color: color.withOpacity(0.3),
@@ -268,34 +270,34 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Contenedor para la animación con fondo oscuro para mejor contraste
+          // Contenedor para la animación con mayor espacio para las ondas
           Container(
-            height: 220,
-            width: 220,
+            height: 320,  // Aumentado para dar más espacio a las ondas
+            width: 320,   // Aumentado para dar más espacio a las ondas
             decoration: BoxDecoration(
               // Fondo más oscuro para mejor contraste con las ondas
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.transparent,  // Transparente para eliminar el círculo blanco
               shape: BoxShape.circle,
             ),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Ondas animadas circulares con colores muy visibles
-                // Usamos colores más brillantes y contrastantes
-                _buildRipple(delay: 0, color: Colors.white.withOpacity(0.9)),
-                _buildRipple(delay: 1000, color: AppColors.accent),
-                _buildRipple(delay: 2000, color: Colors.white.withOpacity(0.7)),
+                // Ondas animadas circulares rodeando la tarjeta (no saliendo de ella)
+                // Usamos diferentes retrasos y tamaños para crear un efecto de ondas más natural
+                _buildRipple(delay: 0, color: AppColors.primary.withOpacity(0.9), size: 300), // Onda exterior
+                _buildRipple(delay: 1000, color: AppColors.accent.withOpacity(0.9), size: 250), // Onda media
+                _buildRipple(delay: 2000, color: AppColors.primary.withOpacity(0.9), size: 200), // Onda interior
                 
-                // Tarjeta RFID centrada (icono mejorado)
+                // Tarjeta RFID centrada (solita en blanco como pedido)
                 Container(
-                  height: 80,
-                  width: 80,
+                  height: 120,  // Tamaño adecuado
+                  width: 120,   // Tamaño adecuado
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,  // Fondo blanco como se solicitó
+                    borderRadius: BorderRadius.circular(15),  // Bordes redondeados
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.5),
+                        color: Colors.black.withOpacity(0.3),
                         blurRadius: 12,
                         spreadRadius: 2,
                         offset: const Offset(0, 3),
@@ -304,8 +306,8 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                   ),
                   child: Icon(
                     Icons.credit_card,
-                    size: 40,
-                    color: AppColors.primary,
+                    size: 70,  
+                    color: AppColors.primary,  // Color del icono para contraste
                   ),
                 ),
               ],
@@ -332,32 +334,45 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
         final animValue = controller.animationController.value * pi * 2;
         // Nos aseguramos que el valor de seno esté en rango seguro
         final sinValue = sin(animValue).clamp(-1.0, 1.0);
-        // Calculamos un valor de pulso seguro entre 0.9 y 1.1
+        // Calculamos un valor de pulso seguro entre 0.95 y 1.05
         final pulseValue = 0.95 + (0.05 * sinValue);
         
         return Transform.scale(
           scale: pulseValue,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
+              color: AppColors.primary.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.3),
+                  spreadRadius: 1,
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.tap_and_play,
-                  color: AppColors.primary,
-                  size: 20,
+                  Icons.contactless_rounded,  // Icono más apropiado para RFID
+                  color: Colors.white,
+                  size: 24,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Text(
                   'Esperando tarjeta$dots',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
+                    color: Colors.white,  // Texto en blanco para mejor visibilidad
+                    letterSpacing: 0.5,
                   ),
                 ),
               ],
