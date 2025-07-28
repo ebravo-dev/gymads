@@ -1,13 +1,19 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/services/rfid_reader_service.dart';
+import '../../../data/config/rfid_config.dart';
 
-class RfidCheckinController extends GetxController {
+class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;
 
   RfidCheckinController({required this.userRepository});
+  
+  // Controlador para las animaciones de onda
+  late AnimationController animationController;
 
   final isLoading = false.obs;
   final errorMessage = ''.obs;
@@ -20,6 +26,44 @@ class RfidCheckinController extends GetxController {
   final daysLeft = 0.obs;
   final userPhotoUrl = ''.obs;
   final membershipType = ''.obs;
+  
+  // Timer para verificar periódicamente la tarjeta RFID
+  Timer? _rfidCheckTimer;
+  
+  @override
+  void onInit() {
+    super.onInit();
+    
+    // Inicializar el controlador de animación con configuración óptima para visibilidad
+    animationController = AnimationController(
+      vsync: this,
+      // Duración más corta para ondas más dinámicas y visibles
+      duration: const Duration(milliseconds: 2000),
+      // Empezar con un valor seguro
+      value: 0.0,
+    );
+    
+    // Añadimos un pequeño retraso para asegurar que la UI esté completamente cargada
+    Future.delayed(const Duration(milliseconds: 100), () {
+      // Iniciar animación con forward y repeat para evitar problemas de inicialización
+      animationController.forward(from: 0.0);
+      animationController.repeat();
+    });
+    
+    // Iniciar verificación periódica de RFID
+    startRfidChecking();
+  }
+  
+  void startRfidChecking() {
+    _rfidCheckTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
+      if (!isShowingDialog.value && !isLoading.value) {
+        final uid = await RfidReaderService.checkForCard();
+        if (uid != null) {
+          checkAccessByRfid(uid);
+        }
+      }
+    });
+  }
 
   // Controlador para el campo de entrada RFID
   final TextEditingController rfidTextController = TextEditingController();
@@ -27,6 +71,8 @@ class RfidCheckinController extends GetxController {
   @override
   void onClose() {
     rfidTextController.dispose();
+    _rfidCheckTimer?.cancel();
+    animationController.dispose();
     super.onClose();
   }
 
@@ -81,16 +127,18 @@ class RfidCheckinController extends GetxController {
         await userRepository.updateUser(user.id!, updatedUser);
       }
       
-      // Mostrar mensaje de éxito
-      successMessage.value = '¡Acceso registrado!';
+      // Mostrar mensaje de bienvenida personalizado
+      successMessage.value = '¡Bienvenido(a)!';
       isShowingDialog.value = true;
       
       // Limpiar el campo de RFID después de un acceso exitoso
       rfidTextController.clear();
       rfidInput.value = '';
       
-      // Cerrar el diálogo después de 4 segundos
-      await Future.delayed(const Duration(seconds: 4));
+      // Reproducir sonido de bienvenida si lo deseas aquí
+      
+      // Cerrar la pantalla de bienvenida después de 3 segundos
+      await Future.delayed(const Duration(seconds: 3));
       isShowingDialog.value = false;
       
     } catch (e) {
@@ -101,5 +149,52 @@ class RfidCheckinController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+  
+  // Obtener la dirección IP actual del lector RFID
+  String getReaderIpAddress() {
+    final baseUrl = RfidConfig.baseUrl;
+    // Extraer solo la dirección IP del formato http://192.168.1.x/api
+    if (baseUrl.contains('://') && baseUrl.contains('/api')) {
+      final parts = baseUrl.split('://');
+      if (parts.length > 1) {
+        final hostParts = parts[1].split('/');
+        return hostParts[0]; // Retorna solo la parte del IP o hostname
+      }
+    }
+    return baseUrl; // Si no se puede extraer, retornar la URL completa
+  }
+  
+  // Actualizar la dirección IP del lector RFID
+  void updateReaderIpAddress(String newIp) {
+    if (newIp.isEmpty) return;
+    
+    // Validar y formatear la IP
+    String formattedIp = newIp.trim();
+    
+    // Asegurarse de que tiene el formato correcto (http://IP/api)
+    if (!formattedIp.startsWith('http://') && !formattedIp.startsWith('https://')) {
+      formattedIp = 'http://$formattedIp';
+    }
+    
+    // Añadir /api si no lo tiene
+    if (!formattedIp.endsWith('/api')) {
+      // Eliminar barra final si existe
+      if (formattedIp.endsWith('/')) {
+        formattedIp = formattedIp.substring(0, formattedIp.length - 1);
+      }
+      formattedIp = '$formattedIp/api';
+    }
+    
+    // Actualizar la configuración
+    RfidConfig.updateConfig(newUrl: formattedIp);
+    
+    if (kDebugMode) {
+      print('Dirección IP del lector RFID actualizada a: $formattedIp');
+    }
+    
+    // Reiniciar el timer para usar la nueva IP
+    _rfidCheckTimer?.cancel();
+    startRfidChecking();
   }
 }

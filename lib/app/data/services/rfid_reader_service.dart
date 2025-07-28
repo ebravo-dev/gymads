@@ -61,20 +61,5 @@ class RfidReaderService {
     }
   }
   
-  // Simular la lectura de una tarjeta para pruebas
-  static Future<String> simulateCardReading() async {
-    // Simulamos un retraso como si estuviéramos esperando una tarjeta
-    await Future.delayed(const Duration(seconds: 2));
-    
-    if (kDebugMode) {
-      print('Generando UID simulado (modo de prueba)');
-    }
-    
-    // Generamos un UID aleatorio similar al formato del ESP32
-    final String randomUID = List.generate(8, (_) => 
-      '0123456789ABCDEF'[DateTime.now().millisecondsSinceEpoch % 16]
-    ).join();
-    
-    return randomUID;
-  }
+  // Este es el fin de la clase RfidReaderService
 }

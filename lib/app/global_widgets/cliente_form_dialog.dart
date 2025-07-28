@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
@@ -199,32 +198,7 @@ class ClienteFormDialog extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Botón para generar RFID aleatorio
-                          Material(
-                            color: Colors.orange,
-                            borderRadius: BorderRadius.circular(10),
-                            elevation: 2,
-                            child: InkWell(
-                              onTap: () {
-                                final random = Random();
-                                final rfidCode = List.generate(10, 
-                                    (_) => random.nextInt(10)).join();
-                                rfidController.text = rfidCode;
-                              },
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.casino,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Ya no hay botón para generar RFID aleatorio
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -587,19 +561,33 @@ class ClienteFormDialog extends StatelessWidget {
           await Future.delayed(Duration(milliseconds: RfidConfig.pollingIntervalMs));
         }
       } else {
-        // Si no se pudo iniciar el lector real, usar el simulador
-        final simulatedUid = await RfidReaderService.simulateCardReading();
+        // Si no se pudo iniciar el lector real, mostrar un mensaje de error
         if (isReading.value) {  // Verificar que el usuario no haya cancelado
-          detectedUid.value = simulatedUid;
+          Get.snackbar(
+            'Error de conexión',
+            'No se pudo conectar con el lector RFID. Verifica la configuración.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
+          );
           isReading.value = false;
+          Get.back(); // Cerrar el diálogo
         }
       }
     } catch (e) {
-      // En caso de error, usar el simulador como fallback
+      // En caso de error, mostrar mensaje
       if (isReading.value) {
-        final simulatedUid = await RfidReaderService.simulateCardReading();
-        detectedUid.value = simulatedUid;
+        Get.snackbar(
+          'Error',
+          'No se pudo leer la tarjeta RFID: ${e.toString()}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
         isReading.value = false;
+        Get.back(); // Cerrar el diálogo
       }
     }
   }
