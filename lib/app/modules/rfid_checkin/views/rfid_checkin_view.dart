@@ -183,6 +183,7 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
           Obx(() => controller.errorMessage.isNotEmpty
               ? Container(
                   padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: Colors.red.shade100,
                     borderRadius: BorderRadius.circular(10),
@@ -195,65 +196,47 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                   ),
                 )
               : const SizedBox.shrink()),
-          
-          const SizedBox(height: 16),
-          
-          // Botón para simular lectura (solo en desarrollo)
-          ElevatedButton.icon(
-            onPressed: () {
-              final random = DateTime.now().millisecondsSinceEpoch.toString();
-              controller.checkAccessByRfid(random);
-            },
-            icon: const Icon(Icons.contactless),
-            label: const Text('Simular Lectura RFID'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // Construir ondas circulares (ripple) que rodean la tarjeta
+  // Construir ondas circulares (ripple) que rodean la tarjeta - versión más sutil
   Widget _buildRipple({required int delay, required Color color, double size = 120}) {
     return AnimatedBuilder(
       animation: controller.animationController,
       builder: (context, child) {
         // Calcula el valor de la animación con retraso
-        final delayedValue = ((controller.animationController.value * 4000) + delay) % 4000 / 4000;
+        final delayedValue = ((controller.animationController.value * 3000) + delay) % 3000 / 3000;
         
         // Opacidad que pulsa suavemente para mejor visibilidad
-        // El seno nos da un efecto de pulso más natural
+        // El seno nos da un efecto de pulso más natural - reducido para más sutileza
         final pulseValue = sin(delayedValue * pi * 2).clamp(-1.0, 1.0);
-        final opacity = (0.6 + (pulseValue * 0.3)).clamp(0.3, 0.9);
+        final opacity = (0.4 + (pulseValue * 0.2)).clamp(0.2, 0.6); // Más sutil
         
-        // Escala con valores fijos - las ondas solo pulsarán levemente (no crecen)
-        // Se mantiene casi constante para dar efecto de "rodear" en lugar de "salir desde"
-        final scale = 0.97 + (pulseValue * 0.03);
+        // Escala con valores fijos - pulso muy ligero
+        final scale = 0.98 + (pulseValue * 0.02);
         
         return Opacity(
           opacity: opacity,
           child: Transform.scale(
             scale: scale,
             child: Container(
-              width: size,  // Tamaño personalizable - cada onda tiene su propio tamaño fijo
-              height: size, // Tamaño personalizable - cada onda tiene su propio tamaño fijo
+              width: size,  // Tamaño personalizable
+              height: size, // Tamaño personalizable
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                // Borde más fino para efecto de onda
+                // Borde más fino para efecto minimalista
                 border: Border.all(
                   color: color,
-                  width: 2.5,
+                  width: 1.5,
                 ),
-                // Añadimos un efecto de brillo más sutil
+                // Efecto de brillo sutil
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.3),
-                    spreadRadius: 2,
-                    blurRadius: 10,
+                    color: color.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 8,
                   ),
                 ],
               ),
@@ -270,45 +253,29 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Contenedor para la animación con mayor espacio para las ondas
+          // Contenedor para la animación más compacto
           Container(
-            height: 320,  // Aumentado para dar más espacio a las ondas
-            width: 320,   // Aumentado para dar más espacio a las ondas
+            height: 200,  // Tamaño reducido para un diseño más minimalista
+            width: 200,   // Tamaño reducido para un diseño más minimalista
             decoration: BoxDecoration(
-              // Fondo más oscuro para mejor contraste con las ondas
-              color: Colors.transparent,  // Transparente para eliminar el círculo blanco
+              // Sin fondo para mantener la transparencia total
+              color: Colors.transparent,
               shape: BoxShape.circle,
             ),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Ondas animadas circulares rodeando la tarjeta (no saliendo de ella)
+                // Ondas animadas circulares rodeando la tarjeta (más pequeñas para el nuevo diseño)
                 // Usamos diferentes retrasos y tamaños para crear un efecto de ondas más natural
-                _buildRipple(delay: 0, color: AppColors.primary.withOpacity(0.9), size: 300), // Onda exterior
-                _buildRipple(delay: 1000, color: AppColors.accent.withOpacity(0.9), size: 250), // Onda media
-                _buildRipple(delay: 2000, color: AppColors.primary.withOpacity(0.9), size: 200), // Onda interior
+                _buildRipple(delay: 0, color: AppColors.accent.withOpacity(0.7), size: 180), // Onda exterior
+                _buildRipple(delay: 1000, color: AppColors.primary.withOpacity(0.7), size: 140), // Onda media
+                _buildRipple(delay: 2000, color: AppColors.accent.withOpacity(0.7), size: 100), // Onda interior
                 
-                // Tarjeta RFID centrada (solita en blanco como pedido)
-                Container(
-                  height: 120,  // Tamaño adecuado
-                  width: 120,   // Tamaño adecuado
-                  decoration: BoxDecoration(
-                    color: Colors.white,  // Fondo blanco como se solicitó
-                    borderRadius: BorderRadius.circular(15),  // Bordes redondeados
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.credit_card,
-                    size: 70,  
-                    color: AppColors.primary,  // Color del icono para contraste
-                  ),
+                // Solo el icono de la tarjeta RFID sin fondo ni contorno
+                Icon(
+                  Icons.credit_card,
+                  size: 80,
+                  color: Colors.white, // Icono en blanco para mejor contraste con el fondo
                 ),
               ],
             ),
