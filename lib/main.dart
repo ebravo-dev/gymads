@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gymads/app/data/config/rfid_config.dart';
-import 'package:gymads/app/data/config/supabase_client.dart';
+import 'package:gymads/app/data/services/supabase_service.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
+import 'app/bindings/initial_binding.dart';
 import 'app/routes/app_pages.dart';
 import 'core/theme/app_theme.dart';
 
@@ -42,6 +43,7 @@ void main() async {
       getPages: AppPages.routes,
       theme: AppTheme.theme,
       debugShowCheckedModeBanner: false,
+      initialBinding: InitialBinding(),
     ),
   );
 }

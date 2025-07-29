@@ -126,29 +126,76 @@ class UserRepository {
   /// Agrega un nuevo usuario con foto
   Future<bool> addUser(UserModel user, {File? photoFile}) async {
     try {
+      if (kDebugMode) {
+        print('👤 Iniciando proceso de creación de usuario en UserRepository');
+        print('👤 Usuario: ${user.name}');
+        print('👤 ¿Tiene foto? ${photoFile != null}');
+      }
+      
       // Si se proporciona una foto, primero la subimos a Supabase
       if (photoFile != null) {
-        final photoUrl = await _storageProvider.uploadUserPhoto(
-          photoFile,
-          DateTime.now().millisecondsSinceEpoch.toString(),
-        );
-
-        if (photoUrl != null) {
-          // Actualizar el modelo de usuario con la URL de la foto
-          user = user.copyWith(photoUrl: photoUrl);
-        } else {
+        if (kDebugMode) {
+          print('👤 Procesando foto del usuario...');
+          print('👤 Ruta de la foto: ${photoFile.path}');
+          print('👤 Tamaño: ${(await photoFile.length() / 1024).toStringAsFixed(2)} KB');
+        }
+        
+        // Verificar que el archivo existe
+        if (!await photoFile.exists()) {
           if (kDebugMode) {
-            print('Error al subir la foto del usuario');
+            print('❌ ERROR: El archivo de foto no existe físicamente: ${photoFile.path}');
           }
-          // Continuamos con la creación del usuario aunque no se pudo subir la foto
+          // Continuamos sin foto
+        } else {
+          // ID temporal para la foto (se usará el ID real cuando esté disponible)
+          final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+          
+          final photoUrl = await _storageProvider.uploadUserPhoto(
+            photoFile,
+            tempId,
+          );
+
+          if (photoUrl != null) {
+            if (kDebugMode) {
+              print('✅ Foto subida correctamente: $photoUrl');
+            }
+            // Actualizar el modelo de usuario con la URL de la foto
+            user = user.copyWith(photoUrl: photoUrl);
+          } else {
+            if (kDebugMode) {
+              print('❌ Error al subir la foto del usuario');
+            }
+            // Continuamos con la creación del usuario aunque no se pudo subir la foto
+          }
         }
       }
 
+      if (kDebugMode) {
+        print('👤 Enviando datos del usuario a la API...');
+        print('👤 Datos: ${user.toJson()}');
+      }
+      
       final response = await _apiProvider.add(user.toJson());
-      return !response['error'];
+      
+      if (kDebugMode) {
+        print('👤 Respuesta de la API: $response');
+      }
+      
+      if (!response['error']) {
+        if (kDebugMode) {
+          print('✅ Usuario creado correctamente');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('❌ Error al crear usuario: ${response['message']}');
+        }
+        return false;
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('Error al agregar usuario: $e');
+        print('❌ ERROR en UserRepository.addUser: $e');
+        print('❌ Stack trace: ${StackTrace.current}');
       }
       return false;
     }
@@ -170,29 +217,91 @@ class UserRepository {
   /// Actualiza un usuario existente
   Future<bool> updateUser(String id, UserModel user, {File? photoFile}) async {
     try {
+      if (kDebugMode) {
+        print('🔄 Iniciando actualización de usuario en UserRepository');
+        print('🔄 ID: $id');
+        print('🔄 Usuario: ${user.name}');
+        print('🔄 ¿Tiene nueva foto? ${photoFile != null}');
+      }
+      
       // Si se proporciona una nueva foto, primero subirla
       if (photoFile != null) {
-        final photoUrl = await _storageProvider.uploadUserPhoto(
-          photoFile,
-          DateTime.now().millisecondsSinceEpoch.toString(),
-        );
-
-        if (photoUrl != null) {
-          // Actualizar el modelo de usuario con la URL de la nueva foto
-          user = user.copyWith(photoUrl: photoUrl);
-        } else {
+        if (kDebugMode) {
+          print('🔄 Procesando nueva foto del usuario...');
+          print('🔄 Ruta de la foto: ${photoFile.path}');
+          print('🔄 Tamaño: ${(await photoFile.length() / 1024).toStringAsFixed(2)} KB');
+        }
+        
+        // Verificar que el archivo existe
+        if (!await photoFile.exists()) {
           if (kDebugMode) {
-            print('Error al subir la foto del usuario');
+            print('❌ ERROR: El archivo de foto no existe físicamente: ${photoFile.path}');
           }
-          // Continuamos con la actualización del usuario aunque no se pudo subir la foto
+          // Continuamos sin actualizar la foto
+        } else {
+          final photoUrl = await _storageProvider.uploadUserPhoto(
+            photoFile,
+            id, // Usar el ID real del usuario para la foto
+          );
+
+          if (photoUrl != null) {
+            if (kDebugMode) {
+              print('✅ Nueva foto subida correctamente: $photoUrl');
+            }
+            
+            // Si el usuario ya tenía una foto anterior, intentar eliminarla
+            if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+              if (kDebugMode) {
+                print('🔄 Eliminando foto anterior: ${user.photoUrl}');
+              }
+              
+              try {
+                await _storageProvider.deleteUserPhoto(user.photoUrl!);
+              } catch (e) {
+                if (kDebugMode) {
+                  print('⚠️ No se pudo eliminar la foto anterior: $e');
+                }
+                // Continuamos aunque no se pueda eliminar la foto anterior
+              }
+            }
+            
+            // Actualizar el modelo de usuario con la URL de la nueva foto
+            user = user.copyWith(photoUrl: photoUrl);
+          } else {
+            if (kDebugMode) {
+              print('❌ Error al subir la nueva foto del usuario');
+            }
+            // Continuamos con la actualización del usuario aunque no se pudo subir la foto
+          }
         }
       }
 
+      if (kDebugMode) {
+        print('🔄 Enviando datos actualizados a la API...');
+        print('🔄 Datos: ${user.toJson()}');
+      }
+      
       final response = await _apiProvider.update(id, user.toJson());
-      return !response['error'];
+      
+      if (kDebugMode) {
+        print('🔄 Respuesta de la API: $response');
+      }
+      
+      if (!response['error']) {
+        if (kDebugMode) {
+          print('✅ Usuario actualizado correctamente');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('❌ Error al actualizar usuario: ${response['message']}');
+        }
+        return false;
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('Error al actualizar usuario: $e');
+        print('❌ ERROR en UserRepository.updateUser: $e');
+        print('❌ Stack trace: ${StackTrace.current}');
       }
       return false;
     }
