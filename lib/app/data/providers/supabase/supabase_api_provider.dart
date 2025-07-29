@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:gymads/app/data/config/supabase_client.dart';
+import 'package:gymads/app/data/services/supabase_service.dart';
 import 'package:gymads/app/data/providers/api_provider.dart';
 
 /// Proveedor para interactuar con Supabase API
