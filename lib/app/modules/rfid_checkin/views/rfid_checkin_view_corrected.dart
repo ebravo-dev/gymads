@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'dart:math';
 import '../controllers/rfid_checkin_controller.dart';
 import 'package:gymads/core/theme/app_colors.dart';
-import 'package:gymads/core/utils/responsive_utils.dart';
 
 class RfidCheckinView extends GetView<RfidCheckinController> {
   const RfidCheckinView({super.key});
@@ -47,26 +46,20 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
   
   Widget _buildMainContent(BuildContext context, bool isTabletSize, bool isSmallPhone) {
     // Calculamos padding adaptativo según el tamaño de pantalla
-    final paddingValue = ResponsiveValues.getSpacing(context,
-      mobile: 24,
-      smallPhone: 16,
-      tablet: 32
-    );
-    
-    final padding = EdgeInsets.all(paddingValue);
+    final padding = isTabletSize 
+        ? const EdgeInsets.all(32)
+        : (isSmallPhone 
+            ? const EdgeInsets.all(16) 
+            : const EdgeInsets.all(24));
     
     // Tamaños de texto responsivos
-    final titleSize = ResponsiveValues.getFontSize(context,
-      mobile: 24,
-      smallPhone: 20,
-      tablet: 32
-    );
+    final titleSize = isTabletSize
+        ? 32.0
+        : (isSmallPhone ? 20.0 : 24.0);
     
-    final subtitleSize = ResponsiveValues.getFontSize(context,
-      mobile: 18,
-      smallPhone: 16,
-      tablet: 22
-    );
+    final subtitleSize = isTabletSize
+        ? 22.0
+        : (isSmallPhone ? 16.0 : 18.0);
 
     return Container(
       padding: padding,
@@ -89,11 +82,9 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
           ),
           
           // Añadimos espacio adaptativo
-          SizedBox(height: ResponsiveValues.getSpacing(context,
-            mobile: 40,
-            smallPhone: 30,
-            tablet: 60
-          )),
+          SizedBox(height: isTabletSize 
+              ? 60.0
+              : (isSmallPhone ? 30.0 : 40.0)),
           
           // Animación de tarjeta RFID con ondas
           _buildRfidAnimation(context, isTabletSize, isSmallPhone),
@@ -304,8 +295,6 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(
                   Icons.contactless_rounded,
@@ -313,17 +302,13 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                   size: iconSize,
                 ),
                 SizedBox(width: isSmallPhone ? 6 : 10),
-                Flexible(
-                  child: Text(
-                    'Esperando tarjeta o llavero$dots',
-                    style: TextStyle(
-                      fontSize: textSize,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+                Text(
+                  'Esperando tarjeta o llavero$dots',
+                  style: TextStyle(
+                    fontSize: textSize,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ],

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/responsive_utils.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/button_menu_widget.dart';
 
@@ -12,9 +11,10 @@ class HomeView extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    // Utilizamos las funciones de valores responsivos
-    final spacing = ResponsiveValues.getSpacing(context);
+    // Determinar si es una tableta basado en el ancho de la pantalla
     final bool isTabletSize = MediaQuery.of(context).size.width > 600;
+    
+    // Determinar si es un teléfono pequeño
     final bool isSmallPhone = MediaQuery.of(context).size.width < 360;
     
     return Scaffold(
@@ -30,11 +30,7 @@ class HomeView extends GetView<HomeController> {
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
                   color: AppColors.titleColor,
-                  fontSize: ResponsiveValues.getFontSize(context, 
-                    mobile: 38, 
-                    smallPhone: 32, 
-                    tablet: 44
-                  ),
+                  fontSize: isSmallPhone ? 32 : 38,
                   letterSpacing: 5,
                 ),
               ),
@@ -64,14 +60,7 @@ class HomeView extends GetView<HomeController> {
         child: SafeArea(
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveValues.getSpacing(context, 
-                mobile: 8,
-                smallPhone: 6,
-                tablet: 12
-              ), 
-              vertical: 0
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // Adaptamos el diseño al espacio disponible
@@ -82,23 +71,11 @@ class HomeView extends GetView<HomeController> {
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveValues.getSpacing(context, 
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
-                        vertical: ResponsiveValues.getSpacing(context,
-                          mobile: 18,
-                          smallPhone: 14,
-                          tablet: 24
-                        ),
+                        horizontal: isSmallPhone ? 12 : 16,
+                        vertical: isSmallPhone ? 14 : 18,
                       ),
                       margin: EdgeInsets.symmetric(
-                        horizontal: ResponsiveValues.getSpacing(context,
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
+                        horizontal: isSmallPhone ? 12 : 16,
                         vertical: 0,
                       ),
                       decoration: BoxDecoration(
@@ -118,11 +95,7 @@ class HomeView extends GetView<HomeController> {
                           Text(
                             'Bienvenido Admin',
                             style: TextStyle(
-                              fontSize: ResponsiveValues.getFontSize(context,
-                                mobile: 22,
-                                smallPhone: 20,
-                                tablet: 26
-                              ),
+                              fontSize: isSmallPhone ? 20 : 22,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               shadows: const [
@@ -174,23 +147,9 @@ class HomeView extends GetView<HomeController> {
                       // GridView adaptativo según el tamaño de pantalla
                       child: GridView.count(
                         crossAxisCount: isTabletSize ? 3 : 2,
-                        mainAxisSpacing: ResponsiveValues.getSpacing(context,
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
-                        crossAxisSpacing: ResponsiveValues.getSpacing(context,
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
-                        padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
-                          mobile: 8,
-                          smallPhone: 6,
-                          tablet: 12
-                        )),
-                        // Establecer childAspectRatio para controlar la altura
-                        childAspectRatio: isSmallPhone ? 0.85 : 0.95,
+                        mainAxisSpacing: isSmallPhone ? 12 : 16,
+                        crossAxisSpacing: isSmallPhone ? 12 : 16,
+                        padding: EdgeInsets.all(isSmallPhone ? 6 : 8),
                         // Importante: establecer shrinkWrap a true para evitar problemas de altura
                         shrinkWrap: true,
                         // Desactivar el scroll propio del GridView ya que usamos SingleChildScrollView
