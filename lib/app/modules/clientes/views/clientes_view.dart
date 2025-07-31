@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/global_widgets/cliente_card.dart';
 import 'package:gymads/app/global_widgets/cliente_form_dialog.dart';
+import 'package:gymads/core/utils/responsive_utils.dart';
 
 import '../controllers/clientes_controller.dart';
 
@@ -38,7 +39,14 @@ class ClientesView extends GetView<ClientesController> {
                 const SizedBox(height: 20),
                 Text(
                   'Cargando clientes...',
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: ResponsiveValues.getFontSize(context,
+                      mobile: 16,
+                      smallPhone: 14,
+                      tablet: 18
+                    ), 
+                    color: Colors.grey.shade600
+                  ),
                 ),
               ],
             ),
@@ -50,7 +58,11 @@ class ClientesView extends GetView<ClientesController> {
           children: [
             // Barra de búsqueda y filtros
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(ResponsiveValues.getSpacing(context, 
+                mobile: 16, 
+                smallPhone: 12,
+                tablet: 24
+              )),
               child: Column(
                 children: [
                   // Barra de búsqueda
@@ -65,7 +77,11 @@ class ClientesView extends GetView<ClientesController> {
                     ),
                     onChanged: (value) => controller.searchQuery.value = value,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: ResponsiveValues.getSpacing(context,
+                    mobile: 12,
+                    smallPhone: 8,
+                    tablet: 16
+                  )),
                 ],
               ),
             ),
@@ -80,12 +96,20 @@ class ClientesView extends GetView<ClientesController> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.people_outline,
-                          size: 80,
+                          size: ResponsiveValues.getIconSize(context,
+                            mobile: 80,
+                            smallPhone: 60,
+                            tablet: 100
+                          ),
                           color: Colors.grey,
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: ResponsiveValues.getSpacing(context,
+                          mobile: 20,
+                          smallPhone: 16,
+                          tablet: 24
+                        )),
                         Text(
                           controller.clientes.isEmpty
                               ? 'No hay clientes registrados'
