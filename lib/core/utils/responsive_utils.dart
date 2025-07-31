@@ -148,6 +148,43 @@ double getResponsiveValue({
 
 /// Clase con valores responsive predefinidos
 class ResponsiveValues {
+  /// Verifica si el dispositivo es una tablet (ancho > 600)
+  static bool isTablet(BuildContext context) {
+    return MediaQuery.of(context).size.width > 600;
+  }
+  
+  /// Verifica si el dispositivo es un teléfono móvil estándar
+  static bool isMobile(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return width <= 600 && width >= 360;
+  }
+  
+  /// Verifica si el dispositivo es un teléfono pequeño (ancho < 360)
+  static bool isSmallPhone(BuildContext context) {
+    return MediaQuery.of(context).size.width < 360;
+  }
+  
+  /// Devuelve la altura de la pantalla
+  static double getHeight(BuildContext context) {
+    return MediaQuery.of(context).size.height;
+  }
+  
+  /// Devuelve el ancho de la pantalla o un valor adaptado según el tipo de dispositivo
+  static double getWidth(BuildContext context, {
+    double mobile = 400.0,
+    double tablet = 600.0,
+    double desktop = 800.0,
+    double smallPhone = 300.0,
+  }) {
+    return getResponsiveValue(
+      context: context,
+      defaultValue: mobile,
+      tabletValue: tablet,
+      desktopValue: desktop,
+      smallPhoneValue: smallPhone,
+    );
+  }
+  
   static double getFontSize(BuildContext context, {
     double mobile = 14.0,
     double tablet = 16.0,
@@ -182,6 +219,22 @@ class ResponsiveValues {
     double mobile = 24.0,
     double tablet = 28.0,
     double desktop = 32.0,
+    double smallPhone = 20.0,
+  }) {
+    return getResponsiveValue(
+      context: context,
+      defaultValue: mobile,
+      tabletValue: tablet,
+      desktopValue: desktop,
+      smallPhoneValue: smallPhone,
+    );
+  }
+  
+  /// Devuelve un tamaño genérico adaptado al dispositivo
+  static double getSize(BuildContext context, {
+    double mobile = 24.0,
+    double tablet = 32.0,
+    double desktop = 40.0,
     double smallPhone = 20.0,
   }) {
     return getResponsiveValue(

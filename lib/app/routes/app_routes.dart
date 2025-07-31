@@ -10,6 +10,7 @@ abstract class Routes {
   static const INGRESOS = _Paths.INGRESOS;
   static const CHECKIN = _Paths.CHECKIN;
   static const RFID_CHECKIN = _Paths.RFID_CHECKIN;
+  static const MEMBRESIAS = _Paths.MEMBRESIAS;
 }
 
 abstract class _Paths {
@@ -21,4 +22,5 @@ abstract class _Paths {
   static const INGRESOS = '/ingresos';
   static const CHECKIN = '/checkin';
   static const RFID_CHECKIN = '/rfid-checkin';
+  static const MEMBRESIAS = '/membresias';
 }

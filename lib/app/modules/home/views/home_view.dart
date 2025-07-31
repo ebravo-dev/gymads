@@ -240,8 +240,15 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.green.shade300,
                             onTap: controller.goToClientes,
                           ),
-
-                          // Espacio para futuras opciones
+                          
+                          // Opción de Membresías
+                          ButtonMenuWidget(
+                            icon: Icons.card_membership,
+                            label: 'Membresías',
+                            description: 'Tipos de membresía',
+                            color: Colors.purple.shade300,
+                            onTap: controller.goToMembresias,
+                          ),
                         ],
                       ),
                     ),
