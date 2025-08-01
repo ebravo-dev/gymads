@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/core/utils/responsive_utils.dart';
 import '../controllers/membresias_controller.dart';
 import '../widgets/membership_form_dialog.dart';
@@ -15,6 +14,12 @@ class MembresiasView extends GetView<MembresiasController> {
       appBar: AppBar(
         title: const Text('Gestión de Membresías'),
         actions: [
+          // Botón para agregar nueva membresía en la AppBar
+          IconButton(
+            icon: const Icon(Icons.add_circle),
+            onPressed: () => _showAddDialog(context),
+            tooltip: 'Añadir membresía',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => controller.fetchMemberships(),
@@ -23,11 +28,7 @@ class MembresiasView extends GetView<MembresiasController> {
         ],
       ),
       body: _buildBody(context),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(context),
-        backgroundColor: AppColors.titleColor,
-        child: const Icon(Icons.add),
-      ),
+      // El FloatingActionButton se ha eliminado y movido a la AppBar
     );
   }
   
@@ -126,63 +127,26 @@ class MembresiasView extends GetView<MembresiasController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Tipos de Membresía',
-          style: TextStyle(
-            fontSize: ResponsiveValues.getFontSize(context,
-              mobile: 20,
-              tablet: 24,
-              desktop: 28
-            ),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: ResponsiveValues.getSpacing(context,
-          mobile: 8,
-          tablet: 12,
-          desktop: 16
-        )),
-        Text(
-          'Administra los tipos de membresía disponibles para tus clientes',
-          style: TextStyle(
-            fontSize: ResponsiveValues.getFontSize(context,
-              mobile: 14,
-              tablet: 16,
-              desktop: 18
-            ),
-            color: Colors.grey.shade600,
-          ),
-        ),
-        SizedBox(height: ResponsiveValues.getSpacing(context,
-          mobile: 16,
-          tablet: 20,
-          desktop: 24
-        )),
-        
-        // Filtros
+        // Filtros - Movido al principio para ser más prominente y similar a clientes_view
         Container(
-          padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
-            mobile: 12,
-            tablet: 16,
-            desktop: 20
-          )),
+          padding: EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
+            color: const Color.fromARGB(255, 219, 87, 11),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
-              const Icon(Icons.filter_list),
-              SizedBox(width: ResponsiveValues.getSpacing(context,
-                mobile: 8,
-                tablet: 12,
-                desktop: 16
-              )),
+              const Icon(Icons.filter_list, size: 22),
+              const SizedBox(width: 12),
               Flexible(
                 child: const Text(
                   'Mostrar membresías inactivas',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -190,7 +154,7 @@ class MembresiasView extends GetView<MembresiasController> {
               Obx(() => Switch(
                 value: controller.showInactive.value,
                 onChanged: (value) => controller.showInactive.value = value,
-                activeColor: AppColors.titleColor,
+                activeColor: Colors.green,
               )),
             ],
           ),
@@ -226,6 +190,8 @@ class MembresiasView extends GetView<MembresiasController> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
+        columnSpacing: 16,
+        horizontalMargin: 12,
         columns: const [
           DataColumn(label: Text('Nombre')),
           DataColumn(label: Text('Descripción')),
@@ -269,23 +235,38 @@ class MembresiasView extends GetView<MembresiasController> {
               DataCell(Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Botón de editar
                   IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
                     onPressed: () => _showEditDialog(context, membership),
                     tooltip: 'Editar',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
                   ),
+                  const SizedBox(width: 8),
+                  // Botón de activar/desactivar
                   IconButton(
                     icon: Icon(
                       membership.isActive ? Icons.unpublished : Icons.check_circle,
                       color: membership.isActive ? Colors.orange : Colors.green,
+                      size: 20,
                     ),
                     onPressed: () => controller.toggleMembershipStatus(membership),
                     tooltip: membership.isActive ? 'Desactivar' : 'Activar',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
                   ),
+                  const SizedBox(width: 8),
+                  // Botón de eliminar
                   IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
+                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                     onPressed: () => _showDeleteConfirmation(context, membership),
                     tooltip: 'Eliminar',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               )),

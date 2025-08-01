@@ -178,7 +178,7 @@ class MembershipCard extends StatelessWidget {
               desktop: 24
             )),
             
-            // Botones de acción
+            // Botones de acción más compactos, similares a la vista de clientes
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
