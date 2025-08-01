@@ -342,6 +342,9 @@ class ClientesView extends GetView<ClientesController> {
     // Obtener un número de usuario único
     final userNumber = await controller.generateUniqueUserNumber();
     controller.userNumberController.text = userNumber.toString();
+    
+    // Recargar las membresías de la base de datos para tener la lista actualizada
+    await controller.fetchMembershipTypes();
 
     // Actualizar el costo de membresía según el tipo seleccionado
     controller.updateMembershipCost();
@@ -370,8 +373,11 @@ class ClientesView extends GetView<ClientesController> {
   }
 
   // Mostrar diálogo para editar cliente
-  void _showEditDialog(UserModel cliente) {
+  void _showEditDialog(UserModel cliente) async {
     controller.setupFormForEdit(cliente);
+    
+    // Recargar las membresías de la base de datos para tener la lista actualizada
+    await controller.fetchMembershipTypes();
 
     // Actualizar costos
     controller.updateMembershipCost();
@@ -426,8 +432,11 @@ class ClientesView extends GetView<ClientesController> {
   }
 
   // Mostrar diálogo para renovar membresía
-  void _showRenovarDialog(UserModel cliente) {
+  void _showRenovarDialog(UserModel cliente) async {
     controller.selectedMembershipType.value = cliente.membershipType;
+    
+    // Recargar las membresías de la base de datos para tener la lista actualizada
+    await controller.fetchMembershipTypes();
 
     // Verificar si es un registro nuevo para aplicar tarifa adicional
     bool isNewRegistration = cliente.isNewRegistration();
