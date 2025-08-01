@@ -402,34 +402,67 @@ class ClientesController extends GetxController {
     rfidController.text = client.rfidCard ?? ''; // Añadido para RFID
     
     // Guardar el tipo de membresía del cliente
-    final clienteMembershipType = client.membershipType;
+    final clienteMembershipType = client.membershipType.toLowerCase().trim();
     
-    // Verificar si el tipo de membresía del cliente está en la lista actual (puede estar inactivo)
-    if (!membershipTypeList.contains(clienteMembershipType)) {
-      // Si no está en la lista, necesitamos incluirlo temporalmente para este cliente
-      try {
-        // Obtener todas las membresías incluyendo inactivas
-        final allTypes = await membershipProvider.getMembershipTypes(onlyActive: false);
-        
-        // Buscar el tipo de membresía del cliente
-        final clienteType = allTypes.firstWhereOrNull(
-          (type) => type.name.toLowerCase() == clienteMembershipType.toLowerCase()
+    // Limpiar las listas actuales 
+    membershipTypes.clear();
+    membershipTypeList.clear();
+    
+    try {
+      // Obtener todas las membresías, incluyendo inactivas
+      final allTypes = await membershipProvider.getMembershipTypes(onlyActive: false);
+      
+      // Primero, verificar si el tipo del cliente existe en la base de datos
+      final clientTypeExists = allTypes.any(
+        (type) => type.name.toLowerCase().trim() == clienteMembershipType
+      );
+      
+      print('Tipo de membresía del cliente: $clienteMembershipType');
+      print('¿Existe en la base de datos?: $clientTypeExists');
+      
+      // Si el tipo del cliente existe, incluirlo primero
+      if (clientTypeExists) {
+        final clientType = allTypes.firstWhere(
+          (type) => type.name.toLowerCase().trim() == clienteMembershipType
         );
-        
-        if (clienteType != null) {
-          // Si encontramos el tipo, añadirlo temporalmente a la lista si no está
-          if (!membershipTypes.any((m) => m.name == clienteType.name)) {
-            membershipTypes.add(clienteType);
-            membershipTypeList.add(clienteType.name);
-          }
+        membershipTypes.add(clientType);
+        membershipTypeList.add(clientType.name);
+        print('Añadido tipo de membresía del cliente: ${clientType.name} (${clientType.isActive ? "activo" : "inactivo"})');
+      } else {
+        // Si no existe en la base de datos, añadir manualmente el tipo del cliente
+        print('Tipo de membresía no encontrado en la base de datos, añadiéndolo manualmente');
+        membershipTypeList.add(client.membershipType);
+      }
+      
+      // Luego añadir los tipos activos (evitando duplicados)
+      for (var type in allTypes.where((t) => t.isActive)) {
+        if (!membershipTypeList.contains(type.name)) {
+          membershipTypes.add(type);
+          membershipTypeList.add(type.name);
+          print('Añadido tipo activo adicional: ${type.name}');
         }
-      } catch (e) {
-        print('Error al obtener tipo de membresía inactivo: $e');
+      }
+      
+      // Verificar el contenido final de la lista
+      print('Lista final de tipos de membresía: $membershipTypeList');
+      
+      // Si la lista quedó vacía (muy improbable), añadir 'normal' como fallback
+      if (membershipTypeList.isEmpty) {
+        print('¡ADVERTENCIA! Lista de membresías vacía, añadiendo tipo predeterminado "normal"');
+        membershipTypeList.add('normal');
+      }
+      
+    } catch (e) {
+      print('Error al cargar tipos de membresía: $e');
+      // En caso de error, asegurar que al menos esté el tipo del cliente
+      if (membershipTypeList.isEmpty) {
+        membershipTypeList.add(client.membershipType);
       }
     }
     
     // Establecer el tipo de membresía del cliente
-    selectedMembershipType.value = clienteMembershipType;
+    print('Estableciendo tipo de membresía seleccionado: ${client.membershipType}');
+    selectedMembershipType.value = client.membershipType;
   }
 
   // Método para limpiar el formulario
@@ -470,18 +503,30 @@ class ClientesController extends GetxController {
 
   // Método para calcular el precio de membresía según el tipo seleccionado
   void updateMembershipCost() {
+    final typeToFind = selectedMembershipType.value.toLowerCase().trim();
+    
     // Buscar primero en la lista de membresías de la base de datos
     MembershipTypeModel? selectedType = membershipTypes
-        .firstWhereOrNull((type) => type.name.toLowerCase() == selectedMembershipType.value.toLowerCase());
+        .firstWhereOrNull((type) => type.name.toLowerCase().trim() == typeToFind);
     
     if (selectedType != null) {
       // Usar el precio de la base de datos si se encuentra el tipo
       membershipCost.value = selectedType.price;
     } else {
       // Si no se encuentra, usar el precio estático como fallback
-      membershipCost.value =
-          UserModel.membershipPrices[selectedMembershipType.value.toLowerCase()] ??
-          UserModel.membershipPrices['normal']!;
+      final fallbackPrice = UserModel.membershipPrices[typeToFind];
+      if (fallbackPrice != null) {
+        membershipCost.value = fallbackPrice;
+      } else {
+        // Si tampoco hay precio estático, usar el precio de la membresía normal como último recurso
+        membershipCost.value = UserModel.membershipPrices['normal'] ?? 0.0;
+        
+        // Si no se encontró el tipo seleccionado, podría ser necesario corregirlo
+        if (membershipTypeList.isNotEmpty && !membershipTypeList.contains(selectedMembershipType.value)) {
+          print('Tipo de membresía "${selectedMembershipType.value}" no encontrado, usando el primero disponible');
+          selectedMembershipType.value = membershipTypeList.first;
+        }
+      }
     }
     updateTotalAmount();
   }

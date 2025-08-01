@@ -289,17 +289,38 @@ class ClienteFormDialog extends StatelessWidget {
                         style: TextStyle(color: AppColors.textPrimary),
                         value: selectedMembershipType.value,
                         items: membershipTypeModels != null && membershipTypeModels!.isNotEmpty
-                          ? membershipTypeModels!.map((model) {
-                              final displayType = model.name[0].toUpperCase() + model.name.substring(1);
-                              return DropdownMenuItem(
-                                value: model.name,
-                                child: Text(
-                                  '$displayType (\$${model.price.toStringAsFixed(0)})',
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
+                          ? membershipTypes.map((type) {
+                              // Buscar el modelo correspondiente
+                              final model = membershipTypeModels!.firstWhereOrNull(
+                                (m) => m.name.toLowerCase().trim() == type.toLowerCase().trim()
                               );
+                              
+                              if (model != null) {
+                                final displayType = model.name[0].toUpperCase() + model.name.substring(1);
+                                return DropdownMenuItem(
+                                  value: model.name,
+                                  child: Text(
+                                    '$displayType (\$${model.price.toStringAsFixed(0)})',
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                // Si no hay modelo, usar valores predeterminados
+                                final key = type.toLowerCase().trim();
+                                final price = UserModel.membershipPrices[key] ?? 0.0;
+                                final displayType = type[0].toUpperCase() + type.substring(1);
+                                return DropdownMenuItem(
+                                  value: type,
+                                  child: Text(
+                                    '$displayType (\$${price.toStringAsFixed(0)})',
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                );
+                              }
                             }).toList()
                           : membershipTypes.map((type) {
                               // Fallback a los valores estáticos si no hay modelos
@@ -322,8 +343,9 @@ class ClienteFormDialog extends StatelessWidget {
                             
                             // Buscar el modelo de membresía seleccionado
                             if (membershipTypeModels != null) {
+                              // Buscar en todos los modelos, no solo en los activos
                               final selectedModel = membershipTypeModels!
-                                  .firstWhereOrNull((m) => m.name.toLowerCase() == value.toLowerCase());
+                                  .firstWhereOrNull((m) => m.name.toLowerCase().trim() == value.toLowerCase().trim());
                               if (selectedModel != null) {
                                 // Usar el precio del modelo de la base de datos
                                 membershipCost.value = selectedModel.price;
@@ -334,8 +356,10 @@ class ClienteFormDialog extends StatelessWidget {
                             
                             // Fallback a los valores estáticos
                             final key = value.toLowerCase().trim();
-                            membershipCost.value = UserModel.membershipPrices[key] ??
-                                UserModel.membershipPrices['normal']!;
+                            final fallbackPrice = UserModel.membershipPrices[key];
+                            membershipCost.value = fallbackPrice != null 
+                                ? fallbackPrice 
+                                : (UserModel.membershipPrices['normal'] ?? 0.0);
                             totalAmount.value = membershipCost.value + registrationFee.value;
                           }
                         },
@@ -467,8 +491,9 @@ class ClienteFormDialog extends StatelessWidget {
                               
                               // Buscar en los modelos para obtener la duración correcta
                               if (membershipTypeModels != null) {
+                                // Buscar en todos los modelos, no solo en los activos
                                 final selectedModel = membershipTypeModels!
-                                    .firstWhereOrNull((m) => m.name.toLowerCase() == typeKey);
+                                    .firstWhereOrNull((m) => m.name.toLowerCase().trim() == typeKey);
                                 if (selectedModel != null) {
                                   durationDays = selectedModel.durationDays;
                                 } else {
