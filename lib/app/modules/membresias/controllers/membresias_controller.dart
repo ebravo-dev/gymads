@@ -47,7 +47,8 @@ class MembresiasController extends GetxController {
     errorMessage.value = '';
     
     try {
-      final List<MembershipTypeModel> result = await membershipProvider.getMembershipTypes();
+      // Obtener todas las membresías, incluyendo inactivas
+      final List<MembershipTypeModel> result = await membershipProvider.getMembershipTypes(onlyActive: false);
       memberships.value = result;
     } catch (e) {
       errorMessage.value = 'Error al cargar tipos de membresía: $e';
