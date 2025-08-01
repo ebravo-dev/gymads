@@ -96,7 +96,9 @@ class ClienteFormDialog extends StatelessWidget {
             // Encabezado
             Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-              child: Row(
+              child: Wrap(
+                spacing: 16,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Icon(
                     isEditing
@@ -105,7 +107,6 @@ class ClienteFormDialog extends StatelessWidget {
                     color: AppColors.accent,
                     size: 30,
                   ),
-                  const SizedBox(width: 16),
                   Text(
                     isEditing
                         ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
@@ -408,8 +409,9 @@ class ClienteFormDialog extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 12,
                       children: [
                         TextButton(
                           onPressed: () => Get.back(),
@@ -427,7 +429,6 @@ class ClienteFormDialog extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
                         ElevatedButton(
                           onPressed: () {
                             if (formKey.currentState!.validate()) {

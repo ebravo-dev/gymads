@@ -138,4 +138,31 @@ GridView.count(
 2. **Utiliza SizedBox con altura adaptativa**: Para espaciados verticales entre widgets.
 3. **Utiliza Flexible y Expanded**: Para crear layouts que se adapten correctamente.
 4. **Establece maxLines y overflow**: Para textos que podrían causar desbordamientos.
+5. **Usa Wrap en lugar de Row**: Cuando tengas botones o iconos en fila que puedan desbordarse, utiliza `Wrap` con `spacing` y `crossAxisAlignment` para que los elementos se envuelvan automáticamente.
+```dart
+Wrap(
+  spacing: 16,
+  crossAxisAlignment: WrapCrossAlignment.center,
+  children: [
+    Icon(Icons.sensor_door),
+    Text('Editar Cliente'),
+    // ...otros widgets
+  ],
+)
+```
+6. **Envuelve textos largos con Expanded**: Si el `Text` está dentro de un `Row`, ponlo en un `Expanded` y usa `overflow: TextOverflow.ellipsis`.
+```dart
+Row(
+  children: [
+    Icon(Icons.person),
+    const SizedBox(width: 8),
+    Expanded(
+      child: Text(
+        'Título largo que pudiera desbordar',
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+  ],
+)
+```
 5. **Prueba en diferentes tamaños**: Verifica tu UI en dispositivos pequeños, medianos y grandes.

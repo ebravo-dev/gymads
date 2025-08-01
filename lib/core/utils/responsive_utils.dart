@@ -246,3 +246,34 @@ class ResponsiveValues {
     );
   }
 }
+
+/// Ejemplos de uso para evitar overflow en filas:
+///
+/// Uso de Wrap en lugar de Row:
+/// ```dart
+/// Wrap(
+///   spacing: 16,
+///   crossAxisAlignment: WrapCrossAlignment.center,
+///   children: [
+///     Icon(Icons.some_icon),
+///     Text('Texto largo que puede desbordar'),
+///     // ...otros widgets
+///   ],
+/// )
+/// ```
+///
+/// Uso de Expanded con TextOverflow.ellipsis:
+/// ```dart
+/// Row(
+///   children: [
+///     Icon(Icons.some_icon),
+///     const SizedBox(width: 8),
+///     Expanded(
+///       child: Text(
+///         'Texto largo que podría causar overflow',
+///         overflow: TextOverflow.ellipsis,
+///       ),
+///     ),
+///   ],
+/// )
+/// ```
