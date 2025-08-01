@@ -406,6 +406,8 @@ class ClientesView extends GetView<ClientesController> {
             id: cliente.id,
             joinDate: cliente.joinDate,
             accessHistory: cliente.accessHistory,
+            // Mantener la URL de la foto anterior si no se proporciona una nueva
+            photoUrl: photoFile == null ? cliente.photoUrl : null,
           );
 
           controller.updateCliente(cliente.id!, user, photoFile: photoFile);
