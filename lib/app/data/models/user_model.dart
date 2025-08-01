@@ -22,6 +22,12 @@ class UserModel {
     'estudiante': 350.0,
     'profesor': 350.0,
   };
+  // Duración de membresías (días)
+  static const Map<String, int> membershipDurations = {
+    'normal': 30,
+    'estudiante': 30,
+    'profesor': 30,
+  };
 
   // Precio de registro nuevo
   static const double registrationFee = 250.0;

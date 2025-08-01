@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
+import 'package:gymads/app/data/models/membership_type_model.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
 import 'package:gymads/app/modules/shared/widgets/rfid_reader_animation.dart';
 import 'package:gymads/core/theme/app_colors.dart';
@@ -16,6 +17,7 @@ class ClienteFormDialog extends StatelessWidget {
   final TextEditingController rfidController; // Añadido controlador para RFID
   final RxString selectedMembershipType;
   final List<String> membershipTypes;
+  final List<MembershipTypeModel>? membershipTypeModels;
   final RxString selectedPaymentMethod;
   final List<String> paymentMethods;
   final bool isEditing;
@@ -34,6 +36,7 @@ class ClienteFormDialog extends StatelessWidget {
     required this.rfidController, // Añadido parámetro
     required this.selectedMembershipType,
     required this.membershipTypes,
+    this.membershipTypeModels,
     required this.selectedPaymentMethod,
     required this.paymentMethods,
     this.isEditing = false,
@@ -285,16 +288,28 @@ class ClienteFormDialog extends StatelessWidget {
                         dropdownColor: AppColors.cardBackground,
                         style: TextStyle(color: AppColors.textPrimary),
                         value: selectedMembershipType.value,
-                        items:
-                            membershipTypes.map((type) {
-                              double precio =
-                                  UserModel.membershipPrices[type] ?? 0.0;
-                              String displayType =
-                                  type[0].toUpperCase() + type.substring(1);
+                        items: membershipTypeModels != null && membershipTypeModels!.isNotEmpty
+                          ? membershipTypeModels!.map((model) {
+                              final displayType = model.name[0].toUpperCase() + model.name.substring(1);
+                              return DropdownMenuItem(
+                                value: model.name,
+                                child: Text(
+                                  '$displayType (\$${model.price.toStringAsFixed(0)})',
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              );
+                            }).toList()
+                          : membershipTypes.map((type) {
+                              // Fallback a los valores estáticos si no hay modelos
+                              final key = type.toLowerCase().trim();
+                              final price = UserModel.membershipPrices[key] ?? 0.0;
+                              final displayType = type[0].toUpperCase() + type.substring(1);
                               return DropdownMenuItem(
                                 value: type,
                                 child: Text(
-                                  '$displayType (\$${precio.toStringAsFixed(0)})',
+                                  '$displayType (\$${price.toStringAsFixed(0)})',
                                   style: TextStyle(
                                     color: AppColors.textPrimary,
                                   ),
@@ -304,11 +319,24 @@ class ClienteFormDialog extends StatelessWidget {
                         onChanged: (value) {
                           if (value != null) {
                             selectedMembershipType.value = value;
-                            membershipCost.value =
-                                UserModel.membershipPrices[value] ??
+                            
+                            // Buscar el modelo de membresía seleccionado
+                            if (membershipTypeModels != null) {
+                              final selectedModel = membershipTypeModels!
+                                  .firstWhereOrNull((m) => m.name.toLowerCase() == value.toLowerCase());
+                              if (selectedModel != null) {
+                                // Usar el precio del modelo de la base de datos
+                                membershipCost.value = selectedModel.price;
+                                totalAmount.value = membershipCost.value + registrationFee.value;
+                                return;
+                              }
+                            }
+                            
+                            // Fallback a los valores estáticos
+                            final key = value.toLowerCase().trim();
+                            membershipCost.value = UserModel.membershipPrices[key] ??
                                 UserModel.membershipPrices['normal']!;
-                            totalAmount.value =
-                                membershipCost.value + registrationFee.value;
+                            totalAmount.value = membershipCost.value + registrationFee.value;
                           }
                         },
                       ),
@@ -432,10 +460,27 @@ class ClienteFormDialog extends StatelessWidget {
                         ElevatedButton(
                           onPressed: () {
                             if (formKey.currentState!.validate()) {
-                              DateTime now = DateTime.now();
-                              DateTime expirationDate = now.add(
-                                const Duration(days: 90),
-                              );
+                              final now = DateTime.now();
+                              // Duración de membresía según el modelo seleccionado
+                              final typeKey = selectedMembershipType.value.toLowerCase().trim();
+                              int durationDays = 30; // Valor por defecto
+                              
+                              // Buscar en los modelos para obtener la duración correcta
+                              if (membershipTypeModels != null) {
+                                final selectedModel = membershipTypeModels!
+                                    .firstWhereOrNull((m) => m.name.toLowerCase() == typeKey);
+                                if (selectedModel != null) {
+                                  durationDays = selectedModel.durationDays;
+                                } else {
+                                  // Fallback a los valores estáticos
+                                  durationDays = UserModel.membershipDurations[typeKey] ?? 30;
+                                }
+                              } else {
+                                // Fallback a los valores estáticos
+                                durationDays = UserModel.membershipDurations[typeKey] ?? 30;
+                              }
+                              
+                              final expirationDate = now.add(Duration(days: durationDays));
 
                               String finalPhoneNumber = phoneController.text;
                               if (!finalPhoneNumber.startsWith('+')) {
@@ -446,7 +491,7 @@ class ClienteFormDialog extends StatelessWidget {
                                 name: nombreController.text,
                                 phone: finalPhoneNumber,
                                 membershipType: selectedMembershipType.value,
-                                joinDate: isEditing ? now : now,
+                                joinDate: now,
                                 expirationDate: expirationDate,
                                 isActive: true,
                                 userNumber: userNumberController.text,

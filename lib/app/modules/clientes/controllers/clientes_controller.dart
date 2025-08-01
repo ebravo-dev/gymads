@@ -2,13 +2,19 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gymads/app/data/providers/membership_type_provider.dart';
+import 'package:gymads/app/data/models/membership_type_model.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/repositories/user_repository.dart';
 import 'package:gymads/app/global_widgets/qr_dialog.dart';
 
 class ClientesController extends GetxController {
   final UserRepository userRepository;
-  ClientesController({required this.userRepository});
+  final MembershipTypeProvider membershipProvider;
+  ClientesController({
+    required this.userRepository,
+    required this.membershipProvider,
+  });
 
   // Estado observable para la lista de clientes
   final RxList<UserModel> clientes = <UserModel>[].obs;
@@ -22,13 +28,18 @@ class ClientesController extends GetxController {
 
   // Estado para indicar carga
   final RxBool isLoading = false.obs;
+  // Estado observable para mensaje de error
+  final RxString errorMessage = ''.obs;
 
   // Estado para formulario de cliente
   final nombreController = TextEditingController();
   final phoneController = TextEditingController();
   final userNumberController = TextEditingController();
   final rfidController = TextEditingController(); // Añadido controlador para RFID
-  final membershipTypeList = ['normal', 'estudiante', 'profesor'].obs;
+  // Lista de tipos de membresía obtenida de la base de datos
+  final membershipTypeList = <String>[].obs;
+  // Lista de modelos completos de tipos de membresía
+  final RxList<MembershipTypeModel> membershipTypes = <MembershipTypeModel>[].obs;
   final selectedMembershipType = 'normal'.obs;
   final paymentMethodList = ['Efectivo', 'Tarjeta', 'Transferencia'].obs;
   final selectedPaymentMethod = 'Efectivo'.obs;
@@ -42,6 +53,7 @@ class ClientesController extends GetxController {
   void onInit() {
     super.onInit();
     fetchClientes();
+    fetchMembershipTypes();
   }
 
   @override
@@ -71,6 +83,25 @@ class ClientesController extends GetxController {
       isLoading.value = false;
     }
   }
+  
+  // Obtener los tipos de membresía desde la base de datos
+  Future<void> fetchMembershipTypes() async {
+    errorMessage.value = '';
+    try {
+      final List<MembershipTypeModel> types = await membershipProvider.getMembershipTypes();
+      // Guardar los modelos completos
+      membershipTypes.assignAll(types);
+      // También mantener la lista de nombres para retrocompatibilidad
+      membershipTypeList.value = types.map((e) => e.name).toList();
+      if (membershipTypeList.isNotEmpty) {
+        selectedMembershipType.value = membershipTypeList.first;
+      }
+    } catch (e) {
+      errorMessage.value = 'Error al cargar tipos de membresía: $e';
+      print(errorMessage.value);
+    }
+  }
+  
 
   // Método para filtrar clientes
   List<UserModel> get filteredClientes {
@@ -253,9 +284,20 @@ class ClientesController extends GetxController {
   ) async {
     isLoading.value = true;
     try {
-      // Calcular nueva fecha de expiración (3 meses = 90 días)
+      // Calcular nueva fecha de expiración basada en duración de membresía de la base de datos
       final DateTime now = DateTime.now();
-      final DateTime newExpirationDate = now.add(Duration(days: 90));
+      final typeKey = membershipType.toLowerCase().trim();
+      
+      // Buscar en la lista de membresías para obtener la duración real
+      MembershipTypeModel? selectedType = membershipTypes
+          .firstWhereOrNull((type) => type.name.toLowerCase() == typeKey);
+      
+      // Usar la duración de la base de datos o valor predeterminado
+      final durationDays = selectedType?.durationDays ?? 
+                           UserModel.membershipDurations[typeKey] ?? 
+                           30;
+                           
+      final DateTime newExpirationDate = now.add(Duration(days: durationDays));
 
       // Verificar si es un registro nuevo (más de 3 meses sin pagar)
       bool isNewRegistration = client.isNewRegistration();
@@ -281,12 +323,21 @@ class ClientesController extends GetxController {
           clientes.refresh();
         }
 
-        // Calcular el total pagado
-        final double total =
-            isNewRegistration
-                ? UserModel.membershipPrices[membershipType]! +
-                    UserModel.registrationFee
-                : UserModel.membershipPrices[membershipType]!;
+        // Calcular el total pagado usando datos de la base de datos
+        double price;
+        
+        // Obtener precio de la membresía seleccionada
+        MembershipTypeModel? selectedType = membershipTypes
+            .firstWhereOrNull((type) => type.name.toLowerCase() == typeKey);
+            
+        // Usar precio de la base de datos o valor predeterminado
+        if (selectedType != null) {
+          price = selectedType.price;
+        } else {
+          price = UserModel.membershipPrices[typeKey] ?? UserModel.membershipPrices['normal']!;
+        }
+        
+        final double total = isNewRegistration ? price + UserModel.registrationFee : price;
 
         Get.back(); // Cerrar el diálogo de renovación
 
@@ -380,9 +431,19 @@ class ClientesController extends GetxController {
 
   // Método para calcular el precio de membresía según el tipo seleccionado
   void updateMembershipCost() {
-    membershipCost.value =
-        UserModel.membershipPrices[selectedMembershipType.value] ??
-        UserModel.membershipPrices['normal']!;
+    // Buscar primero en la lista de membresías de la base de datos
+    MembershipTypeModel? selectedType = membershipTypes
+        .firstWhereOrNull((type) => type.name.toLowerCase() == selectedMembershipType.value.toLowerCase());
+    
+    if (selectedType != null) {
+      // Usar el precio de la base de datos si se encuentra el tipo
+      membershipCost.value = selectedType.price;
+    } else {
+      // Si no se encuentra, usar el precio estático como fallback
+      membershipCost.value =
+          UserModel.membershipPrices[selectedMembershipType.value.toLowerCase()] ??
+          UserModel.membershipPrices['normal']!;
+    }
     updateTotalAmount();
   }
 
