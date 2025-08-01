@@ -288,55 +288,33 @@ class ClienteFormDialog extends StatelessWidget {
                         dropdownColor: AppColors.cardBackground,
                         style: TextStyle(color: AppColors.textPrimary),
                         value: selectedMembershipType.value,
-                        items: membershipTypeModels != null && membershipTypeModels!.isNotEmpty
-                          ? membershipTypes.map((type) {
-                              // Buscar el modelo correspondiente
-                              final model = membershipTypeModels!.firstWhereOrNull(
-                                (m) => m.name.toLowerCase().trim() == type.toLowerCase().trim()
-                              );
-                              
-                              if (model != null) {
-                                final displayType = model.name[0].toUpperCase() + model.name.substring(1);
-                                return DropdownMenuItem(
-                                  value: model.name,
-                                  child: Text(
-                                    '$displayType (\$${model.price.toStringAsFixed(0)})',
-                                    style: TextStyle(
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                // Si no hay modelo, usar valores predeterminados
-                                final key = type.toLowerCase().trim();
-                                final price = UserModel.membershipPrices[key] ?? 0.0;
-                                final displayType = type[0].toUpperCase() + type.substring(1);
-                                return DropdownMenuItem(
-                                  value: type,
-                                  child: Text(
-                                    '$displayType (\$${price.toStringAsFixed(0)})',
-                                    style: TextStyle(
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                );
-                              }
-                            }).toList()
-                          : membershipTypes.map((type) {
-                              // Fallback a los valores estáticos si no hay modelos
-                              final key = type.toLowerCase().trim();
-                              final price = UserModel.membershipPrices[key] ?? 0.0;
-                              final displayType = type[0].toUpperCase() + type.substring(1);
-                              return DropdownMenuItem(
-                                value: type,
-                                child: Text(
-                                  '$displayType (\$${price.toStringAsFixed(0)})',
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                        items: membershipTypes.map((typeName) {
+                          // Buscar el precio correcto para mostrar
+                          double price = 0.0;
+                          if (membershipTypeModels != null) {
+                            final model = membershipTypeModels!.firstWhereOrNull(
+                              (m) => m.name.toLowerCase().trim() == typeName.toLowerCase().trim()
+                            );
+                            if (model != null) {
+                              price = model.price;
+                            }
+                          }
+                          // Fallback a precios estáticos si no se encontró en los modelos
+                          if (price == 0.0) {
+                            price = UserModel.membershipPrices[typeName.toLowerCase().trim()] ?? 0.0;
+                          }
+                          
+                          // Formatear el nombre con primera letra en mayúscula
+                          final displayName = typeName[0].toUpperCase() + typeName.substring(1);
+                          
+                          return DropdownMenuItem(
+                            value: typeName,
+                            child: Text(
+                              '$displayName (\$${price.toStringAsFixed(0)})',
+                              style: TextStyle(color: AppColors.textPrimary),
+                            ),
+                          );
+                        }).toList(),
                         onChanged: (value) {
                           if (value != null) {
                             selectedMembershipType.value = value;

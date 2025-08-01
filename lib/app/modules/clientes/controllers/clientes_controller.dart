@@ -394,75 +394,42 @@ class ClientesController extends GetxController {
     }
   }
 
-  // Método para configurar formulario con datos de cliente existente
   void setupFormForEdit(UserModel client) async {
     nombreController.text = client.name;
     phoneController.text = client.phone;
     userNumberController.text = client.userNumber.toString();
-    rfidController.text = client.rfidCard ?? ''; // Añadido para RFID
+    rfidController.text = client.rfidCard ?? '';
     
-    // Guardar el tipo de membresía del cliente
-    final clienteMembershipType = client.membershipType.toLowerCase().trim();
-    
-    // Limpiar las listas actuales 
+    // Limpiar listas actuales
     membershipTypes.clear();
     membershipTypeList.clear();
     
     try {
-      // Obtener todas las membresías, incluyendo inactivas
+      // Cargar todos los tipos de membresía, activos e inactivos
       final allTypes = await membershipProvider.getMembershipTypes(onlyActive: false);
       
-      // Primero, verificar si el tipo del cliente existe en la base de datos
-      final clientTypeExists = allTypes.any(
-        (type) => type.name.toLowerCase().trim() == clienteMembershipType
-      );
+      // Asignar lista de modelos
+      membershipTypes.assignAll(allTypes);
       
-      print('Tipo de membresía del cliente: $clienteMembershipType');
-      print('¿Existe en la base de datos?: $clientTypeExists');
+      // Crear lista de nombres única
+      final Set<String> uniqueNamesSet = allTypes.map((m) => m.name).toSet();
+      membershipTypeList.assignAll(uniqueNamesSet.toList());
       
-      // Si el tipo del cliente existe, incluirlo primero
-      if (clientTypeExists) {
-        final clientType = allTypes.firstWhere(
-          (type) => type.name.toLowerCase().trim() == clienteMembershipType
-        );
-        membershipTypes.add(clientType);
-        membershipTypeList.add(clientType.name);
-        print('Añadido tipo de membresía del cliente: ${clientType.name} (${clientType.isActive ? "activo" : "inactivo"})');
-      } else {
-        // Si no existe en la base de datos, añadir manualmente el tipo del cliente
-        print('Tipo de membresía no encontrado en la base de datos, añadiéndolo manualmente');
+      // Asegurarse de que el tipo del cliente esté en la lista
+      if (!membershipTypeList.contains(client.membershipType)) {
         membershipTypeList.add(client.membershipType);
       }
-      
-      // Luego añadir los tipos activos (evitando duplicados)
-      for (var type in allTypes.where((t) => t.isActive)) {
-        if (!membershipTypeList.contains(type.name)) {
-          membershipTypes.add(type);
-          membershipTypeList.add(type.name);
-          print('Añadido tipo activo adicional: ${type.name}');
-        }
-      }
-      
-      // Verificar el contenido final de la lista
-      print('Lista final de tipos de membresía: $membershipTypeList');
-      
-      // Si la lista quedó vacía (muy improbable), añadir 'normal' como fallback
-      if (membershipTypeList.isEmpty) {
-        print('¡ADVERTENCIA! Lista de membresías vacía, añadiendo tipo predeterminado "normal"');
-        membershipTypeList.add('normal');
-      }
-      
     } catch (e) {
       print('Error al cargar tipos de membresía: $e');
-      // En caso de error, asegurar que al menos esté el tipo del cliente
-      if (membershipTypeList.isEmpty) {
-        membershipTypeList.add(client.membershipType);
-      }
+      // En caso de error, al menos asegurarse que el tipo del cliente esté disponible
+      membershipTypeList.add(client.membershipType);
     }
     
-    // Establecer el tipo de membresía del cliente
-    print('Estableciendo tipo de membresía seleccionado: ${client.membershipType}');
+    // Establecer valor seleccionado (cliente)
     selectedMembershipType.value = client.membershipType;
+    
+    // Actualizar el costo para mostrar en la UI
+    updateMembershipCost();
   }
 
   // Método para limpiar el formulario
