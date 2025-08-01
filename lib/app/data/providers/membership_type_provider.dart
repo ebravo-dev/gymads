@@ -5,13 +5,19 @@ class MembershipTypeProvider {
   final SupabaseClient _client = Supabase.instance.client;
   final String _table = 'membership_types';
 
-  // Obtener todos los tipos de membresía
-  Future<List<MembershipTypeModel>> getMembershipTypes() async {
+  // Obtener todos los tipos de membresía (por defecto solo activas)
+  Future<List<MembershipTypeModel>> getMembershipTypes({bool onlyActive = true}) async {
     try {
-      final response = await _client
+      var query = _client
           .from(_table)
-          .select()
-          .order('name', ascending: true);
+          .select();
+          
+      // Aplicar filtro solo si se solicitan únicamente las activas
+      if (onlyActive) {
+        query = query.eq('is_active', true);
+      }
+      
+      final response = await query.order('name', ascending: true);
 
       List<MembershipTypeModel> result = [];
       for (var item in response) {

@@ -88,13 +88,23 @@ class ClientesController extends GetxController {
   Future<void> fetchMembershipTypes() async {
     errorMessage.value = '';
     try {
-      final List<MembershipTypeModel> types = await membershipProvider.getMembershipTypes();
+      // Solo obtener membresías activas para el formulario de clientes
+      final List<MembershipTypeModel> types = await membershipProvider.getMembershipTypes(onlyActive: true);
+      
       // Guardar los modelos completos
       membershipTypes.assignAll(types);
       // También mantener la lista de nombres para retrocompatibilidad
       membershipTypeList.value = types.map((e) => e.name).toList();
+      
+      // Actualizar el tipo seleccionado solo si la lista no está vacía
       if (membershipTypeList.isNotEmpty) {
-        selectedMembershipType.value = membershipTypeList.first;
+        // Conservar el tipo seleccionado si existe en la nueva lista
+        if (membershipTypeList.contains(selectedMembershipType.value)) {
+          // El tipo seleccionado sigue disponible
+        } else {
+          // Seleccionar el primer tipo disponible
+          selectedMembershipType.value = membershipTypeList.first;
+        }
       }
     } catch (e) {
       errorMessage.value = 'Error al cargar tipos de membresía: $e';
@@ -385,12 +395,41 @@ class ClientesController extends GetxController {
   }
 
   // Método para configurar formulario con datos de cliente existente
-  void setupFormForEdit(UserModel client) {
+  void setupFormForEdit(UserModel client) async {
     nombreController.text = client.name;
     phoneController.text = client.phone;
     userNumberController.text = client.userNumber.toString();
     rfidController.text = client.rfidCard ?? ''; // Añadido para RFID
-    selectedMembershipType.value = client.membershipType;
+    
+    // Guardar el tipo de membresía del cliente
+    final clienteMembershipType = client.membershipType;
+    
+    // Verificar si el tipo de membresía del cliente está en la lista actual (puede estar inactivo)
+    if (!membershipTypeList.contains(clienteMembershipType)) {
+      // Si no está en la lista, necesitamos incluirlo temporalmente para este cliente
+      try {
+        // Obtener todas las membresías incluyendo inactivas
+        final allTypes = await membershipProvider.getMembershipTypes(onlyActive: false);
+        
+        // Buscar el tipo de membresía del cliente
+        final clienteType = allTypes.firstWhereOrNull(
+          (type) => type.name.toLowerCase() == clienteMembershipType.toLowerCase()
+        );
+        
+        if (clienteType != null) {
+          // Si encontramos el tipo, añadirlo temporalmente a la lista si no está
+          if (!membershipTypes.any((m) => m.name == clienteType.name)) {
+            membershipTypes.add(clienteType);
+            membershipTypeList.add(clienteType.name);
+          }
+        }
+      } catch (e) {
+        print('Error al obtener tipo de membresía inactivo: $e');
+      }
+    }
+    
+    // Establecer el tipo de membresía del cliente
+    selectedMembershipType.value = clienteMembershipType;
   }
 
   // Método para limpiar el formulario
