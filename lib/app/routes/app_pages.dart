@@ -14,6 +14,8 @@ import '../modules/checkin/bindings/checkin_binding.dart';
 import '../modules/checkin/views/checkin_view.dart';
 import '../modules/rfid_checkin/bindings/rfid_checkin_binding.dart';
 import '../modules/rfid_checkin/views/rfid_checkin_view.dart';
+import '../modules/membresias/bindings/membresias_binding.dart';
+import '../modules/membresias/views/membresias_view.dart';
 
 part 'app_routes.dart';
 
@@ -57,6 +59,11 @@ class AppPages {
       name: _Paths.RFID_CHECKIN,
       page: () => const RfidCheckinView(),
       binding: RfidCheckinBinding(),
+    ),
+    GetPage(
+      name: _Paths.MEMBRESIAS,
+      page: () => const MembresiasView(),
+      binding: MembresiasBinding(),
     ),
   ];
 }

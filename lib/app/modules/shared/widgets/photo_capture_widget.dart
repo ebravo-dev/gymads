@@ -12,9 +12,10 @@ class PhotoCaptureWidget extends StatelessWidget {
     super.key,
     required this.onPhotoTaken,
     this.currentPhotoUrl,
+    File? initialPhotoFile,
   }) {
-    // Inicializar el estado reactivo
-    _tempImageFile = Rx<File?>(null);
+    // Inicializar el estado reactivo con el archivo inicial si existe
+    _tempImageFile = Rx<File?>(initialPhotoFile);
   }
 
   // Estado reactivo para la imagen temporal

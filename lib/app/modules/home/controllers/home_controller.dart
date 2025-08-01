@@ -33,6 +33,11 @@ class HomeController extends GetxController {
     statusMessages.add('Navegando a Inventario...');
     Get.toNamed(Routes.INVENTARIO);
   }
+  
+  void goToMembresias() {
+    statusMessages.add('Navegando a Gestión de Membresías...');
+    Get.toNamed(Routes.MEMBRESIAS);
+  }
 
   /// Limpia los mensajes de estado
   void clearMessages() {
