@@ -94,16 +94,28 @@ class ClientesController extends GetxController {
       // Guardar los modelos completos
       membershipTypes.assignAll(types);
       // También mantener la lista de nombres para retrocompatibilidad
-      membershipTypeList.value = types.map((e) => e.name).toList();
+      final List<String> typeNames = types.map((e) => e.name).toList();
       
-      // Actualizar el tipo seleccionado solo si la lista no está vacía
+      // Buscar "normal" de manera case-insensitive
+      String? normalType = typeNames.firstWhereOrNull((name) => name.toLowerCase() == 'normal');
+      
+      // Asegurar que "normal" (o su variación) esté al principio de la lista si existe
+      if (normalType != null) {
+        typeNames.remove(normalType);
+        typeNames.insert(0, normalType);
+      }
+      
+      membershipTypeList.value = typeNames;
+      
+      // Solo cambiar el valor seleccionado si no es válido o si no está establecido
       if (membershipTypeList.isNotEmpty) {
-        // Conservar el tipo seleccionado si existe en la nueva lista
-        if (membershipTypeList.contains(selectedMembershipType.value)) {
-          // El tipo seleccionado sigue disponible
-        } else {
-          // Seleccionar el primer tipo disponible
-          selectedMembershipType.value = membershipTypeList.first;
+        // Si el valor actual no está en la lista, seleccionar "normal" o el primero disponible
+        if (!membershipTypeList.contains(selectedMembershipType.value)) {
+          if (normalType != null) {
+            selectedMembershipType.value = normalType;
+          } else {
+            selectedMembershipType.value = membershipTypeList.first;
+          }
         }
       }
     } catch (e) {
@@ -438,7 +450,19 @@ class ClientesController extends GetxController {
     phoneController.clear();
     userNumberController.clear();
     rfidController.clear(); // Añadido para RFID
-    selectedMembershipType.value = 'normal';
+    
+    // Buscar "normal" de manera case-insensitive
+    String? normalType = membershipTypeList.firstWhereOrNull((name) => name.toLowerCase() == 'normal');
+    
+    // Establecer membresía por defecto en "normal"
+    if (normalType != null) {
+      selectedMembershipType.value = normalType;
+    } else if (membershipTypeList.isNotEmpty) {
+      selectedMembershipType.value = membershipTypeList.first;
+    } else {
+      selectedMembershipType.value = 'normal'; // fallback
+    }
+    
     selectedPaymentMethod.value = 'Efectivo';
     membershipCost.value = UserModel.membershipPrices['normal']!;
     registrationFee.value = UserModel.registrationFee;

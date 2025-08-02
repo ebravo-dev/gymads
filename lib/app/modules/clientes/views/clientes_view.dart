@@ -338,13 +338,15 @@ class ClientesView extends GetView<ClientesController> {
 
   // Mostrar diálogo para añadir cliente
   void _showAddDialog() async {
+    // Recargar las membresías de la base de datos para tener la lista actualizada
+    await controller.fetchMembershipTypes();
+    
+    // Limpiar el formulario después de cargar las membresías
     controller.clearForm();
+    
     // Obtener un número de usuario único
     final userNumber = await controller.generateUniqueUserNumber();
     controller.userNumberController.text = userNumber.toString();
-    
-    // Recargar las membresías de la base de datos para tener la lista actualizada
-    await controller.fetchMembershipTypes();
 
     // Actualizar el costo de membresía según el tipo seleccionado
     controller.updateMembershipCost();
