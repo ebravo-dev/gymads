@@ -609,6 +609,9 @@ class ClienteFormDialog extends StatelessWidget {
                                 durationDays = UserModel.membershipDurations[typeKey] ?? 30;
                               }
                               
+                              // Calcular la nueva fecha de expiración:
+                              // - Si es edición/renovación: desde la fecha actual
+                              // - Si es nuevo cliente: desde la fecha actual
                               final expirationDate = now.add(Duration(days: durationDays));
 
                               String finalPhoneNumber = phoneController.text;
@@ -616,16 +619,20 @@ class ClienteFormDialog extends StatelessWidget {
                                 finalPhoneNumber = '+52$finalPhoneNumber';
                               }
 
+                              // Obtener el precio actual de la membresía seleccionada
+                              double currentPrice = membershipCost.value;
+                              
                               final user = UserModel(
                                 name: nombreController.text,
                                 phone: finalPhoneNumber,
                                 membershipType: selectedMembershipType.value,
-                                joinDate: now,
+                                membershipPrice: currentPrice,
+                                joinDate: now, // Se preservará en la vista con copyWith
                                 expirationDate: expirationDate,
                                 isActive: true,
                                 userNumber: userNumberController.text,
                                 rfidCard: rfidController.text.isEmpty ? null : rfidController.text,
-                                lastPaymentDate: now,
+                                lastPaymentDate: now, // Siempre actualizar fecha de último pago
                               );
 
                               onSave(user, photoFile.value);
