@@ -237,30 +237,30 @@ class MembershipFormDialog extends StatelessWidget {
             
             // Botones de acción
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween, // Cambiado para distribuir los botones
               children: [
                 // Botón cancelar
-                TextButton(
+                OutlinedButton(
                   onPressed: () {
                     controller.clearForm();
                     Get.back();
                   },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.grey),
+                    foregroundColor: Colors.grey,
+                  ),
                   child: const Text('Cancelar'),
                 ),
                 
-                SizedBox(width: ResponsiveValues.getSpacing(context, 
-                  mobile: 8, 
-                  tablet: 12, 
-                  desktop: 16
-                )),
-                
-                // Botón guardar
+                // Botón guardar/actualizar
                 Obx(() => ElevatedButton(
                   onPressed: controller.isSaving.value 
                       ? null 
                       : () => onSave(),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.titleColor,
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
                   ),
                   child: controller.isSaving.value
                       ? const SizedBox(

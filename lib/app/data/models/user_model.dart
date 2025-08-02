@@ -15,12 +15,21 @@ class UserModel {
   final List<dynamic> accessHistory;
   final DateTime? lastPaymentDate;
   final int daysRemaining;
+  final double membershipPrice; // Precio dinámico desde base de datos
 
   // Precios de membresías
   static const Map<String, double> membershipPrices = {
     'normal': 480.0,
     'estudiante': 350.0,
     'profesor': 350.0,
+    'anual': 4800.0,    // Agregado precio anual
+  };
+  // Duración de membresías (días)
+  static const Map<String, int> membershipDurations = {
+    'normal': 30,
+    'estudiante': 30,
+    'profesor': 30,
+    'anual': 365,       // Agregado duración anual
   };
 
   // Precio de registro nuevo
@@ -41,6 +50,7 @@ class UserModel {
     this.accessHistory = const [],
     this.lastPaymentDate,
     this.daysRemaining = 0,
+    this.membershipPrice = 0.0, // Precio dinámico con valor por defecto
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -100,6 +110,7 @@ class UserModel {
       accessHistory: List<dynamic>.from(json['accessHistory'] ?? []),
       lastPaymentDate: lastPaymentDate,
       daysRemaining: daysLeft,
+      membershipPrice: (json['membership_price'] ?? 0.0).toDouble(), // Precio desde BD
     );
   }
 
@@ -142,6 +153,7 @@ class UserModel {
     String? userNumber, // Cambiado de int? a String?
     List<dynamic>? accessHistory,
     DateTime? lastPaymentDate,
+    double? membershipPrice, // Agregado precio de membresía
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -157,6 +169,7 @@ class UserModel {
       userNumber: userNumber ?? this.userNumber,
       accessHistory: accessHistory ?? this.accessHistory,
       lastPaymentDate: lastPaymentDate ?? this.lastPaymentDate,
+      membershipPrice: membershipPrice ?? this.membershipPrice, // Precio dinámico
     );
   }
 
@@ -174,10 +187,6 @@ class UserModel {
   // Método para verificar si la membresía necesita renovación (5 días o menos)
   bool get needsRenewal => daysRemaining <= 5 && daysRemaining > 0;
 
-  // Método para obtener el precio de la membresía actual
-  double get membershipPrice =>
-      membershipPrices[membershipType] ?? membershipPrices['normal']!;
-
   // Método para verificar si es un registro nuevo (expiró hace más de 3 meses)
   bool isNewRegistration() {
     if (expirationDate == null) return true;
@@ -189,7 +198,7 @@ class UserModel {
 
   // Método para calcular el monto total a pagar (incluyendo tarifa de registro si aplica)
   double calculateTotalPayment() {
-    double total = membershipPrice;
+    double total = membershipPrice; // Usar el precio dinámico
 
     // Si es registro nuevo, añadir tarifa de registro
     if (isNewRegistration()) {

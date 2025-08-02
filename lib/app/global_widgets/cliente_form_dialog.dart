@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
+import 'package:gymads/app/data/models/membership_type_model.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
 import 'package:gymads/app/modules/shared/widgets/rfid_reader_animation.dart';
 import 'package:gymads/core/theme/app_colors.dart';
@@ -16,6 +17,7 @@ class ClienteFormDialog extends StatelessWidget {
   final TextEditingController rfidController; // Añadido controlador para RFID
   final RxString selectedMembershipType;
   final List<String> membershipTypes;
+  final List<MembershipTypeModel>? membershipTypeModels;
   final RxString selectedPaymentMethod;
   final List<String> paymentMethods;
   final bool isEditing;
@@ -25,6 +27,8 @@ class ClienteFormDialog extends StatelessWidget {
   final RxDouble registrationFee;
   final RxDouble totalAmount;
   final String? currentPhotoUrl;
+  // Flag para mostrar como pantalla completa en lugar de diálogo
+  final bool fullScreen;
 
   const ClienteFormDialog({
     super.key,
@@ -34,6 +38,7 @@ class ClienteFormDialog extends StatelessWidget {
     required this.rfidController, // Añadido parámetro
     required this.selectedMembershipType,
     required this.membershipTypes,
+    this.membershipTypeModels,
     required this.selectedPaymentMethod,
     required this.paymentMethods,
     this.isEditing = false,
@@ -43,10 +48,28 @@ class ClienteFormDialog extends StatelessWidget {
     required this.registrationFee,
     required this.totalAmount,
     this.currentPhotoUrl,
+    this.fullScreen = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Si fullScreen, mostrar Scaffold en lugar de AlertDialog
+    if (fullScreen) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            isEditing
+                ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
+                : 'Nuevo Cliente',
+          ),
+          backgroundColor: AppColors.accent,
+          foregroundColor: Colors.white,
+        ),
+        body: SafeArea(
+          child: contentBox(context, GlobalKey<FormState>(), !isEditing || isRenewing, Rx<File?>(null), isFullScreen: true),
+        ),
+      );
+    }
     final formKey = GlobalKey<FormState>();
     final bool isNewRegistration = !isEditing || isRenewing;
     final phoneNumberController = TextEditingController();
@@ -69,7 +92,7 @@ class ClienteFormDialog extends StatelessWidget {
       elevation: 0,
       backgroundColor: Colors.transparent,
       contentPadding: EdgeInsets.zero,
-      content: contentBox(context, formKey, isNewRegistration, photoFile),
+      content: contentBox(context, formKey, isNewRegistration, photoFile, isFullScreen: false),
     );
   }
 
@@ -77,10 +100,44 @@ class ClienteFormDialog extends StatelessWidget {
     BuildContext context,
     GlobalKey<FormState> formKey,
     bool isNewRegistration,
-    Rx<File?> photoFile,
-  ) {
-    final initialPhoneNumber = PhoneNumber(isoCode: 'MX');
-    String formattedPhoneNumber = '';
+    Rx<File?> photoFile, {
+    bool isFullScreen = false,
+  }) {
+    // Inicializar el número de teléfono correctamente para edición
+    PhoneNumber initialPhoneNumber;
+    
+    if (isEditing && phoneController.text.isNotEmpty) {
+      try {
+        // Intentar parsear el número existente del cliente
+        final phone = phoneController.text.trim();
+        
+        if (phone.startsWith('+52')) {
+          // Extraer solo el número sin el código de país para el widget
+          final phoneWithoutCountryCode = phone.substring(3);
+          initialPhoneNumber = PhoneNumber(
+            phoneNumber: phoneWithoutCountryCode,
+            isoCode: 'MX',
+          );
+        } else if (phone.startsWith('+')) {
+          // Para otros códigos de país, intentar detectar automáticamente
+          initialPhoneNumber = PhoneNumber(phoneNumber: phone);
+        } else {
+          // Si no tiene +, asumir que es de México
+          initialPhoneNumber = PhoneNumber(
+            phoneNumber: phone,
+            isoCode: 'MX',
+          );
+        }
+      } catch (e) {
+        // Si hay error, usar México como default
+        initialPhoneNumber = PhoneNumber(isoCode: 'MX');
+      }
+    } else {
+      // Para nuevos clientes, usar México como default
+      initialPhoneNumber = PhoneNumber(isoCode: 'MX');
+    }
+    
+    String formattedPhoneNumber = phoneController.text;
 
     return Container(
       padding: const EdgeInsets.all(0),
@@ -93,36 +150,42 @@ class ClienteFormDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Encabezado
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-              child: Wrap(
-                spacing: 16,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Icon(
-                    isEditing
-                        ? (isRenewing ? Icons.autorenew : Icons.edit)
-                        : Icons.person_add,
-                    color: AppColors.accent,
-                    size: 30,
-                  ),
-                  Text(
-                    isEditing
-                        ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
-                        : 'Nuevo Cliente',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+            // Encabezado - solo mostrar en modo diálogo, no en pantalla completa
+            if (!isFullScreen)
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Wrap(
+                  spacing: 16,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Icon(
+                      isEditing
+                          ? (isRenewing ? Icons.autorenew : Icons.edit)
+                          : Icons.person_add,
+                      color: AppColors.accent,
+                      size: 30,
                     ),
-                  ),
-                ],
+                    Text(
+                      isEditing
+                          ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
+                          : 'Nuevo Cliente',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                padding: EdgeInsets.fromLTRB(
+                  24, 
+                  isFullScreen ? 16 : 20, // Menos padding top cuando hay AppBar
+                  24, 
+                  24
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -240,6 +303,8 @@ class ClienteFormDialog extends StatelessWidget {
                         ignoreBlank: false,
                         autoValidateMode: AutovalidateMode.onUserInteraction,
                         initialValue: initialPhoneNumber,
+                        formatInput: true,
+                        keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
                         textStyle: TextStyle(color: AppColors.textPrimary),
                         selectorTextStyle: TextStyle(
                           color: AppColors.textPrimary,
@@ -272,46 +337,137 @@ class ClienteFormDialog extends StatelessWidget {
                       const SizedBox(height: 16),
                     ],
                     Obx(
-                      () => DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: 'Tipo de Membresía',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          prefixIcon: const Icon(Icons.card_membership),
-                          filled: true,
-                          fillColor: AppColors.containerBackground,
-                        ),
-                        dropdownColor: AppColors.cardBackground,
-                        style: TextStyle(color: AppColors.textPrimary),
-                        value: selectedMembershipType.value,
-                        items:
-                            membershipTypes.map((type) {
-                              double precio =
-                                  UserModel.membershipPrices[type] ?? 0.0;
-                              String displayType =
-                                  type[0].toUpperCase() + type.substring(1);
-                              return DropdownMenuItem(
-                                value: type,
-                                child: Text(
-                                  '$displayType (\$${precio.toStringAsFixed(0)})',
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            selectedMembershipType.value = value;
-                            membershipCost.value =
-                                UserModel.membershipPrices[value] ??
-                                UserModel.membershipPrices['normal']!;
-                            totalAmount.value =
-                                membershipCost.value + registrationFee.value;
+                      () {
+                        // Crear una lista filtrada sin duplicados (comparación case-insensitive)
+                        final List<String> filteredTypes = [];
+                        final Set<String> seenTypes = {};
+                        
+                        for (String typeName in membershipTypes) {
+                          final normalizedName = typeName.trim().toLowerCase();
+                          if (!seenTypes.contains(normalizedName)) {
+                            seenTypes.add(normalizedName);
+                            filteredTypes.add(typeName.trim());
                           }
-                        },
-                      ),
+                        }
+                        
+                        // Obtener el valor actual
+                        String currentValue = selectedMembershipType.value.trim();
+                        
+                        // Verificar que el valor actual esté en la lista filtrada (comparación exacta)
+                        String? validValue;
+                        for (String type in filteredTypes) {
+                          if (type.toLowerCase() == currentValue.toLowerCase()) {
+                            validValue = type; // Usar el valor exacto de la lista
+                            break;
+                          }
+                        }
+                        
+                        // Si no se encontró un valor válido, usar el primero disponible
+                        if (validValue == null && filteredTypes.isNotEmpty) {
+                          validValue = filteredTypes.first;
+                        }
+                        
+                        return DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Tipo de Membresía',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            prefixIcon: const Icon(Icons.card_membership),
+                            filled: true,
+                            fillColor: AppColors.containerBackground,
+                          ),
+                          dropdownColor: AppColors.cardBackground,
+                          style: TextStyle(color: AppColors.textPrimary),
+                          value: validValue,
+                          items: filteredTypes.map((typeName) {
+                            // Buscar el precio correcto para mostrar
+                            double price = 0.0;
+                            bool isActive = true;
+                            if (membershipTypeModels != null) {
+                              final model = membershipTypeModels!.firstWhereOrNull(
+                                (m) => m.name.toLowerCase().trim() == typeName.toLowerCase().trim()
+                              );
+                              if (model != null) {
+                                price = model.price;
+                                isActive = model.isActive;
+                              }
+                            }
+                            // Fallback a precios estáticos si no se encontró en los modelos
+                            if (price == 0.0) {
+                              price = UserModel.membershipPrices[typeName.toLowerCase().trim()] ?? 0.0;
+                            }
+                            
+                            // Formatear el nombre con primera letra en mayúscula
+                            final displayName = typeName[0].toUpperCase() + typeName.substring(1);
+                            
+                            // Agregar indicador si está inactiva
+                            final displayText = isActive 
+                                ? '$displayName (\$${price.toStringAsFixed(0)})'
+                                : '$displayName (\$${price.toStringAsFixed(0)}) - INACTIVA';
+                            
+                            return DropdownMenuItem(
+                              value: typeName,
+                              child: Text(
+                                displayText,
+                                style: TextStyle(
+                                  color: isActive ? AppColors.textPrimary : AppColors.disabled,
+                                  fontStyle: isActive ? FontStyle.normal : FontStyle.italic,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              // Verificar si la membresía seleccionada está activa
+                              bool isActive = true;
+                              if (membershipTypeModels != null) {
+                                final selectedModel = membershipTypeModels!.firstWhereOrNull(
+                                  (m) => m.name.toLowerCase().trim() == value.toLowerCase().trim()
+                                );
+                                if (selectedModel != null) {
+                                  isActive = selectedModel.isActive;
+                                }
+                              }
+                              
+                              // Si está editando y la membresía seleccionada está inactiva, mostrar advertencia
+                              if (isEditing && !isActive) {
+                                Get.snackbar(
+                                  'Membresía Inactiva',
+                                  'Esta membresía ya no está disponible. Se recomienda seleccionar una membresía activa.',
+                                  snackPosition: SnackPosition.BOTTOM,
+                                  backgroundColor: Colors.orange,
+                                  colorText: Colors.white,
+                                  duration: const Duration(seconds: 4),
+                                );
+                              }
+                              
+                              selectedMembershipType.value = value;
+                              
+                              // Buscar el modelo de membresía seleccionado
+                              if (membershipTypeModels != null) {
+                                // Buscar en todos los modelos, incluyendo inactivos
+                                final selectedModel = membershipTypeModels!
+                                    .firstWhereOrNull((m) => m.name.toLowerCase().trim() == value.toLowerCase().trim());
+                                if (selectedModel != null) {
+                                  // Usar el precio del modelo de la base de datos
+                                  membershipCost.value = selectedModel.price;
+                                  totalAmount.value = membershipCost.value + registrationFee.value;
+                                  return;
+                                }
+                              }
+                              
+                              // Fallback a los valores estáticos
+                              final key = value.toLowerCase().trim();
+                              final fallbackPrice = UserModel.membershipPrices[key];
+                              membershipCost.value = fallbackPrice != null 
+                                  ? fallbackPrice 
+                                  : (UserModel.membershipPrices['normal'] ?? 0.0);
+                              totalAmount.value = membershipCost.value + registrationFee.value;
+                            }
+                          },
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     Obx(
@@ -432,26 +588,51 @@ class ClienteFormDialog extends StatelessWidget {
                         ElevatedButton(
                           onPressed: () {
                             if (formKey.currentState!.validate()) {
-                              DateTime now = DateTime.now();
-                              DateTime expirationDate = now.add(
-                                const Duration(days: 90),
-                              );
+                              final now = DateTime.now();
+                              // Duración de membresía según el modelo seleccionado
+                              final typeKey = selectedMembershipType.value.toLowerCase().trim();
+                              int durationDays = 30; // Valor por defecto
+                              
+                              // Buscar en los modelos para obtener la duración correcta
+                              if (membershipTypeModels != null) {
+                                // Buscar en todos los modelos, no solo en los activos
+                                final selectedModel = membershipTypeModels!
+                                    .firstWhereOrNull((m) => m.name.toLowerCase().trim() == typeKey);
+                                if (selectedModel != null) {
+                                  durationDays = selectedModel.durationDays;
+                                } else {
+                                  // Fallback a los valores estáticos
+                                  durationDays = UserModel.membershipDurations[typeKey] ?? 30;
+                                }
+                              } else {
+                                // Fallback a los valores estáticos
+                                durationDays = UserModel.membershipDurations[typeKey] ?? 30;
+                              }
+                              
+                              // Calcular la nueva fecha de expiración:
+                              // - Si es edición/renovación: desde la fecha actual
+                              // - Si es nuevo cliente: desde la fecha actual
+                              final expirationDate = now.add(Duration(days: durationDays));
 
                               String finalPhoneNumber = phoneController.text;
                               if (!finalPhoneNumber.startsWith('+')) {
                                 finalPhoneNumber = '+52$finalPhoneNumber';
                               }
 
+                              // Obtener el precio actual de la membresía seleccionada
+                              double currentPrice = membershipCost.value;
+                              
                               final user = UserModel(
                                 name: nombreController.text,
                                 phone: finalPhoneNumber,
                                 membershipType: selectedMembershipType.value,
-                                joinDate: isEditing ? now : now,
+                                membershipPrice: currentPrice,
+                                joinDate: now, // Se preservará en la vista con copyWith
                                 expirationDate: expirationDate,
                                 isActive: true,
                                 userNumber: userNumberController.text,
                                 rfidCard: rfidController.text.isEmpty ? null : rfidController.text,
-                                lastPaymentDate: now,
+                                lastPaymentDate: now, // Siempre actualizar fecha de último pago
                               );
 
                               onSave(user, photoFile.value);
@@ -489,16 +670,18 @@ class ClienteFormDialog extends StatelessWidget {
 
   Widget _buildCostRow(String label, double amount, {bool isTotal = false}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            fontSize: isTotal ? 16 : 14,
-            color: AppColors.textPrimary,
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              fontSize: isTotal ? 16 : 14,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           '\$${amount.toStringAsFixed(2)}',
           style: TextStyle(

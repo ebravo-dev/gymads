@@ -14,7 +14,7 @@ class ClientesView extends GetView<ClientesController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CLIENTES'),
+        title: const Text('Clientes'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -129,6 +129,7 @@ class ClientesView extends GetView<ClientesController> {
                   padding: const EdgeInsets.only(bottom: 80),
                   itemBuilder: (context, index) {
                     final cliente = filteredClientes[index];
+                    
                     return ClienteCard(
                       cliente: cliente,
                       onTap: () => _showClienteDetails(cliente),
@@ -153,10 +154,15 @@ class ClientesView extends GetView<ClientesController> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          constraints: BoxConstraints(
+            // Limitar la altura al 80% de la pantalla para permitir scroll
+            maxHeight: MediaQuery.of(Get.context!).size.height * 0.8,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+             mainAxisSize: MainAxisSize.min,
+             crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
               Row(
                 children: [
                   CircleAvatar(
@@ -302,8 +308,9 @@ class ClientesView extends GetView<ClientesController> {
             ],
           ),
         ),
-      ),
-    );
+      ),  // Cierra Container
+    ),    // Cierra Dialog
+    );    // Cierra Get.dialog
   }
 
   // Widget para elementos de detalle
@@ -338,7 +345,12 @@ class ClientesView extends GetView<ClientesController> {
 
   // Mostrar diálogo para añadir cliente
   void _showAddDialog() async {
+    // Recargar las membresías de la base de datos para tener la lista actualizada
+    await controller.fetchMembershipTypes();
+    
+    // Limpiar el formulario después de cargar las membresías
     controller.clearForm();
+    
     // Obtener un número de usuario único
     final userNumber = await controller.generateUniqueUserNumber();
     controller.userNumberController.text = userNumber.toString();
@@ -348,14 +360,15 @@ class ClientesView extends GetView<ClientesController> {
     // Inicializar tarifa de registro (nuevo cliente siempre paga registro)
     controller.updateRegistrationFee(true);
 
-    Get.dialog(
-      ClienteFormDialog(
+    Get.to(
+      () => ClienteFormDialog(
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
         rfidController: controller.rfidController,
         selectedMembershipType: controller.selectedMembershipType,
         membershipTypes: controller.membershipTypeList,
+        membershipTypeModels: controller.membershipTypes,
         selectedPaymentMethod: controller.selectedPaymentMethod,
         paymentMethods: controller.paymentMethodList,
         membershipCost: controller.membershipCost,
@@ -364,30 +377,34 @@ class ClientesView extends GetView<ClientesController> {
         onSave: (user, photoFile) {
           controller.addCliente(user, photoFile: photoFile);
         },
+        fullScreen: true,
       ),
+      fullscreenDialog: true,
     );
   }
 
   // Mostrar diálogo para editar cliente
-  void _showEditDialog(UserModel cliente) {
-    controller.setupFormForEdit(cliente);
+  void _showEditDialog(UserModel cliente) async {
+    // Solo configurar el formulario para edición - setupFormForEdit manejará cargar las membresías
+    await controller.setupFormForEdit(cliente);
 
     // Actualizar costos
     controller.updateMembershipCost();
     // No cobra tarifa de registro en ediciones normales
     controller.updateRegistrationFee(false);
 
-    Get.dialog(
-      ClienteFormDialog(
+    Get.to(
+      () => ClienteFormDialog(
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
         rfidController: controller.rfidController,
         selectedMembershipType: controller.selectedMembershipType,
         membershipTypes: controller.membershipTypeList,
+        membershipTypeModels: controller.membershipTypes,
         selectedPaymentMethod: controller.selectedPaymentMethod,
         paymentMethods: controller.paymentMethodList,
-        isEditing: true,
+        // isEditing: true, duplicado eliminada
         membershipCost: controller.membershipCost,
         registrationFee: controller.registrationFee,
         totalAmount: controller.totalAmount,
@@ -398,11 +415,16 @@ class ClientesView extends GetView<ClientesController> {
             id: cliente.id,
             joinDate: cliente.joinDate,
             accessHistory: cliente.accessHistory,
+            // Mantener la URL de la foto anterior si no se proporciona una nueva
+            photoUrl: photoFile == null ? cliente.photoUrl : null,
           );
 
           controller.updateCliente(cliente.id!, user, photoFile: photoFile);
         },
+        isEditing: true,
+        fullScreen: true,
       ),
+      fullscreenDialog: true,
     );
   }
 
@@ -414,7 +436,7 @@ class ClientesView extends GetView<ClientesController> {
       textConfirm: 'Eliminar',
       textCancel: 'Cancelar',
       confirmTextColor: Colors.white,
-      cancelTextColor: Colors.black,
+      cancelTextColor: Colors.white,
       buttonColor: Colors.red,
       onConfirm: () {
         controller.deleteCliente(cliente.id!);
@@ -424,9 +446,10 @@ class ClientesView extends GetView<ClientesController> {
   }
 
   // Mostrar diálogo para renovar membresía
-  void _showRenovarDialog(UserModel cliente) {
-    controller.selectedMembershipType.value = cliente.membershipType;
-
+  void _showRenovarDialog(UserModel cliente) async {
+    // Configurar el formulario para edición/renovación - esto cargará todas las membresías
+    await controller.setupFormForEdit(cliente);
+    
     // Verificar si es un registro nuevo para aplicar tarifa adicional
     bool isNewRegistration = cliente.isNewRegistration();
 
@@ -442,6 +465,7 @@ class ClientesView extends GetView<ClientesController> {
         rfidController: controller.rfidController,
         selectedMembershipType: controller.selectedMembershipType,
         membershipTypes: controller.membershipTypeList,
+        membershipTypeModels: controller.membershipTypes,
         selectedPaymentMethod: controller.selectedPaymentMethod,
         paymentMethods: controller.paymentMethodList,
         isEditing: true,

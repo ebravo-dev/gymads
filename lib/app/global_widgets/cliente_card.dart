@@ -27,11 +27,6 @@ class ClienteCard extends StatelessWidget {
         cliente.membershipType[0].toUpperCase() +
         cliente.membershipType.substring(1);
 
-    if (kDebugMode) {
-      //imprime la expiracion
-      print('DEBUG! Expiracion: ${cliente.expirationDate}');
-    }
-
     // Formatear fecha de expiración
     final dateFormatter = DateFormat('dd/MM/yyyy');
     final String expirationDateText =
@@ -239,19 +234,53 @@ class ClienteCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
 
-                            // Detalles de la membresía
-                            _buildInfoRow(
-                              Icons.card_membership_rounded,
-                              '$membershipType (\$${cliente.membershipPrice.toStringAsFixed(0)})',
-                              primaryColor,
+                            // Detalles de la membresía - Layout optimizado para evitar cortes
+                            // Detalles de la membresía - Mostrar en dos líneas con Text.rich
+                            // Detalles de la membresía - icono y tipo en la primera línea, precio en la segunda con indentación
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.card_membership_rounded, size: 16, color: primaryColor),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        membershipType,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 24), // Indent para alinear con texto
+                                  child: Text(
+                                    '\$${cliente.membershipPrice.toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.visible,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 8), // Incrementado de 6 a 8
                             _buildInfoRow(
                               Icons.event_available_rounded,
                               'Expira: $expirationDateText',
                               primaryColor,
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 8), // Incrementado de 6 a 8
                             _buildInfoRow(
                               Icons.phone_rounded,
                               cliente.phone,
@@ -310,16 +339,20 @@ class ClienteCard extends StatelessWidget {
   }
 
   // Widget para filas de información
-  Widget _buildInfoRow(IconData icon, String text, Color color) {
+  Widget _buildInfoRow(IconData icon, String text, Color color, {bool allowWrap = false}) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start, // Cambiar para permitir múltiples líneas
       children: [
-        Icon(icon, size: 16, color: color),
+        Padding(
+          padding: const EdgeInsets.only(top: 2), // Ajustar para alinear con el texto
+          child: Icon(icon, size: 16, color: color),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-            maxLines: 1,
+            maxLines: allowWrap ? 2 : 1, // Permitir hasta 2 líneas si allowWrap es true
             overflow: TextOverflow.ellipsis,
           ),
         ),

@@ -277,3 +277,8 @@ class ResponsiveValues {
 ///   ],
 /// )
 /// ```
+
+/// ===== Actualizaciones Futuras =====
+/// - Al añadir nuevos breakpoints, actualice `ResponsiveLayout` y extienda `ResponsiveValues` para soportarlos.
+/// - Verifique que `getResponsiveValue` cubra los nuevos rangos de ancho correctamente.
+/// - Mantenga ejemplos y documentación sincronizados con los cambios.

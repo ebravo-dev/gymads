@@ -76,12 +76,25 @@ class UserRepository {
     }
   }
 
-  /// Obtiene todos los usuarios disponibles
+  /// Obtiene todos los usuarios disponibles con precios de membresía
   Future<List<UserModel>> getAllUsers() async {
     try {
-      final response = await _apiProvider.getAll();
-      if (kDebugMode) {
-        print('Respuesta getAll: $response');
+      // Verificar si el provider es SupabaseApiProvider para usar el método especializado
+      Map<String, dynamic> response;
+      
+      if (_apiProvider.runtimeType.toString().contains('SupabaseApiProvider')) {
+        final supabaseProvider = _apiProvider as dynamic;
+        response = await supabaseProvider.getUsersWithMembershipInfo();
+        
+        if (kDebugMode) {
+          print('Respuesta getAllUsers con precios: $response');
+        }
+      } else {
+        // Fallback para otros providers
+        response = await _apiProvider.getAll();
+        if (kDebugMode) {
+          print('Respuesta getAll (fallback): $response');
+        }
       }
       
       if (response['error'] || response['data'] == null) {

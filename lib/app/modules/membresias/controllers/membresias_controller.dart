@@ -47,7 +47,8 @@ class MembresiasController extends GetxController {
     errorMessage.value = '';
     
     try {
-      final List<MembershipTypeModel> result = await membershipProvider.getMembershipTypes();
+      // Obtener todas las membresías, incluyendo inactivas
+      final List<MembershipTypeModel> result = await membershipProvider.getMembershipTypes(onlyActive: false);
       memberships.value = result;
     } catch (e) {
       errorMessage.value = 'Error al cargar tipos de membresía: $e';
@@ -250,6 +251,19 @@ class MembresiasController extends GetxController {
     errorMessage.value = '';
     
     try {
+      // Verificar si es la última membresía activa
+      final membershipToDelete = memberships.firstWhere((m) => m.id == id);
+      
+      // Si la membresía a eliminar está activa, contar cuántas membresías activas hay
+      if (membershipToDelete.isActive) {
+        final activeMembershipsCount = memberships.where((m) => m.isActive).length;
+        
+        // Si es la última membresía activa, no permitir su eliminación
+        if (activeMembershipsCount <= 1) {
+          throw Exception('No se puede eliminar la última membresía activa. Debes tener al menos una membresía activa en el sistema.');
+        }
+      }
+      
       final success = await membershipProvider.deleteMembershipType(id);
       
       if (success) {

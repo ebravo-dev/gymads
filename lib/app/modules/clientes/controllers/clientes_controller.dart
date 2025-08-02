@@ -2,13 +2,19 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gymads/app/data/providers/membership_type_provider.dart';
+import 'package:gymads/app/data/models/membership_type_model.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/repositories/user_repository.dart';
 import 'package:gymads/app/global_widgets/qr_dialog.dart';
 
 class ClientesController extends GetxController {
   final UserRepository userRepository;
-  ClientesController({required this.userRepository});
+  final MembershipTypeProvider membershipProvider;
+  ClientesController({
+    required this.userRepository,
+    required this.membershipProvider,
+  });
 
   // Estado observable para la lista de clientes
   final RxList<UserModel> clientes = <UserModel>[].obs;
@@ -22,13 +28,18 @@ class ClientesController extends GetxController {
 
   // Estado para indicar carga
   final RxBool isLoading = false.obs;
+  // Estado observable para mensaje de error
+  final RxString errorMessage = ''.obs;
 
   // Estado para formulario de cliente
   final nombreController = TextEditingController();
   final phoneController = TextEditingController();
   final userNumberController = TextEditingController();
   final rfidController = TextEditingController(); // Añadido controlador para RFID
-  final membershipTypeList = ['normal', 'estudiante', 'profesor'].obs;
+  // Lista de tipos de membresía obtenida de la base de datos
+  final membershipTypeList = <String>[].obs;
+  // Lista de modelos completos de tipos de membresía
+  final RxList<MembershipTypeModel> membershipTypes = <MembershipTypeModel>[].obs;
   final selectedMembershipType = 'normal'.obs;
   final paymentMethodList = ['Efectivo', 'Tarjeta', 'Transferencia'].obs;
   final selectedPaymentMethod = 'Efectivo'.obs;
@@ -42,6 +53,7 @@ class ClientesController extends GetxController {
   void onInit() {
     super.onInit();
     fetchClientes();
+    fetchMembershipTypes();
   }
 
   @override
@@ -71,6 +83,60 @@ class ClientesController extends GetxController {
       isLoading.value = false;
     }
   }
+  
+  // Obtener los tipos de membresía desde la base de datos
+  Future<void> fetchMembershipTypes() async {
+    errorMessage.value = '';
+    try {
+      // Solo obtener membresías activas para el formulario de clientes
+      final List<MembershipTypeModel> types = await membershipProvider.getMembershipTypes(onlyActive: true);
+      
+      // Guardar los modelos completos
+      membershipTypes.assignAll(types);
+      
+      // Crear lista de nombres única usando normalización de strings
+      final Set<String> typeNamesSet = {};
+      for (final type in types) {
+        final trimmedName = type.name.trim();
+        typeNamesSet.add(trimmedName);
+      }
+      final List<String> typeNames = typeNamesSet.toList();
+      
+      // Buscar "normal" de manera case-insensitive
+      String? normalType = typeNames.firstWhereOrNull((name) => name.toLowerCase() == 'normal');
+      
+      // Asegurar que "normal" (o su variación) esté al principio de la lista si existe
+      if (normalType != null) {
+        typeNames.remove(normalType);
+        typeNames.insert(0, normalType);
+      }
+      
+      membershipTypeList.clear(); // Limpiar antes de asignar
+      membershipTypeList.assignAll(typeNames);
+      
+      // Solo cambiar el valor seleccionado si no es válido o si no está establecido
+      if (membershipTypeList.isNotEmpty) {
+        // Si el valor actual no está en la lista, seleccionar "normal" o el primero disponible
+        bool currentValueExists = membershipTypeList.any((name) => 
+          name.toLowerCase() == selectedMembershipType.value.toLowerCase()
+        );
+        
+        if (!currentValueExists) {
+          if (normalType != null) {
+            selectedMembershipType.value = normalType;
+          } else {
+            selectedMembershipType.value = membershipTypeList.first;
+          }
+        }
+      }
+      
+      print('🔍 DEBUG fetchMembershipTypes: ${typeNames.join(", ")}');
+    } catch (e) {
+      errorMessage.value = 'Error al cargar tipos de membresía: $e';
+      print(errorMessage.value);
+    }
+  }
+  
 
   // Método para filtrar clientes
   List<UserModel> get filteredClientes {
@@ -253,9 +319,20 @@ class ClientesController extends GetxController {
   ) async {
     isLoading.value = true;
     try {
-      // Calcular nueva fecha de expiración (3 meses = 90 días)
+      // Calcular nueva fecha de expiración basada en duración de membresía de la base de datos
       final DateTime now = DateTime.now();
-      final DateTime newExpirationDate = now.add(Duration(days: 90));
+      final typeKey = membershipType.toLowerCase().trim();
+      
+      // Buscar en la lista de membresías para obtener la duración real
+      MembershipTypeModel? selectedType = membershipTypes
+          .firstWhereOrNull((type) => type.name.toLowerCase() == typeKey);
+      
+      // Usar la duración de la base de datos o valor predeterminado
+      final durationDays = selectedType?.durationDays ?? 
+                           UserModel.membershipDurations[typeKey] ?? 
+                           30;
+                           
+      final DateTime newExpirationDate = now.add(Duration(days: durationDays));
 
       // Verificar si es un registro nuevo (más de 3 meses sin pagar)
       bool isNewRegistration = client.isNewRegistration();
@@ -281,12 +358,21 @@ class ClientesController extends GetxController {
           clientes.refresh();
         }
 
-        // Calcular el total pagado
-        final double total =
-            isNewRegistration
-                ? UserModel.membershipPrices[membershipType]! +
-                    UserModel.registrationFee
-                : UserModel.membershipPrices[membershipType]!;
+        // Calcular el total pagado usando datos de la base de datos
+        double price;
+        
+        // Obtener precio de la membresía seleccionada
+        MembershipTypeModel? selectedType = membershipTypes
+            .firstWhereOrNull((type) => type.name.toLowerCase() == typeKey);
+            
+        // Usar precio de la base de datos o valor predeterminado
+        if (selectedType != null) {
+          price = selectedType.price;
+        } else {
+          price = UserModel.membershipPrices[typeKey] ?? UserModel.membershipPrices['normal']!;
+        }
+        
+        final double total = isNewRegistration ? price + UserModel.registrationFee : price;
 
         Get.back(); // Cerrar el diálogo de renovación
 
@@ -333,13 +419,86 @@ class ClientesController extends GetxController {
     }
   }
 
-  // Método para configurar formulario con datos de cliente existente
-  void setupFormForEdit(UserModel client) {
+  Future<void> setupFormForEdit(UserModel client) async {
     nombreController.text = client.name;
     phoneController.text = client.phone;
     userNumberController.text = client.userNumber.toString();
-    rfidController.text = client.rfidCard ?? ''; // Añadido para RFID
-    selectedMembershipType.value = client.membershipType;
+    rfidController.text = client.rfidCard ?? '';
+    
+    print('📞 DEBUG: Teléfono del cliente: "${client.phone}"');
+    print('📞 DEBUG: phoneController.text establecido a: "${phoneController.text}"');
+    
+    // Limpiar listas actuales
+    membershipTypes.clear();
+    membershipTypeList.clear();
+    
+    try {
+      // Cargar solo los tipos de membresía activos
+      final activeTypes = await membershipProvider.getMembershipTypes(onlyActive: true);
+      
+      // Verificar si la membresía actual del cliente está activa
+      final clientMembershipNormalized = client.membershipType.trim();
+      bool clientMembershipIsActive = activeTypes.any((type) => 
+        type.name.toLowerCase().trim() == clientMembershipNormalized.toLowerCase()
+      );
+      
+      // Si la membresía del cliente no está activa, cargarla también
+      List<MembershipTypeModel> allTypesToShow = List.from(activeTypes);
+      if (!clientMembershipIsActive) {
+        // Buscar la membresía inactiva del cliente
+        final allTypes = await membershipProvider.getMembershipTypes(onlyActive: false);
+        final clientInactiveType = allTypes.firstWhereOrNull((type) =>
+          type.name.toLowerCase().trim() == clientMembershipNormalized.toLowerCase()
+        );
+        if (clientInactiveType != null) {
+          allTypesToShow.add(clientInactiveType);
+        }
+      }
+      
+      // Asignar lista de modelos
+      membershipTypes.assignAll(allTypesToShow);
+      
+      // Crear lista de nombres única usando normalización de strings
+      final Set<String> uniqueNamesSet = {};
+      for (final type in allTypesToShow) {
+        final trimmedName = type.name.trim();
+        uniqueNamesSet.add(trimmedName);
+      }
+      
+      // Convertir a lista, limpiar y asignar
+      final List<String> uniqueNamesList = uniqueNamesSet.toList();
+      membershipTypeList.clear(); // Limpiar antes de asignar
+      membershipTypeList.assignAll(uniqueNamesList);
+    } catch (e) {
+      print('Error al cargar tipos de membresía: $e');
+      // En caso de error, al menos asegurarse que el tipo del cliente esté disponible
+      final clientMembership = client.membershipType.trim();
+      if (!membershipTypeList.any((name) => name.toLowerCase() == clientMembership.toLowerCase())) {
+        membershipTypeList.add(clientMembership);
+      }
+    }
+    
+    // Establecer valor seleccionado (cliente) - buscar coincidencia exacta en la lista
+    String clientMembershipToSet = client.membershipType.trim();
+    
+    // Buscar el valor exacto en la lista (puede tener capitalización diferente)
+    String? exactMatch = membershipTypeList.firstWhereOrNull((name) => 
+      name.toLowerCase() == clientMembershipToSet.toLowerCase()
+    );
+    
+    if (exactMatch != null) {
+      selectedMembershipType.value = exactMatch;
+    } else {
+      // Si no se encuentra, usar el primer valor disponible o el original
+      if (membershipTypeList.isNotEmpty) {
+        selectedMembershipType.value = membershipTypeList.first;
+      } else {
+        selectedMembershipType.value = clientMembershipToSet;
+      }
+    }
+    
+    // Actualizar el costo para mostrar en la UI
+    updateMembershipCost();
   }
 
   // Método para limpiar el formulario
@@ -348,7 +507,19 @@ class ClientesController extends GetxController {
     phoneController.clear();
     userNumberController.clear();
     rfidController.clear(); // Añadido para RFID
-    selectedMembershipType.value = 'normal';
+    
+    // Buscar "normal" de manera case-insensitive
+    String? normalType = membershipTypeList.firstWhereOrNull((name) => name.toLowerCase() == 'normal');
+    
+    // Establecer membresía por defecto en "normal"
+    if (normalType != null) {
+      selectedMembershipType.value = normalType;
+    } else if (membershipTypeList.isNotEmpty) {
+      selectedMembershipType.value = membershipTypeList.first;
+    } else {
+      selectedMembershipType.value = 'normal'; // fallback
+    }
+    
     selectedPaymentMethod.value = 'Efectivo';
     membershipCost.value = UserModel.membershipPrices['normal']!;
     registrationFee.value = UserModel.registrationFee;
@@ -380,9 +551,31 @@ class ClientesController extends GetxController {
 
   // Método para calcular el precio de membresía según el tipo seleccionado
   void updateMembershipCost() {
-    membershipCost.value =
-        UserModel.membershipPrices[selectedMembershipType.value] ??
-        UserModel.membershipPrices['normal']!;
+    final typeToFind = selectedMembershipType.value.toLowerCase().trim();
+    
+    // Buscar primero en la lista de membresías de la base de datos
+    MembershipTypeModel? selectedType = membershipTypes
+        .firstWhereOrNull((type) => type.name.toLowerCase().trim() == typeToFind);
+    
+    if (selectedType != null) {
+      // Usar el precio de la base de datos si se encuentra el tipo
+      membershipCost.value = selectedType.price;
+    } else {
+      // Si no se encuentra, usar el precio estático como fallback
+      final fallbackPrice = UserModel.membershipPrices[typeToFind];
+      if (fallbackPrice != null) {
+        membershipCost.value = fallbackPrice;
+      } else {
+        // Si tampoco hay precio estático, usar el precio de la membresía normal como último recurso
+        membershipCost.value = UserModel.membershipPrices['normal'] ?? 0.0;
+        
+        // Si no se encontró el tipo seleccionado, podría ser necesario corregirlo
+        if (membershipTypeList.isNotEmpty && !membershipTypeList.contains(selectedMembershipType.value)) {
+          print('Tipo de membresía "${selectedMembershipType.value}" no encontrado, usando el primero disponible');
+          selectedMembershipType.value = membershipTypeList.first;
+        }
+      }
+    }
     updateTotalAmount();
   }
 
