@@ -359,8 +359,8 @@ class ClientesView extends GetView<ClientesController> {
     // Inicializar tarifa de registro (nuevo cliente siempre paga registro)
     controller.updateRegistrationFee(true);
 
-    Get.dialog(
-      ClienteFormDialog(
+    Get.to(
+      () => ClienteFormDialog(
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
@@ -376,7 +376,9 @@ class ClientesView extends GetView<ClientesController> {
         onSave: (user, photoFile) {
           controller.addCliente(user, photoFile: photoFile);
         },
+        fullScreen: true,
       ),
+      fullscreenDialog: true,
     );
   }
 
@@ -392,8 +394,8 @@ class ClientesView extends GetView<ClientesController> {
     // No cobra tarifa de registro en ediciones normales
     controller.updateRegistrationFee(false);
 
-    Get.dialog(
-      ClienteFormDialog(
+    Get.to(
+      () => ClienteFormDialog(
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
@@ -403,7 +405,7 @@ class ClientesView extends GetView<ClientesController> {
         membershipTypeModels: controller.membershipTypes,
         selectedPaymentMethod: controller.selectedPaymentMethod,
         paymentMethods: controller.paymentMethodList,
-        isEditing: true,
+        // isEditing: true, duplicado eliminada
         membershipCost: controller.membershipCost,
         registrationFee: controller.registrationFee,
         totalAmount: controller.totalAmount,
@@ -420,7 +422,10 @@ class ClientesView extends GetView<ClientesController> {
 
           controller.updateCliente(cliente.id!, user, photoFile: photoFile);
         },
+        isEditing: true,
+        fullScreen: true,
       ),
+      fullscreenDialog: true,
     );
   }
 

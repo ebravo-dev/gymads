@@ -27,6 +27,8 @@ class ClienteFormDialog extends StatelessWidget {
   final RxDouble registrationFee;
   final RxDouble totalAmount;
   final String? currentPhotoUrl;
+  // Flag para mostrar como pantalla completa en lugar de diálogo
+  final bool fullScreen;
 
   const ClienteFormDialog({
     super.key,
@@ -46,10 +48,28 @@ class ClienteFormDialog extends StatelessWidget {
     required this.registrationFee,
     required this.totalAmount,
     this.currentPhotoUrl,
+    this.fullScreen = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Si fullScreen, mostrar Scaffold en lugar de AlertDialog
+    if (fullScreen) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            isEditing
+                ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
+                : 'Nuevo Cliente',
+          ),
+          backgroundColor: AppColors.accent,
+          foregroundColor: Colors.white,
+        ),
+        body: SafeArea(
+          child: contentBox(context, GlobalKey<FormState>(), !isEditing || isRenewing, Rx<File?>(null), isFullScreen: true),
+        ),
+      );
+    }
     final formKey = GlobalKey<FormState>();
     final bool isNewRegistration = !isEditing || isRenewing;
     final phoneNumberController = TextEditingController();
@@ -72,7 +92,7 @@ class ClienteFormDialog extends StatelessWidget {
       elevation: 0,
       backgroundColor: Colors.transparent,
       contentPadding: EdgeInsets.zero,
-      content: contentBox(context, formKey, isNewRegistration, photoFile),
+      content: contentBox(context, formKey, isNewRegistration, photoFile, isFullScreen: false),
     );
   }
 
@@ -80,8 +100,9 @@ class ClienteFormDialog extends StatelessWidget {
     BuildContext context,
     GlobalKey<FormState> formKey,
     bool isNewRegistration,
-    Rx<File?> photoFile,
-  ) {
+    Rx<File?> photoFile, {
+    bool isFullScreen = false,
+  }) {
     // Inicializar el número de teléfono correctamente para edición
     PhoneNumber initialPhoneNumber;
     
@@ -129,36 +150,42 @@ class ClienteFormDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Encabezado
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-              child: Wrap(
-                spacing: 16,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Icon(
-                    isEditing
-                        ? (isRenewing ? Icons.autorenew : Icons.edit)
-                        : Icons.person_add,
-                    color: AppColors.accent,
-                    size: 30,
-                  ),
-                  Text(
-                    isEditing
-                        ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
-                        : 'Nuevo Cliente',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+            // Encabezado - solo mostrar en modo diálogo, no en pantalla completa
+            if (!isFullScreen)
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Wrap(
+                  spacing: 16,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Icon(
+                      isEditing
+                          ? (isRenewing ? Icons.autorenew : Icons.edit)
+                          : Icons.person_add,
+                      color: AppColors.accent,
+                      size: 30,
                     ),
-                  ),
-                ],
+                    Text(
+                      isEditing
+                          ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
+                          : 'Nuevo Cliente',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                padding: EdgeInsets.fromLTRB(
+                  24, 
+                  isFullScreen ? 16 : 20, // Menos padding top cuando hay AppBar
+                  24, 
+                  24
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
