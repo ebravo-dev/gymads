@@ -412,6 +412,9 @@ class ClientesController extends GetxController {
     userNumberController.text = client.userNumber.toString();
     rfidController.text = client.rfidCard ?? '';
     
+    print('📞 DEBUG: Teléfono del cliente: "${client.phone}"');
+    print('📞 DEBUG: phoneController.text establecido a: "${phoneController.text}"');
+    
     // Limpiar listas actuales
     membershipTypes.clear();
     membershipTypeList.clear();

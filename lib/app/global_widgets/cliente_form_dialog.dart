@@ -82,8 +82,41 @@ class ClienteFormDialog extends StatelessWidget {
     bool isNewRegistration,
     Rx<File?> photoFile,
   ) {
-    final initialPhoneNumber = PhoneNumber(isoCode: 'MX');
-    String formattedPhoneNumber = '';
+    // Inicializar el número de teléfono correctamente para edición
+    PhoneNumber initialPhoneNumber;
+    
+    if (isEditing && phoneController.text.isNotEmpty) {
+      try {
+        // Intentar parsear el número existente del cliente
+        final phone = phoneController.text.trim();
+        
+        if (phone.startsWith('+52')) {
+          // Extraer solo el número sin el código de país para el widget
+          final phoneWithoutCountryCode = phone.substring(3);
+          initialPhoneNumber = PhoneNumber(
+            phoneNumber: phoneWithoutCountryCode,
+            isoCode: 'MX',
+          );
+        } else if (phone.startsWith('+')) {
+          // Para otros códigos de país, intentar detectar automáticamente
+          initialPhoneNumber = PhoneNumber(phoneNumber: phone);
+        } else {
+          // Si no tiene +, asumir que es de México
+          initialPhoneNumber = PhoneNumber(
+            phoneNumber: phone,
+            isoCode: 'MX',
+          );
+        }
+      } catch (e) {
+        // Si hay error, usar México como default
+        initialPhoneNumber = PhoneNumber(isoCode: 'MX');
+      }
+    } else {
+      // Para nuevos clientes, usar México como default
+      initialPhoneNumber = PhoneNumber(isoCode: 'MX');
+    }
+    
+    String formattedPhoneNumber = phoneController.text;
 
     return Container(
       padding: const EdgeInsets.all(0),
@@ -243,6 +276,8 @@ class ClienteFormDialog extends StatelessWidget {
                         ignoreBlank: false,
                         autoValidateMode: AutovalidateMode.onUserInteraction,
                         initialValue: initialPhoneNumber,
+                        formatInput: true,
+                        keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
                         textStyle: TextStyle(color: AppColors.textPrimary),
                         selectorTextStyle: TextStyle(
                           color: AppColors.textPrimary,
