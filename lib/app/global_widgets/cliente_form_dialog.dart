@@ -383,12 +383,14 @@ class ClienteFormDialog extends StatelessWidget {
                           items: filteredTypes.map((typeName) {
                             // Buscar el precio correcto para mostrar
                             double price = 0.0;
+                            bool isActive = true;
                             if (membershipTypeModels != null) {
                               final model = membershipTypeModels!.firstWhereOrNull(
                                 (m) => m.name.toLowerCase().trim() == typeName.toLowerCase().trim()
                               );
                               if (model != null) {
                                 price = model.price;
+                                isActive = model.isActive;
                               }
                             }
                             // Fallback a precios estáticos si no se encontró en los modelos
@@ -399,21 +401,52 @@ class ClienteFormDialog extends StatelessWidget {
                             // Formatear el nombre con primera letra en mayúscula
                             final displayName = typeName[0].toUpperCase() + typeName.substring(1);
                             
+                            // Agregar indicador si está inactiva
+                            final displayText = isActive 
+                                ? '$displayName (\$${price.toStringAsFixed(0)})'
+                                : '$displayName (\$${price.toStringAsFixed(0)}) - INACTIVA';
+                            
                             return DropdownMenuItem(
                               value: typeName,
                               child: Text(
-                                '$displayName (\$${price.toStringAsFixed(0)})',
-                                style: TextStyle(color: AppColors.textPrimary),
+                                displayText,
+                                style: TextStyle(
+                                  color: isActive ? AppColors.textPrimary : AppColors.disabled,
+                                  fontStyle: isActive ? FontStyle.normal : FontStyle.italic,
+                                ),
                               ),
                             );
                           }).toList(),
                           onChanged: (value) {
                             if (value != null) {
+                              // Verificar si la membresía seleccionada está activa
+                              bool isActive = true;
+                              if (membershipTypeModels != null) {
+                                final selectedModel = membershipTypeModels!.firstWhereOrNull(
+                                  (m) => m.name.toLowerCase().trim() == value.toLowerCase().trim()
+                                );
+                                if (selectedModel != null) {
+                                  isActive = selectedModel.isActive;
+                                }
+                              }
+                              
+                              // Si está editando y la membresía seleccionada está inactiva, mostrar advertencia
+                              if (isEditing && !isActive) {
+                                Get.snackbar(
+                                  'Membresía Inactiva',
+                                  'Esta membresía ya no está disponible. Se recomienda seleccionar una membresía activa.',
+                                  snackPosition: SnackPosition.BOTTOM,
+                                  backgroundColor: Colors.orange,
+                                  colorText: Colors.white,
+                                  duration: const Duration(seconds: 4),
+                                );
+                              }
+                              
                               selectedMembershipType.value = value;
                               
                               // Buscar el modelo de membresía seleccionado
                               if (membershipTypeModels != null) {
-                                // Buscar en todos los modelos, no solo en los activos
+                                // Buscar en todos los modelos, incluyendo inactivos
                                 final selectedModel = membershipTypeModels!
                                     .firstWhereOrNull((m) => m.name.toLowerCase().trim() == value.toLowerCase().trim());
                                 if (selectedModel != null) {

@@ -433,27 +433,36 @@ class ClientesController extends GetxController {
     membershipTypeList.clear();
     
     try {
-      // Cargar todos los tipos de membresía, activos e inactivos
-      final allTypes = await membershipProvider.getMembershipTypes(onlyActive: false);
+      // Cargar solo los tipos de membresía activos
+      final activeTypes = await membershipProvider.getMembershipTypes(onlyActive: true);
+      
+      // Verificar si la membresía actual del cliente está activa
+      final clientMembershipNormalized = client.membershipType.trim();
+      bool clientMembershipIsActive = activeTypes.any((type) => 
+        type.name.toLowerCase().trim() == clientMembershipNormalized.toLowerCase()
+      );
+      
+      // Si la membresía del cliente no está activa, cargarla también
+      List<MembershipTypeModel> allTypesToShow = List.from(activeTypes);
+      if (!clientMembershipIsActive) {
+        // Buscar la membresía inactiva del cliente
+        final allTypes = await membershipProvider.getMembershipTypes(onlyActive: false);
+        final clientInactiveType = allTypes.firstWhereOrNull((type) =>
+          type.name.toLowerCase().trim() == clientMembershipNormalized.toLowerCase()
+        );
+        if (clientInactiveType != null) {
+          allTypesToShow.add(clientInactiveType);
+        }
+      }
       
       // Asignar lista de modelos
-      membershipTypes.assignAll(allTypes);
+      membershipTypes.assignAll(allTypesToShow);
       
       // Crear lista de nombres única usando normalización de strings
       final Set<String> uniqueNamesSet = {};
-      for (final type in allTypes) {
+      for (final type in allTypesToShow) {
         final trimmedName = type.name.trim();
         uniqueNamesSet.add(trimmedName);
-      }
-      
-      // Agregar la membresía del cliente si no está en la lista (comparación normalizada)
-      final clientMembershipNormalized = client.membershipType.trim();
-      bool clientMembershipExists = uniqueNamesSet.any((name) => 
-        name.toLowerCase() == clientMembershipNormalized.toLowerCase()
-      );
-      
-      if (!clientMembershipExists) {
-        uniqueNamesSet.add(clientMembershipNormalized);
       }
       
       // Convertir a lista, limpiar y asignar
