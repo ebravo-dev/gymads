@@ -16,6 +16,8 @@ import '../modules/rfid_checkin/bindings/rfid_checkin_binding.dart';
 import '../modules/rfid_checkin/views/rfid_checkin_view.dart';
 import '../modules/membresias/bindings/membresias_binding.dart';
 import '../modules/membresias/views/membresias_view.dart';
+import '../modules/promociones/bindings/promociones_binding.dart';
+import '../modules/promociones/views/promociones_view.dart';
 
 part 'app_routes.dart';
 
@@ -64,6 +66,11 @@ class AppPages {
       name: _Paths.MEMBRESIAS,
       page: () => const MembresiasView(),
       binding: MembresiasBinding(),
+    ),
+    GetPage(
+      name: _Paths.PROMOCIONES,
+      page: () => const PromocionesView(),
+      binding: PromocionesBinding(),
     ),
   ];
 }

@@ -249,6 +249,15 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.purple.shade300,
                             onTap: controller.goToMembresias,
                           ),
+                          
+                          // Opción de Promociones
+                          ButtonMenuWidget(
+                            icon: Icons.local_offer,
+                            label: 'Promociones',
+                            description: 'Descuentos y ofertas',
+                            color: Colors.orange.shade300,
+                            onTap: controller.goToPromociones,
+                          ),
                         ],
                       ),
                     ),

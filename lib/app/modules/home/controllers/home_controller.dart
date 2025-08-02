@@ -39,6 +39,11 @@ class HomeController extends GetxController {
     Get.toNamed(Routes.MEMBRESIAS);
   }
 
+  void goToPromociones() {
+    statusMessages.add('Navegando a Gestión de Promociones...');
+    Get.toNamed(Routes.PROMOCIONES);
+  }
+
   /// Limpia los mensajes de estado
   void clearMessages() {
     statusMessages.clear();
