@@ -190,4 +190,90 @@ class SupabaseApiProvider extends ApiProvider {
       };
     }
   }
+
+  /// Método específico para obtener usuarios con información de membresía
+  Future<Map<String, dynamic>> getUsersWithMembershipInfo() async {
+    try {
+      if (kDebugMode) {
+        print('Obteniendo usuarios con información de membresía');
+      }
+      
+      // Obtener usuarios y tipos de membresía por separado para evitar problemas de JOIN
+      final usersResponse = await SupabaseService.client
+          .from('users')
+          .select();
+
+      final membershipTypesResponse = await SupabaseService.client
+          .from('membership_types')
+          .select();
+
+      if (kDebugMode) {
+        print('Usuarios obtenidos: ${usersResponse.length}');
+        print('Tipos de membresía obtenidos: ${membershipTypesResponse.length}');
+      }
+
+      // Crear un mapa de precios por tipo de membresía
+      final Map<String, double> membershipPrices = {};
+      for (var type in membershipTypesResponse) {
+        membershipPrices[type['name'].toString().toLowerCase()] = 
+          (type['price'] as num).toDouble();
+      }
+
+      if (kDebugMode) {
+        print('Mapa de precios: $membershipPrices');
+      }
+
+      // Procesar usuarios y agregar precio correspondiente
+      final List<Map<String, dynamic>> processedUsers = [];
+      for (var user in usersResponse) {
+        final userMap = Map<String, dynamic>.from(user);
+        final membershipType = (user['membership_type'] ?? 'normal').toString().toLowerCase();
+        
+        // Buscar precio en el mapa, usar 480.0 como fallback
+        userMap['membership_price'] = membershipPrices[membershipType] ?? 480.0;
+        
+        if (kDebugMode) {
+          print('Usuario: ${user['name']}, Tipo: $membershipType, Precio: ${userMap['membership_price']}');
+        }
+        
+        processedUsers.add(userMap);
+      }
+
+      return {
+        'error': false,
+        'message': 'Datos obtenidos correctamente',
+        'data': processedUsers
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error en getUsersWithMembershipInfo: $e');
+      }
+      
+      // Fallback: obtener solo usuarios con precio por defecto
+      try {
+        final fallbackResponse = await SupabaseService.client
+            .from('users')
+            .select();
+            
+        final List<Map<String, dynamic>> usersWithDefaultPrice = [];
+        for (var user in fallbackResponse) {
+          final userMap = Map<String, dynamic>.from(user);
+          userMap['membership_price'] = 480.0;
+          usersWithDefaultPrice.add(userMap);
+        }
+        
+        return {
+          'error': false,
+          'message': 'Datos obtenidos con precio por defecto',
+          'data': usersWithDefaultPrice
+        };
+      } catch (fallbackError) {
+        return {
+          'error': true,
+          'message': fallbackError.toString(),
+          'data': null
+        };
+      }
+    }
+  }
 }
