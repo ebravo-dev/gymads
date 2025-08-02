@@ -306,42 +306,73 @@ class PromocionesView extends GetView<PromocionesController> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton.icon(
-                  onPressed: () => _showEditDialog(context, promocion),
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Editar'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.info,
+                if (ResponsiveValues.isTablet(context)) ...[
+                  // Versión completa para tablet/desktop
+                  TextButton.icon(
+                    onPressed: () => _showEditDialog(context, promocion),
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Editar'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.info,
+                    ),
                   ),
-                ),
-                
-                const SizedBox(width: 8),
-                
-                TextButton.icon(
-                  onPressed: () => controller.togglePromotionStatus(
-                      promocion.id!, !promocion.isActive),
-                  icon: Icon(
-                    promocion.isActive ? Icons.pause : Icons.play_arrow,
-                    size: 16,
+                  
+                  const SizedBox(width: 8),
+                  
+                  TextButton.icon(
+                    onPressed: () => controller.togglePromotionStatus(
+                        promocion.id!, !promocion.isActive),
+                    icon: Icon(
+                      promocion.isActive ? Icons.pause : Icons.play_arrow,
+                      size: 16,
+                    ),
+                    label: Text(promocion.isActive ? 'Desactivar' : 'Activar'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: promocion.isActive
+                          ? AppColors.warning
+                          : AppColors.success,
+                    ),
                   ),
-                  label: Text(promocion.isActive ? 'Desactivar' : 'Activar'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: promocion.isActive
+                  
+                  const SizedBox(width: 8),
+                  
+                  TextButton.icon(
+                    onPressed: () => _showDeleteConfirmation(context, promocion),
+                    icon: const Icon(Icons.delete, size: 16),
+                    label: const Text('Eliminar'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                    ),
+                  ),
+                ] else ...[
+                  // Versión compacta para móvil (solo iconos)
+                  IconButton(
+                    onPressed: () => _showEditDialog(context, promocion),
+                    icon: const Icon(Icons.edit, size: 20),
+                    color: AppColors.info,
+                    tooltip: 'Editar',
+                  ),
+                  
+                  IconButton(
+                    onPressed: () => controller.togglePromotionStatus(
+                        promocion.id!, !promocion.isActive),
+                    icon: Icon(
+                      promocion.isActive ? Icons.pause : Icons.play_arrow,
+                      size: 20,
+                    ),
+                    color: promocion.isActive
                         ? AppColors.warning
                         : AppColors.success,
+                    tooltip: promocion.isActive ? 'Desactivar' : 'Activar',
                   ),
-                ),
-                
-                const SizedBox(width: 8),
-                
-                TextButton.icon(
-                  onPressed: () => _showDeleteConfirmation(context, promocion),
-                  icon: const Icon(Icons.delete, size: 16),
-                  label: const Text('Eliminar'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.error,
+                  
+                  IconButton(
+                    onPressed: () => _showDeleteConfirmation(context, promocion),
+                    icon: const Icon(Icons.delete, size: 20),
+                    color: AppColors.error,
+                    tooltip: 'Eliminar',
                   ),
-                ),
+                ],
               ],
             ),
           ],
