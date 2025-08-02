@@ -166,3 +166,11 @@ Row(
 )
 ```
 5. **Prueba en diferentes tamaños**: Verifica tu UI en dispositivos pequeños, medianos y grandes.
+
+## 🛠 Notas de Futuras Actualizaciones
+
+- Si se requieren nuevos breakpoints (por ejemplo, pantallas XL), agregar casos en `ResponsiveLayout` y valores en `ResponsiveValues`.
+- Actualizar `getResponsiveValue` para manejar rangos de ancho adicionales.
+- Revisar y actualizar ejemplos tras agregar nuevas utilidades responsivas.
+- Mantener la consistencia en la nomenclatura y firma de métodos adaptativos.
+- Ejecute pruebas manuales en diferentes tamaños de dispositivo para validar el comportamiento.
