@@ -14,7 +14,7 @@ class ClientesView extends GetView<ClientesController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CLIENTES'),
+        title: const Text('Clientes'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -153,10 +153,15 @@ class ClientesView extends GetView<ClientesController> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          constraints: BoxConstraints(
+            // Limitar la altura al 80% de la pantalla para permitir scroll
+            maxHeight: MediaQuery.of(Get.context!).size.height * 0.8,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+             mainAxisSize: MainAxisSize.min,
+             crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
               Row(
                 children: [
                   CircleAvatar(
@@ -302,8 +307,9 @@ class ClientesView extends GetView<ClientesController> {
             ],
           ),
         ),
-      ),
-    );
+      ),  // Cierra Container
+    ),    // Cierra Dialog
+    );    // Cierra Get.dialog
   }
 
   // Widget para elementos de detalle
@@ -353,8 +359,8 @@ class ClientesView extends GetView<ClientesController> {
     // Inicializar tarifa de registro (nuevo cliente siempre paga registro)
     controller.updateRegistrationFee(true);
 
-    Get.dialog(
-      ClienteFormDialog(
+    Get.to(
+      () => ClienteFormDialog(
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
@@ -370,7 +376,9 @@ class ClientesView extends GetView<ClientesController> {
         onSave: (user, photoFile) {
           controller.addCliente(user, photoFile: photoFile);
         },
+        fullScreen: true,
       ),
+      fullscreenDialog: true,
     );
   }
 
@@ -386,8 +394,8 @@ class ClientesView extends GetView<ClientesController> {
     // No cobra tarifa de registro en ediciones normales
     controller.updateRegistrationFee(false);
 
-    Get.dialog(
-      ClienteFormDialog(
+    Get.to(
+      () => ClienteFormDialog(
         nombreController: controller.nombreController,
         phoneController: controller.phoneController,
         userNumberController: controller.userNumberController,
@@ -397,7 +405,7 @@ class ClientesView extends GetView<ClientesController> {
         membershipTypeModels: controller.membershipTypes,
         selectedPaymentMethod: controller.selectedPaymentMethod,
         paymentMethods: controller.paymentMethodList,
-        isEditing: true,
+        // isEditing: true, duplicado eliminada
         membershipCost: controller.membershipCost,
         registrationFee: controller.registrationFee,
         totalAmount: controller.totalAmount,
@@ -414,7 +422,10 @@ class ClientesView extends GetView<ClientesController> {
 
           controller.updateCliente(cliente.id!, user, photoFile: photoFile);
         },
+        isEditing: true,
+        fullScreen: true,
       ),
+      fullscreenDialog: true,
     );
   }
 
@@ -426,7 +437,7 @@ class ClientesView extends GetView<ClientesController> {
       textConfirm: 'Eliminar',
       textCancel: 'Cancelar',
       confirmTextColor: Colors.white,
-      cancelTextColor: Colors.black,
+      cancelTextColor: Colors.white,
       buttonColor: Colors.red,
       onConfirm: () {
         controller.deleteCliente(cliente.id!);
