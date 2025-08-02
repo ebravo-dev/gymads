@@ -297,6 +297,7 @@ class MembresiasView extends GetView<MembresiasController> {
         controller: controller,
         isEditing: true,
       ),
+ 
     );
   }
   
@@ -365,10 +366,14 @@ class MembresiasView extends GetView<MembresiasController> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  TextButton(
+                    OutlinedButton(
                     onPressed: () => Get.back(),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                      foregroundColor: Colors.red,
+                    ),
                     child: const Text('Cancelar'),
-                  ),
+                    ),
                   ElevatedButton(
                     onPressed: () {
                       Get.back();

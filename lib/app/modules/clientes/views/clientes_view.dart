@@ -437,7 +437,7 @@ class ClientesView extends GetView<ClientesController> {
       textConfirm: 'Eliminar',
       textCancel: 'Cancelar',
       confirmTextColor: Colors.white,
-      cancelTextColor: Colors.black,
+      cancelTextColor: Colors.white,
       buttonColor: Colors.red,
       onConfirm: () {
         controller.deleteCliente(cliente.id!);
