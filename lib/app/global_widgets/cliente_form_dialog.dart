@@ -350,11 +350,6 @@ class ClienteFormDialog extends StatelessWidget {
                           }
                         }
                         
-                        // Debug: mostrar información de las listas
-                        print('🔍 WIDGET DEBUG: membershipTypes original: ${membershipTypes.join(", ")}');
-                        print('🔍 WIDGET DEBUG: filteredTypes: ${filteredTypes.join(", ")}');
-                        print('🔍 WIDGET DEBUG: selectedMembershipType.value: "${selectedMembershipType.value}"');
-                        
                         // Obtener el valor actual
                         String currentValue = selectedMembershipType.value.trim();
                         

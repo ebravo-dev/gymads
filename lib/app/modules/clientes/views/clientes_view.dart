@@ -129,6 +129,7 @@ class ClientesView extends GetView<ClientesController> {
                   padding: const EdgeInsets.only(bottom: 80),
                   itemBuilder: (context, index) {
                     final cliente = filteredClientes[index];
+                    
                     return ClienteCard(
                       cliente: cliente,
                       onTap: () => _showClienteDetails(cliente),

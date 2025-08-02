@@ -460,9 +460,6 @@ class ClientesController extends GetxController {
       final List<String> uniqueNamesList = uniqueNamesSet.toList();
       membershipTypeList.clear(); // Limpiar antes de asignar
       membershipTypeList.assignAll(uniqueNamesList);
-      
-      print('🔍 CONTROLLER DEBUG setupFormForEdit: Membresías únicas: ${uniqueNamesList.join(", ")}');
-      print('🔍 CONTROLLER DEBUG setupFormForEdit: Membresía del cliente: "${client.membershipType}"');
     } catch (e) {
       print('Error al cargar tipos de membresía: $e');
       // En caso de error, al menos asegurarse que el tipo del cliente esté disponible
@@ -482,15 +479,12 @@ class ClientesController extends GetxController {
     
     if (exactMatch != null) {
       selectedMembershipType.value = exactMatch;
-      print('🔍 CONTROLLER DEBUG: Valor establecido: "${exactMatch}"');
     } else {
       // Si no se encuentra, usar el primer valor disponible o el original
       if (membershipTypeList.isNotEmpty) {
         selectedMembershipType.value = membershipTypeList.first;
-        print('🔍 CONTROLLER DEBUG: Valor no encontrado, usando: "${membershipTypeList.first}"');
       } else {
         selectedMembershipType.value = clientMembershipToSet;
-        print('🔍 CONTROLLER DEBUG: Lista vacía, usando original: "${clientMembershipToSet}"');
       }
     }
     
