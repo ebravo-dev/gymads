@@ -286,6 +286,26 @@ class ClienteCard extends StatelessWidget {
                               cliente.phone,
                               primaryColor,
                             ),
+                            
+                            // Información de promoción si existe
+                            if (cliente.hasActivePromotion) ...[
+                              const SizedBox(height: 8),
+                              _buildInfoRow(
+                                Icons.local_offer_rounded,
+                                cliente.promotionDisplayText,
+                                Colors.orange,
+                                allowWrap: true,
+                              ),
+                              if (cliente.promotionExpiringSoon && cliente.promotionExpiresDate != null) ...[
+                                const SizedBox(height: 4),
+                                _buildInfoRow(
+                                  Icons.warning_rounded,
+                                  'Promoción expira: ${DateFormat('dd/MM/yyyy').format(cliente.promotionExpiresDate!)}',
+                                  Colors.amber,
+                                  allowWrap: true,
+                                ),
+                              ],
+                            ],
                           ],
                         ),
                       ),

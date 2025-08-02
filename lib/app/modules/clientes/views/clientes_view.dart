@@ -355,10 +355,8 @@ class ClientesView extends GetView<ClientesController> {
     final userNumber = await controller.generateUniqueUserNumber();
     controller.userNumberController.text = userNumber.toString();
 
-    // Actualizar el costo de membresía según el tipo seleccionado
-    controller.updateMembershipCost();
-    // Inicializar tarifa de registro (nuevo cliente siempre paga registro)
-    controller.updateRegistrationFee(true);
+    // Inicializar promociones disponibles
+    await controller.initializePromotions();
 
     Get.to(
       () => ClienteFormDialog(
@@ -387,11 +385,8 @@ class ClientesView extends GetView<ClientesController> {
   void _showEditDialog(UserModel cliente) async {
     // Solo configurar el formulario para edición - setupFormForEdit manejará cargar las membresías
     await controller.setupFormForEdit(cliente);
-
-    // Actualizar costos
-    controller.updateMembershipCost();
-    // No cobra tarifa de registro en ediciones normales
-    controller.updateRegistrationFee(false);
+    
+    // Ya no es necesario llamar métodos adicionales, initializeForEdit se llama dentro de setupFormForEdit
 
     Get.to(
       () => ClienteFormDialog(
@@ -450,12 +445,8 @@ class ClientesView extends GetView<ClientesController> {
     // Configurar el formulario para edición/renovación - esto cargará todas las membresías
     await controller.setupFormForEdit(cliente);
     
-    // Verificar si es un registro nuevo para aplicar tarifa adicional
-    bool isNewRegistration = cliente.isNewRegistration();
-
-    // Actualizar costos para mostrar en el formulario
-    controller.updateMembershipCost();
-    controller.updateRegistrationFee(isNewRegistration);
+    // Usar el método específico para renovación
+    controller.initializeForRenewal(cliente);
 
     Get.dialog(
       ClienteFormDialog(
