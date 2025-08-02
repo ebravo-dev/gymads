@@ -338,11 +338,38 @@ class ClienteFormDialog extends StatelessWidget {
                     ],
                     Obx(
                       () {
-                        // Validar que el valor seleccionado esté en la lista
-                        String? currentValue = selectedMembershipType.value;
-                        if (currentValue.isNotEmpty && !membershipTypes.contains(currentValue)) {
-                          // Si el valor actual no está en la lista, usar el primero disponible
-                          currentValue = membershipTypes.isNotEmpty ? membershipTypes.first : null;
+                        // Crear una lista filtrada sin duplicados (comparación case-insensitive)
+                        final List<String> filteredTypes = [];
+                        final Set<String> seenTypes = {};
+                        
+                        for (String typeName in membershipTypes) {
+                          final normalizedName = typeName.trim().toLowerCase();
+                          if (!seenTypes.contains(normalizedName)) {
+                            seenTypes.add(normalizedName);
+                            filteredTypes.add(typeName.trim());
+                          }
+                        }
+                        
+                        // Debug: mostrar información de las listas
+                        print('🔍 WIDGET DEBUG: membershipTypes original: ${membershipTypes.join(", ")}');
+                        print('🔍 WIDGET DEBUG: filteredTypes: ${filteredTypes.join(", ")}');
+                        print('🔍 WIDGET DEBUG: selectedMembershipType.value: "${selectedMembershipType.value}"');
+                        
+                        // Obtener el valor actual
+                        String currentValue = selectedMembershipType.value.trim();
+                        
+                        // Verificar que el valor actual esté en la lista filtrada (comparación exacta)
+                        String? validValue;
+                        for (String type in filteredTypes) {
+                          if (type.toLowerCase() == currentValue.toLowerCase()) {
+                            validValue = type; // Usar el valor exacto de la lista
+                            break;
+                          }
+                        }
+                        
+                        // Si no se encontró un valor válido, usar el primero disponible
+                        if (validValue == null && filteredTypes.isNotEmpty) {
+                          validValue = filteredTypes.first;
                         }
                         
                         return DropdownButtonFormField<String>(
@@ -357,8 +384,8 @@ class ClienteFormDialog extends StatelessWidget {
                           ),
                           dropdownColor: AppColors.cardBackground,
                           style: TextStyle(color: AppColors.textPrimary),
-                          value: currentValue,
-                          items: membershipTypes.map((typeName) {
+                          value: validValue,
+                          items: filteredTypes.map((typeName) {
                             // Buscar el precio correcto para mostrar
                             double price = 0.0;
                             if (membershipTypeModels != null) {

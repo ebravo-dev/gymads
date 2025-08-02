@@ -93,8 +93,13 @@ class ClientesController extends GetxController {
       
       // Guardar los modelos completos
       membershipTypes.assignAll(types);
-      // También mantener la lista de nombres para retrocompatibilidad
-      final Set<String> typeNamesSet = types.map((e) => e.name).toSet();
+      
+      // Crear lista de nombres única usando normalización de strings
+      final Set<String> typeNamesSet = {};
+      for (final type in types) {
+        final trimmedName = type.name.trim();
+        typeNamesSet.add(trimmedName);
+      }
       final List<String> typeNames = typeNamesSet.toList();
       
       // Buscar "normal" de manera case-insensitive
@@ -106,12 +111,17 @@ class ClientesController extends GetxController {
         typeNames.insert(0, normalType);
       }
       
+      membershipTypeList.clear(); // Limpiar antes de asignar
       membershipTypeList.assignAll(typeNames);
       
       // Solo cambiar el valor seleccionado si no es válido o si no está establecido
       if (membershipTypeList.isNotEmpty) {
         // Si el valor actual no está en la lista, seleccionar "normal" o el primero disponible
-        if (!membershipTypeList.contains(selectedMembershipType.value)) {
+        bool currentValueExists = membershipTypeList.any((name) => 
+          name.toLowerCase() == selectedMembershipType.value.toLowerCase()
+        );
+        
+        if (!currentValueExists) {
           if (normalType != null) {
             selectedMembershipType.value = normalType;
           } else {
@@ -119,6 +129,8 @@ class ClientesController extends GetxController {
           }
         }
       }
+      
+      print('🔍 DEBUG fetchMembershipTypes: ${typeNames.join(", ")}');
     } catch (e) {
       errorMessage.value = 'Error al cargar tipos de membresía: $e';
       print(errorMessage.value);
@@ -427,27 +439,60 @@ class ClientesController extends GetxController {
       // Asignar lista de modelos
       membershipTypes.assignAll(allTypes);
       
-      // Crear lista de nombres única y ordenada
-      final Set<String> uniqueNamesSet = allTypes.map((m) => m.name).toSet();
-      final List<String> uniqueNamesList = uniqueNamesSet.toList();
-      
-      // Asegurarse de que el tipo del cliente esté en la lista
-      if (!uniqueNamesList.contains(client.membershipType)) {
-        uniqueNamesList.add(client.membershipType);
+      // Crear lista de nombres única usando normalización de strings
+      final Set<String> uniqueNamesSet = {};
+      for (final type in allTypes) {
+        final trimmedName = type.name.trim();
+        uniqueNamesSet.add(trimmedName);
       }
       
-      // Asignar la lista final sin duplicados
+      // Agregar la membresía del cliente si no está en la lista (comparación normalizada)
+      final clientMembershipNormalized = client.membershipType.trim();
+      bool clientMembershipExists = uniqueNamesSet.any((name) => 
+        name.toLowerCase() == clientMembershipNormalized.toLowerCase()
+      );
+      
+      if (!clientMembershipExists) {
+        uniqueNamesSet.add(clientMembershipNormalized);
+      }
+      
+      // Convertir a lista, limpiar y asignar
+      final List<String> uniqueNamesList = uniqueNamesSet.toList();
+      membershipTypeList.clear(); // Limpiar antes de asignar
       membershipTypeList.assignAll(uniqueNamesList);
+      
+      print('🔍 CONTROLLER DEBUG setupFormForEdit: Membresías únicas: ${uniqueNamesList.join(", ")}');
+      print('🔍 CONTROLLER DEBUG setupFormForEdit: Membresía del cliente: "${client.membershipType}"');
     } catch (e) {
       print('Error al cargar tipos de membresía: $e');
       // En caso de error, al menos asegurarse que el tipo del cliente esté disponible
-      if (!membershipTypeList.contains(client.membershipType)) {
-        membershipTypeList.add(client.membershipType);
+      final clientMembership = client.membershipType.trim();
+      if (!membershipTypeList.any((name) => name.toLowerCase() == clientMembership.toLowerCase())) {
+        membershipTypeList.add(clientMembership);
       }
     }
     
-    // Establecer valor seleccionado (cliente)
-    selectedMembershipType.value = client.membershipType;
+    // Establecer valor seleccionado (cliente) - buscar coincidencia exacta en la lista
+    String clientMembershipToSet = client.membershipType.trim();
+    
+    // Buscar el valor exacto en la lista (puede tener capitalización diferente)
+    String? exactMatch = membershipTypeList.firstWhereOrNull((name) => 
+      name.toLowerCase() == clientMembershipToSet.toLowerCase()
+    );
+    
+    if (exactMatch != null) {
+      selectedMembershipType.value = exactMatch;
+      print('🔍 CONTROLLER DEBUG: Valor establecido: "${exactMatch}"');
+    } else {
+      // Si no se encuentra, usar el primer valor disponible o el original
+      if (membershipTypeList.isNotEmpty) {
+        selectedMembershipType.value = membershipTypeList.first;
+        print('🔍 CONTROLLER DEBUG: Valor no encontrado, usando: "${membershipTypeList.first}"');
+      } else {
+        selectedMembershipType.value = clientMembershipToSet;
+        print('🔍 CONTROLLER DEBUG: Lista vacía, usando original: "${clientMembershipToSet}"');
+      }
+    }
     
     // Actualizar el costo para mostrar en la UI
     updateMembershipCost();
