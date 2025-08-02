@@ -337,73 +337,82 @@ class ClienteFormDialog extends StatelessWidget {
                       const SizedBox(height: 16),
                     ],
                     Obx(
-                      () => DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: 'Tipo de Membresía',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          prefixIcon: const Icon(Icons.card_membership),
-                          filled: true,
-                          fillColor: AppColors.containerBackground,
-                        ),
-                        dropdownColor: AppColors.cardBackground,
-                        style: TextStyle(color: AppColors.textPrimary),
-                        value: selectedMembershipType.value,
-                        items: membershipTypes.map((typeName) {
-                          // Buscar el precio correcto para mostrar
-                          double price = 0.0;
-                          if (membershipTypeModels != null) {
-                            final model = membershipTypeModels!.firstWhereOrNull(
-                              (m) => m.name.toLowerCase().trim() == typeName.toLowerCase().trim()
-                            );
-                            if (model != null) {
-                              price = model.price;
-                            }
-                          }
-                          // Fallback a precios estáticos si no se encontró en los modelos
-                          if (price == 0.0) {
-                            price = UserModel.membershipPrices[typeName.toLowerCase().trim()] ?? 0.0;
-                          }
-                          
-                          // Formatear el nombre con primera letra en mayúscula
-                          final displayName = typeName[0].toUpperCase() + typeName.substring(1);
-                          
-                          return DropdownMenuItem(
-                            value: typeName,
-                            child: Text(
-                              '$displayName (\$${price.toStringAsFixed(0)})',
-                              style: TextStyle(color: AppColors.textPrimary),
+                      () {
+                        // Validar que el valor seleccionado esté en la lista
+                        String? currentValue = selectedMembershipType.value;
+                        if (currentValue.isNotEmpty && !membershipTypes.contains(currentValue)) {
+                          // Si el valor actual no está en la lista, usar el primero disponible
+                          currentValue = membershipTypes.isNotEmpty ? membershipTypes.first : null;
+                        }
+                        
+                        return DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Tipo de Membresía',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            selectedMembershipType.value = value;
-                            
-                            // Buscar el modelo de membresía seleccionado
+                            prefixIcon: const Icon(Icons.card_membership),
+                            filled: true,
+                            fillColor: AppColors.containerBackground,
+                          ),
+                          dropdownColor: AppColors.cardBackground,
+                          style: TextStyle(color: AppColors.textPrimary),
+                          value: currentValue,
+                          items: membershipTypes.map((typeName) {
+                            // Buscar el precio correcto para mostrar
+                            double price = 0.0;
                             if (membershipTypeModels != null) {
-                              // Buscar en todos los modelos, no solo en los activos
-                              final selectedModel = membershipTypeModels!
-                                  .firstWhereOrNull((m) => m.name.toLowerCase().trim() == value.toLowerCase().trim());
-                              if (selectedModel != null) {
-                                // Usar el precio del modelo de la base de datos
-                                membershipCost.value = selectedModel.price;
-                                totalAmount.value = membershipCost.value + registrationFee.value;
-                                return;
+                              final model = membershipTypeModels!.firstWhereOrNull(
+                                (m) => m.name.toLowerCase().trim() == typeName.toLowerCase().trim()
+                              );
+                              if (model != null) {
+                                price = model.price;
                               }
                             }
+                            // Fallback a precios estáticos si no se encontró en los modelos
+                            if (price == 0.0) {
+                              price = UserModel.membershipPrices[typeName.toLowerCase().trim()] ?? 0.0;
+                            }
                             
-                            // Fallback a los valores estáticos
-                            final key = value.toLowerCase().trim();
-                            final fallbackPrice = UserModel.membershipPrices[key];
-                            membershipCost.value = fallbackPrice != null 
-                                ? fallbackPrice 
-                                : (UserModel.membershipPrices['normal'] ?? 0.0);
-                            totalAmount.value = membershipCost.value + registrationFee.value;
-                          }
-                        },
-                      ),
+                            // Formatear el nombre con primera letra en mayúscula
+                            final displayName = typeName[0].toUpperCase() + typeName.substring(1);
+                            
+                            return DropdownMenuItem(
+                              value: typeName,
+                              child: Text(
+                                '$displayName (\$${price.toStringAsFixed(0)})',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              selectedMembershipType.value = value;
+                              
+                              // Buscar el modelo de membresía seleccionado
+                              if (membershipTypeModels != null) {
+                                // Buscar en todos los modelos, no solo en los activos
+                                final selectedModel = membershipTypeModels!
+                                    .firstWhereOrNull((m) => m.name.toLowerCase().trim() == value.toLowerCase().trim());
+                                if (selectedModel != null) {
+                                  // Usar el precio del modelo de la base de datos
+                                  membershipCost.value = selectedModel.price;
+                                  totalAmount.value = membershipCost.value + registrationFee.value;
+                                  return;
+                                }
+                              }
+                              
+                              // Fallback a los valores estáticos
+                              final key = value.toLowerCase().trim();
+                              final fallbackPrice = UserModel.membershipPrices[key];
+                              membershipCost.value = fallbackPrice != null 
+                                  ? fallbackPrice 
+                                  : (UserModel.membershipPrices['normal'] ?? 0.0);
+                              totalAmount.value = membershipCost.value + registrationFee.value;
+                            }
+                          },
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     Obx(

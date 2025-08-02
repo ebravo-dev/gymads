@@ -384,10 +384,8 @@ class ClientesView extends GetView<ClientesController> {
 
   // Mostrar diálogo para editar cliente
   void _showEditDialog(UserModel cliente) async {
-    controller.setupFormForEdit(cliente);
-    
-    // Recargar las membresías de la base de datos para tener la lista actualizada
-    await controller.fetchMembershipTypes();
+    // Solo configurar el formulario para edición - setupFormForEdit manejará cargar las membresías
+    await controller.setupFormForEdit(cliente);
 
     // Actualizar costos
     controller.updateMembershipCost();
@@ -448,11 +446,9 @@ class ClientesView extends GetView<ClientesController> {
 
   // Mostrar diálogo para renovar membresía
   void _showRenovarDialog(UserModel cliente) async {
-    controller.selectedMembershipType.value = cliente.membershipType;
+    // Configurar el formulario para edición/renovación - esto cargará todas las membresías
+    await controller.setupFormForEdit(cliente);
     
-    // Recargar las membresías de la base de datos para tener la lista actualizada
-    await controller.fetchMembershipTypes();
-
     // Verificar si es un registro nuevo para aplicar tarifa adicional
     bool isNewRegistration = cliente.isNewRegistration();
 

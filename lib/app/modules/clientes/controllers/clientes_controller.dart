@@ -94,7 +94,8 @@ class ClientesController extends GetxController {
       // Guardar los modelos completos
       membershipTypes.assignAll(types);
       // También mantener la lista de nombres para retrocompatibilidad
-      final List<String> typeNames = types.map((e) => e.name).toList();
+      final Set<String> typeNamesSet = types.map((e) => e.name).toSet();
+      final List<String> typeNames = typeNamesSet.toList();
       
       // Buscar "normal" de manera case-insensitive
       String? normalType = typeNames.firstWhereOrNull((name) => name.toLowerCase() == 'normal');
@@ -105,7 +106,7 @@ class ClientesController extends GetxController {
         typeNames.insert(0, normalType);
       }
       
-      membershipTypeList.value = typeNames;
+      membershipTypeList.assignAll(typeNames);
       
       // Solo cambiar el valor seleccionado si no es válido o si no está establecido
       if (membershipTypeList.isNotEmpty) {
@@ -406,7 +407,7 @@ class ClientesController extends GetxController {
     }
   }
 
-  void setupFormForEdit(UserModel client) async {
+  Future<void> setupFormForEdit(UserModel client) async {
     nombreController.text = client.name;
     phoneController.text = client.phone;
     userNumberController.text = client.userNumber.toString();
@@ -426,18 +427,23 @@ class ClientesController extends GetxController {
       // Asignar lista de modelos
       membershipTypes.assignAll(allTypes);
       
-      // Crear lista de nombres única
+      // Crear lista de nombres única y ordenada
       final Set<String> uniqueNamesSet = allTypes.map((m) => m.name).toSet();
-      membershipTypeList.assignAll(uniqueNamesSet.toList());
+      final List<String> uniqueNamesList = uniqueNamesSet.toList();
       
       // Asegurarse de que el tipo del cliente esté en la lista
-      if (!membershipTypeList.contains(client.membershipType)) {
-        membershipTypeList.add(client.membershipType);
+      if (!uniqueNamesList.contains(client.membershipType)) {
+        uniqueNamesList.add(client.membershipType);
       }
+      
+      // Asignar la lista final sin duplicados
+      membershipTypeList.assignAll(uniqueNamesList);
     } catch (e) {
       print('Error al cargar tipos de membresía: $e');
       // En caso de error, al menos asegurarse que el tipo del cliente esté disponible
-      membershipTypeList.add(client.membershipType);
+      if (!membershipTypeList.contains(client.membershipType)) {
+        membershipTypeList.add(client.membershipType);
+      }
     }
     
     // Establecer valor seleccionado (cliente)
