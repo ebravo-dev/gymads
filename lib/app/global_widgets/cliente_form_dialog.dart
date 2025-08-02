@@ -572,16 +572,18 @@ class ClienteFormDialog extends StatelessWidget {
 
   Widget _buildCostRow(String label, double amount, {bool isTotal = false}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            fontSize: isTotal ? 16 : 14,
-            color: AppColors.textPrimary,
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              fontSize: isTotal ? 16 : 14,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           '\$${amount.toStringAsFixed(2)}',
           style: TextStyle(

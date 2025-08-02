@@ -153,10 +153,15 @@ class ClientesView extends GetView<ClientesController> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          constraints: BoxConstraints(
+            // Limitar la altura al 80% de la pantalla para permitir scroll
+            maxHeight: MediaQuery.of(Get.context!).size.height * 0.8,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+             mainAxisSize: MainAxisSize.min,
+             crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
               Row(
                 children: [
                   CircleAvatar(
@@ -302,8 +307,9 @@ class ClientesView extends GetView<ClientesController> {
             ],
           ),
         ),
-      ),
-    );
+      ),  // Cierra Container
+    ),    // Cierra Dialog
+    );    // Cierra Get.dialog
   }
 
   // Widget para elementos de detalle
