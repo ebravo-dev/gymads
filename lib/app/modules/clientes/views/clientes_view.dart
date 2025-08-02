@@ -14,7 +14,7 @@ class ClientesView extends GetView<ClientesController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CLIENTES'),
+        title: const Text('Clientes'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
