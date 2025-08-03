@@ -3,7 +3,9 @@ import 'package:gymads/app/data/providers/supabase/supabase_api_provider.dart';
 import 'package:gymads/app/data/repositories/user_repository.dart';
 import 'package:gymads/app/data/providers/membership_type_provider.dart';
 import 'package:gymads/app/data/providers/promotion_provider.dart';
+import 'package:gymads/app/data/providers/ingreso_provider.dart';
 import 'package:gymads/app/data/services/promotion_service.dart';
+import 'package:gymads/app/data/services/ingreso_service.dart';
 
 import '../controllers/clientes_controller.dart';
 
@@ -39,11 +41,24 @@ class ClientesBinding extends Bindings {
       () => PromotionService(Get.find<PromotionProvider>()),
     );
 
+    // Inyectar el provider de ingresos
+    Get.lazyPut<IngresoProvider>(
+      () => IngresoProvider(),
+    );
+
+    // Inyectar el servicio de ingresos
+    Get.lazyPut<IngresoService>(
+      () => IngresoService(
+        ingresoProvider: Get.find<IngresoProvider>(),
+      ),
+    );
+
     // Inyectar el controlador de clientes
     Get.lazyPut<ClientesController>(
       () => ClientesController(
         userRepository: Get.find<UserRepository>(),
         membershipProvider: Get.find<MembershipTypeProvider>(),
+        ingresoService: Get.find<IngresoService>(), // Agregado
       ),
     );
   }

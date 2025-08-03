@@ -8,14 +8,19 @@ import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/models/promotion_model.dart';
 import 'package:gymads/app/data/repositories/user_repository.dart';
 import 'package:gymads/app/data/services/promotion_service.dart';
+import 'package:gymads/app/data/services/ingreso_service.dart';
+import 'package:gymads/app/modules/ingresos/controllers/ingresos_controller.dart';
 import 'package:gymads/app/global_widgets/qr_dialog.dart';
 
 class ClientesController extends GetxController {
   final UserRepository userRepository;
   final MembershipTypeProvider membershipProvider;
+  final IngresoService? ingresoService; // Opcional para evitar problemas de dependencias
+  
   ClientesController({
     required this.userRepository,
     required this.membershipProvider,
+    this.ingresoService,
   });
 
   // Estado observable para la lista de clientes
@@ -310,21 +315,72 @@ class ClientesController extends GetxController {
   Future<bool> addCliente(UserModel newClient, {File? photoFile}) async {
     isLoading.value = true;
     try {
-      final success = await userRepository.addUser(
+      final userId = await userRepository.addUser(
         newClient,
         photoFile: photoFile,
       );
-      if (success) {
+      
+      if (userId != null) {
         await fetchClientes();
+        
+        // Actualizar el cliente con el ID recién obtenido
+        final clienteConId = newClient.copyWith(id: userId);
+        
+        // Registrar el ingreso automáticamente si el servicio está disponible
+        if (ingresoService != null) {
+          try {
+            print('🔧 DEBUG: IngresoService disponible, registrando ingreso...');
+            
+            // Obtener información del staff actual (por ahora hardcodeado, después se puede obtener del usuario autenticado)
+            final usuarioStaff = 'Staff'; // TODO: Obtener del usuario autenticado
+            
+            print('🔧 DEBUG: Datos para ingreso:');
+            print('   - clienteId: $userId');
+            print('   - clienteNombre: ${clienteConId.name}');
+            print('   - tipoMembresia: ${clienteConId.membershipType}');
+            print('   - precioRegistro: ${registrationFee.value}');
+            print('   - precioMembresia: ${membershipCost.value}');
+            print('   - metodoPago: ${selectedPaymentMethod.value.toLowerCase()}');
+            print('   - usuarioStaff: $usuarioStaff');
+            print('   - promocion: ${selectedPromotion.value?.name ?? 'Ninguna'}');
+            
+            // Registrar el ingreso
+            final ingresoRegistrado = await ingresoService!.registrarIngresoNuevoCliente(
+              clienteId: userId,
+              clienteNombre: clienteConId.name,
+              tipoMembresia: clienteConId.membershipType,
+              precioRegistro: registrationFee.value,
+              precioMembresia: membershipCost.value,
+              metodoPago: selectedPaymentMethod.value.toLowerCase(),
+              usuarioStaff: usuarioStaff,
+              promocion: selectedPromotion.value,
+              notas: 'Registro de nuevo cliente',
+            );
+            
+            if (ingresoRegistrado) {
+              print('✅ Ingreso registrado correctamente para ${clienteConId.name}');
+              // Refrescar datos de ingresos globalmente
+              IngresosController.refreshIngresosGlobally();
+            } else {
+              print('⚠️ No se pudo registrar el ingreso para ${clienteConId.name}');
+            }
+          } catch (e) {
+            print('❌ Error al registrar ingreso: $e');
+            print('📊 Stack trace: ${StackTrace.current}');
+          }
+        } else {
+          print('⚠️ IngresoService no disponible, no se registrará el ingreso');
+        }
+        
         Get.back(); // Cerrar el diálogo de creación
 
         // Mostrar el diálogo con el QR
         Get.dialog(
           QrDialog(
-            nombre: newClient.name,
-            telefono: newClient.phone,
-            userNumber: newClient.userNumber,
-            totalAmount: totalAmount.value,
+            nombre: clienteConId.name,
+            telefono: clienteConId.phone,
+            userNumber: clienteConId.userNumber,
+            totalAmount: finalAmount.value > 0 ? finalAmount.value : totalAmount.value,
           ),
         );
 
@@ -516,6 +572,34 @@ class ClientesController extends GetxController {
         }
         
         final double total = isNewRegistration ? price + UserModel.registrationFee : price;
+
+        // Registrar el ingreso automáticamente si el servicio está disponible
+        if (ingresoService != null) {
+          try {
+            final usuarioStaff = 'Staff'; // TODO: Obtener del usuario autenticado
+            
+            final ingresoRegistrado = await ingresoService!.registrarIngresoRenovacion(
+              clienteId: client.id!,
+              clienteNombre: client.name,
+              tipoMembresia: membershipType,
+              precioMembresia: price,
+              metodoPago: paymentMethod.toLowerCase(),
+              usuarioStaff: usuarioStaff,
+              promocion: selectedPromotion.value,
+              notas: isNewRegistration ? 'Renovación con registro nuevo' : 'Renovación de membresía',
+            );
+            
+            if (ingresoRegistrado) {
+              print('✅ Ingreso de renovación registrado correctamente para ${client.name}');
+              // Refrescar datos de ingresos globalmente
+              IngresosController.refreshIngresosGlobally();
+            } else {
+              print('⚠️ No se pudo registrar el ingreso de renovación para ${client.name}');
+            }
+          } catch (e) {
+            print('❌ Error al registrar ingreso de renovación: $e');
+          }
+        }
 
         Get.back(); // Cerrar el diálogo de renovación
 
