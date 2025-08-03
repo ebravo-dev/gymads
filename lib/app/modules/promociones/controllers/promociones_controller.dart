@@ -127,17 +127,31 @@ class PromocionesController extends GetxController {
 
   /// Obtiene todas las promociones
   Future<void> fetchPromociones() async {
+    // Evitar múltiples llamadas concurrentes
+    if (isLoading.value) {
+      print('⚠️ Ya hay una carga en progreso, evitando duplicación');
+      return;
+    }
+
     try {
       isLoading.value = true;
       errorMessage.value = '';
+      print('🔄 Obteniendo promociones...');
 
       final result = await promotionProvider.getPromotions();
-      promociones.assignAll(result);
+      
+      // Limpiar la lista y agregar los nuevos elementos
+      promociones.clear();
+      promociones.addAll(result);
+      
+      print('✅ Promociones obtenidas: ${result.length}');
+      print('📋 Lista actualizada. Total en memoria: ${promociones.length}');
 
       if (result.isEmpty) {
         errorMessage.value = 'No hay promociones disponibles';
       }
     } catch (e) {
+      print('❌ Error al obtener promociones: $e');
       errorMessage.value = 'Error al cargar promociones: $e';
       Get.snackbar(
         'Error',
@@ -148,18 +162,37 @@ class PromocionesController extends GetxController {
       );
     } finally {
       isLoading.value = false;
+      print('🏁 Carga de promociones completada');
+    }
+  }
+
+  /// Método centralizado para actualizar la lista después de operaciones CRUD
+  Future<void> _refreshPromociones() async {
+    // Solo actualizar si no hay una carga en progreso
+    if (!isLoading.value) {
+      await Future.delayed(const Duration(milliseconds: 300)); // Delay más corto
+      await fetchPromociones();
+    } else {
+      print('⚠️ Carga en progreso, posponiendo actualización');
+      // Intentar de nuevo después de un delay más largo
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (!isLoading.value) {
+          fetchPromociones();
+        }
+      });
     }
   }
 
   /// Crea una nueva promoción
   Future<bool> createPromocion(PromotionModel promocion) async {
     try {
-      isLoading.value = true;
+      print('🔄 Creando promoción: ${promocion.name}');
       
       final success = await promotionProvider.createPromotion(promocion);
       
       if (success) {
-        await fetchPromociones(); // Recargar la lista
+        print('✅ Promoción creada exitosamente');
+        
         Get.snackbar(
           'Éxito',
           'Promoción creada correctamente',
@@ -167,8 +200,13 @@ class PromocionesController extends GetxController {
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
+        
+        // Actualizar la lista en background después del éxito
+        _refreshPromociones();
+        
         return true;
       } else {
+        print('❌ Error al crear promoción en el provider');
         Get.snackbar(
           'Error',
           'No se pudo crear la promoción',
@@ -179,6 +217,7 @@ class PromocionesController extends GetxController {
         return false;
       }
     } catch (e) {
+      print('❌ Excepción al crear promoción: $e');
       Get.snackbar(
         'Error',
         'Error al crear promoción: $e',
@@ -187,20 +226,19 @@ class PromocionesController extends GetxController {
         colorText: Colors.white,
       );
       return false;
-    } finally {
-      isLoading.value = false;
     }
   }
 
   /// Actualiza una promoción existente
   Future<bool> updatePromocion(String id, PromotionModel promocion) async {
     try {
-      isLoading.value = true;
+      print('🔄 Actualizando promoción: ${promocion.name}');
       
       final success = await promotionProvider.updatePromotion(id, promocion);
       
       if (success) {
-        await fetchPromociones(); // Recargar la lista
+        print('✅ Promoción actualizada exitosamente');
+        
         Get.snackbar(
           'Éxito',
           'Promoción actualizada correctamente',
@@ -208,6 +246,10 @@ class PromocionesController extends GetxController {
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
+        
+        // Actualizar la lista en background después del éxito
+        _refreshPromociones();
+        
         return true;
       } else {
         Get.snackbar(
@@ -228,20 +270,19 @@ class PromocionesController extends GetxController {
         colorText: Colors.white,
       );
       return false;
-    } finally {
-      isLoading.value = false;
     }
   }
 
   /// Elimina una promoción
   Future<bool> deletePromocion(String id) async {
     try {
-      isLoading.value = true;
+      print('🔄 Eliminando promoción con ID: $id');
       
       final success = await promotionProvider.deletePromotion(id);
       
       if (success) {
-        await fetchPromociones(); // Recargar la lista
+        print('✅ Promoción eliminada exitosamente');
+        
         Get.snackbar(
           'Éxito',
           'Promoción eliminada correctamente',
@@ -249,6 +290,10 @@ class PromocionesController extends GetxController {
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
+        
+        // Actualizar la lista en background después del éxito
+        _refreshPromociones();
+        
         return true;
       } else {
         Get.snackbar(
@@ -269,20 +314,45 @@ class PromocionesController extends GetxController {
         colorText: Colors.white,
       );
       return false;
-    } finally {
-      isLoading.value = false;
     }
   }
 
   /// Cambia el estado activo/inactivo de una promoción
   Future<void> togglePromotionStatus(String id, bool isActive) async {
     try {
+      print('🔄 Cambiando estado de promoción: $id a $isActive');
+      
       final success = await promotionProvider.togglePromotionStatus(id, isActive);
       
       if (success) {
-        await fetchPromociones(); // Recargar la lista
+        print('✅ Estado cambiado exitosamente');
+        
+        // Actualizar solo el elemento específico en la lista
+        final index = promociones.indexWhere((p) => p.id == id);
+        if (index != -1) {
+          final updatedPromotion = promociones[index].copyWith(isActive: isActive);
+          promociones[index] = updatedPromotion;
+          print('📝 Elemento actualizado en la lista local');
+        }
+        
+        Get.snackbar(
+          'Éxito',
+          'Estado de promoción ${isActive ? "activado" : "desactivado"}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+      } else {
+        Get.snackbar(
+          'Error',
+          'No se pudo cambiar el estado de la promoción',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
     } catch (e) {
+      print('❌ Error al cambiar estado: $e');
       Get.snackbar(
         'Error',
         'Error al cambiar estado de promoción: $e',

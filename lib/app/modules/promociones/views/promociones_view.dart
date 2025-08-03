@@ -17,7 +17,10 @@ class PromocionesView extends GetView<PromocionesController> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => controller.fetchPromociones(),
+            onPressed: () async {
+              print('🔄 Actualizando lista manualmente...');
+              await controller.fetchPromociones();
+            },
             tooltip: 'Actualizar',
           ),
           IconButton(
@@ -405,8 +408,13 @@ class PromocionesView extends GetView<PromocionesController> {
   }
 
   void _showAddDialog(BuildContext context) {
+    // Limpiar formulario y resetear estado
     controller.clearForm();
-    _showPromotionDialog(context, isEditing: false);
+    
+    // Pequeño delay para asegurar que el estado se actualice
+    Future.delayed(const Duration(milliseconds: 50), () {
+      _showPromotionDialog(context, isEditing: false);
+    });
   }
 
   void _showEditDialog(BuildContext context, promocion) {
@@ -603,17 +611,32 @@ class PromocionesView extends GetView<PromocionesController> {
   void _savePromotion(BuildContext context, bool isEditing, promocion) async {
     if (!controller.validateForm()) return;
     
-    final promotionModel = controller.createPromotionFromForm();
-    
-    bool success;
-    if (isEditing) {
-      success = await controller.updatePromocion(promocion.id!, promotionModel);
-    } else {
-      success = await controller.createPromocion(promotionModel);
-    }
-    
-    if (success) {
-      Get.back();
+    try {
+      final promotionModel = controller.createPromotionFromForm();
+      
+      bool success;
+      if (isEditing) {
+        print('🔄 Editando promoción...');
+        success = await controller.updatePromocion(promocion.id!, promotionModel);
+      } else {
+        print('🔄 Creando nueva promoción...');
+        success = await controller.createPromocion(promotionModel);
+      }
+      
+      if (success) {
+        print('✅ Operación exitosa, cerrando diálogo...');
+        // Cerrar el diálogo de forma segura
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      print('❌ Error en _savePromotion: $e');
+      Get.snackbar(
+        'Error',
+        'Error inesperado: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -626,9 +649,20 @@ class PromocionesView extends GetView<PromocionesController> {
       confirmTextColor: Colors.white,
       cancelTextColor: Colors.white,
       buttonColor: Colors.red,
-      onConfirm: () {
-        controller.deletePromocion(promocion.id!);
-        Get.back();
+      onConfirm: () async {
+        print('🔄 Iniciando eliminación de promoción...');
+        
+        // Cerrar el diálogo de confirmación primero
+        Navigator.of(context).pop();
+        
+        // Luego ejecutar la eliminación
+        final success = await controller.deletePromocion(promocion.id!);
+        
+        if (success) {
+          print('✅ Promoción eliminada exitosamente');
+        } else {
+          print('❌ Error al eliminar promoción');
+        }
       },
     );
   }
