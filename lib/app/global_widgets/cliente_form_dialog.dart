@@ -563,11 +563,14 @@ class ClienteFormDialog extends StatelessWidget {
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
-                                      Text(
-                                        'Promociones Disponibles',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.orange.shade700,
+                                      Expanded(
+                                        child: Text(
+                                          'Promociones Disponibles',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange.shade700,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
