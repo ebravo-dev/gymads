@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/product_model.dart';
 import 'package:gymads/core/theme/app_colors.dart';
+import 'package:gymads/app/routes/app_pages.dart';
 import '../controllers/inventario_controller.dart';
 
 class InventarioView extends GetView<InventarioController> {
@@ -21,7 +22,12 @@ class InventarioView extends GetView<InventarioController> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showProductDialog(context),
+        onPressed: () {
+          controller.resetForm();
+          Get.toNamed(Routes.PRODUCT_FORM);
+        },
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -46,8 +52,9 @@ class InventarioView extends GetView<InventarioController> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.accent.withOpacity(0.3)),
         ),
         margin: const EdgeInsets.all(16),
         child: Row(
@@ -70,14 +77,14 @@ class InventarioView extends GetView<InventarioController> {
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.primary,
+            color: AppColors.accent,
           ),
         ),
         Text(
           label,
           style: const TextStyle(
             fontSize: 12,
-            color: Colors.grey,
+            color: AppColors.textSecondary,
           ),
         ),
       ],
@@ -88,10 +95,25 @@ class InventarioView extends GetView<InventarioController> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: TextField(
-        decoration: const InputDecoration(
+        style: const TextStyle(color: AppColors.textPrimary),
+        decoration: InputDecoration(
           hintText: 'Buscar productos...',
-          prefixIcon: Icon(Icons.search),
-          border: OutlineInputBorder(),
+          hintStyle: const TextStyle(color: AppColors.textHint),
+          prefixIcon: const Icon(Icons.search, color: AppColors.accent),
+          filled: true,
+          fillColor: AppColors.cardBackground,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.accent.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.accent.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.accent, width: 2),
+          ),
         ),
         onChanged: controller.setSearchQuery,
       ),
@@ -122,13 +144,26 @@ class InventarioView extends GetView<InventarioController> {
       return Container(
         margin: const EdgeInsets.only(right: 8),
         child: FilterChip(
-          label: Text(category),
+          label: Text(
+            category,
+            style: TextStyle(
+              color: isSelected ? Colors.white : AppColors.textPrimary,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
           selected: isSelected,
           onSelected: (selected) {
             controller.setSelectedCategory(category == 'Todas' ? '' : category);
           },
-          backgroundColor: Colors.grey.shade200,
-          selectedColor: AppColors.primary.withOpacity(0.2),
+          backgroundColor: AppColors.cardBackground,
+          selectedColor: AppColors.accent,
+          checkmarkColor: Colors.white,
+          side: BorderSide(
+            color: isSelected ? AppColors.accent : AppColors.accent.withOpacity(0.3),
+            width: 1.5,
+          ),
+          elevation: isSelected ? 4 : 1,
+          shadowColor: AppColors.accent.withOpacity(0.3),
         ),
       );
     });
@@ -137,7 +172,11 @@ class InventarioView extends GetView<InventarioController> {
   Widget _buildProductList() {
     return Obx(() {
       if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
+        return const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.accent,
+          ),
+        );
       }
       
       if (controller.products.isEmpty) {
@@ -145,14 +184,27 @@ class InventarioView extends GetView<InventarioController> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.inventory_2, size: 64, color: Colors.grey),
+              Icon(Icons.inventory_2, size: 64, color: AppColors.textHint),
               const SizedBox(height: 16),
-              const Text('No hay productos registrados'),
+              Text(
+                'No hay productos registrados',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: () => _showProductDialog(Get.context!),
+                onPressed: () {
+                  controller.resetForm();
+                  Get.toNamed(Routes.PRODUCT_FORM);
+                },
                 icon: const Icon(Icons.add),
                 label: const Text('Agregar primer producto'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
@@ -172,32 +224,40 @@ class InventarioView extends GetView<InventarioController> {
   Widget _buildProductCard(Product product) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: AppColors.cardBackground,
+      elevation: 2,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppColors.primary.withOpacity(0.1),
+          backgroundColor: AppColors.accent.withOpacity(0.2),
           child: Text(
             product.name.isNotEmpty ? product.name[0].toUpperCase() : 'P',
             style: const TextStyle(
-              color: AppColors.primary,
+              color: AppColors.accent,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
         title: Text(
           product.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(product.description),
+            Text(
+              product.description,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 4),
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: product.stock > 0 ? Colors.green : Colors.red,
+                    color: product.stock > 0 ? AppColors.success : AppColors.error,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -205,6 +265,7 @@ class InventarioView extends GetView<InventarioController> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -213,7 +274,8 @@ class InventarioView extends GetView<InventarioController> {
                   '\$${product.price.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: AppColors.accent,
+                    fontSize: 16,
                   ),
                 ),
               ],
@@ -221,10 +283,11 @@ class InventarioView extends GetView<InventarioController> {
           ],
         ),
         trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
           onSelected: (value) {
             if (value == 'edit') {
               controller.editProduct(product);
-              _showProductDialog(Get.context!, isEditing: true);
+              Get.toNamed(Routes.PRODUCT_FORM, arguments: {'isEditing': true});
             } else if (value == 'transaction') {
               _showTransactionDialog(Get.context!, product);
             } else if (value == 'deactivate') {
@@ -235,22 +298,22 @@ class InventarioView extends GetView<InventarioController> {
             const PopupMenuItem<String>(
               value: 'edit',
               child: ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Editar'),
+                leading: Icon(Icons.edit, color: AppColors.accent),
+                title: Text('Editar', style: TextStyle(color: AppColors.textPrimary)),
               ),
             ),
             const PopupMenuItem<String>(
               value: 'transaction',
               child: ListTile(
-                leading: Icon(Icons.sync_alt),
-                title: Text('Registrar transacción'),
+                leading: Icon(Icons.sync_alt, color: AppColors.info),
+                title: Text('Registrar transacción', style: TextStyle(color: AppColors.textPrimary)),
               ),
             ),
             const PopupMenuItem<String>(
               value: 'deactivate',
               child: ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Desactivar'),
+                leading: Icon(Icons.delete, color: AppColors.error),
+                title: Text('Desactivar', style: TextStyle(color: AppColors.textPrimary)),
               ),
             ),
           ],
@@ -285,7 +348,7 @@ class InventarioView extends GetView<InventarioController> {
             onPressed: () {
               Get.back();
               controller.editProduct(product);
-              _showProductDialog(Get.context!, isEditing: true);
+              Get.toNamed(Routes.PRODUCT_FORM, arguments: {'isEditing': true});
             },
             child: const Text('Editar'),
           ),
@@ -312,159 +375,7 @@ class InventarioView extends GetView<InventarioController> {
       ),
     );
   }
-  
-  void _showProductDialog(BuildContext context, {bool isEditing = false}) {
-    controller.resetForm();
-    
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final priceController = TextEditingController();
-    final stockController = TextEditingController();
-    
-    String selectedCategory = controller.categories.isNotEmpty 
-        ? controller.categories.first.name 
-        : '';
-    
-    if (isEditing && controller.currentProduct.value != null) {
-      final product = controller.currentProduct.value!;
-      nameController.text = product.name;
-      descriptionController.text = product.description;
-      priceController.text = product.price.toString();
-      stockController.text = product.stock.toString();
-      selectedCategory = product.category;
-    }
-    
-    Get.dialog(
-      AlertDialog(
-        title: Text(isEditing ? 'Editar Producto' : 'Nuevo Producto'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre del producto *',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingresa el nombre del producto';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Descripción',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  Obx(() {
-                    return DropdownButtonFormField<String>(
-                      value: selectedCategory.isEmpty ? null : selectedCategory,
-                      decoration: const InputDecoration(
-                        labelText: 'Categoría *',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: controller.categories.map((category) {
-                        return DropdownMenuItem<String>(
-                          value: category.name,
-                          child: Text(category.name),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        selectedCategory = value ?? '';
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor selecciona una categoría';
-                        }
-                        return null;
-                      },
-                    );
-                  }),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Precio de venta *',
-                      border: OutlineInputBorder(),
-                      prefixText: '\$',
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Requerido';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Número inválido';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: stockController,
-                    decoration: const InputDecoration(
-                      labelText: 'Stock inicial *',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingresa el stock';
-                      }
-                      if (int.tryParse(value) == null) {
-                        return 'Número inválido';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
-          ),
-          Obx(() {
-            return ElevatedButton(
-              onPressed: controller.isLoading.value
-                  ? null
-                  : () {
-                      if (formKey.currentState!.validate()) {
-                        controller.saveProduct({
-                          'name': nameController.text,
-                          'description': descriptionController.text,
-                          'category': selectedCategory,
-                          'price': priceController.text,
-                          'stock': stockController.text,
-                        });
-                      }
-                    },
-              child: controller.isLoading.value
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(isEditing ? 'Actualizar' : 'Crear'),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-  
+
   void _showTransactionDialog(BuildContext context, Product product) {
     controller.selectedTransactionType.value = TransactionType.entrada;
     controller.quantityController.clear();
@@ -488,7 +399,7 @@ class InventarioView extends GetView<InventarioController> {
                   items: TransactionType.values.map((type) {
                     return DropdownMenuItem<TransactionType>(
                       value: type,
-                      child: Text(type.toString().split('.').last.toUpperCase()),
+                      child: Text(type == TransactionType.entrada ? 'Entrada' : 'Salida'),
                     );
                   }).toList(),
                   onChanged: (value) {

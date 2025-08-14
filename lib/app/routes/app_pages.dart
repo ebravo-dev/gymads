@@ -10,6 +10,7 @@ import '../modules/ingresos/bindings/ingresos_binding.dart';
 import '../modules/ingresos/views/ingresos_view.dart';
 import '../modules/inventario/bindings/inventario_binding.dart';
 import '../modules/inventario/views/inventario_view.dart';
+import '../modules/inventario/views/product_form_view.dart';
 import '../modules/checkin/bindings/checkin_binding.dart';
 import '../modules/checkin/views/checkin_view.dart';
 import '../modules/rfid_checkin/bindings/rfid_checkin_binding.dart';
@@ -45,6 +46,11 @@ class AppPages {
     GetPage(
       name: _Paths.INVENTARIO,
       page: () => const InventarioView(),
+      binding: InventarioBinding(),
+    ),
+    GetPage(
+      name: _Paths.PRODUCT_FORM,
+      page: () => const ProductFormView(),
       binding: InventarioBinding(),
     ),
     GetPage(
