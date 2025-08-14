@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// Clase para manejar la configuración del lector RFID ESP32
 class RfidConfig {
   // URL del ESP32 (por defecto es la IP local que proporcionaste)
-  static String get baseUrl => dotenv.env['ESP32_API_URL'] ?? 'http://192.168.1.173/api';
+  static String get baseUrl => dotenv.env['ESP32_API_URL'] ?? 'http://192.168.100.24/api';
   
   // Método para actualizar la configuración (útil si cambia la IP)
   static void updateConfig({String? newUrl}) {
