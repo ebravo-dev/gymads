@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/responsive_utils.dart';
+import '../../../global_widgets/bottom_navigation.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/button_menu_widget.dart';
 
@@ -268,6 +269,7 @@ class HomeView extends GetView<HomeController> {
           ),
         ),
       ),
+      bottomNavigationBar: const BottomNavigation(),
     );
   }
 }
