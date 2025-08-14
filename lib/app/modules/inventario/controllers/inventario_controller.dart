@@ -92,20 +92,16 @@ class InventarioController extends GetxController {
   }
   
   void filterProducts() {
-    if (searchQuery.isEmpty && selectedCategory.value == 'Todas') {
-      filteredProducts.value = products;
-    } else {
-      filteredProducts.value = products.where((product) {
-        bool matchesSearch = searchQuery.isEmpty || 
-            product.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            product.description.toLowerCase().contains(searchQuery.toLowerCase());
-            
-        bool matchesCategory = selectedCategory.value == 'Todas' || 
-            product.category == selectedCategory.value;
-            
-        return matchesSearch && matchesCategory;
-      }).toList();
-    }
+    filteredProducts.value = products.where((product) {
+      bool matchesSearch = searchQuery.isEmpty || 
+          product.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+          product.description.toLowerCase().contains(searchQuery.toLowerCase());
+          
+      bool matchesCategory = selectedCategory.value == 'Todas' || 
+          product.category == selectedCategory.value;
+          
+      return matchesSearch && matchesCategory;
+    }).toList();
   }
   
   void setSearchQuery(String query) {

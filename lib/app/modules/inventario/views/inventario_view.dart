@@ -138,8 +138,7 @@ class InventarioView extends GetView<InventarioController> {
   
   Widget _buildCategoryChip(String category) {
     return Obx(() {
-      final isSelected = controller.selectedCategory.value == category ||
-          (category == 'Todas' && controller.selectedCategory.value.isEmpty);
+      final isSelected = controller.selectedCategory.value == category;
       
       return Container(
         margin: const EdgeInsets.only(right: 8),
@@ -153,7 +152,7 @@ class InventarioView extends GetView<InventarioController> {
           ),
           selected: isSelected,
           onSelected: (selected) {
-            controller.setSelectedCategory(category == 'Todas' ? '' : category);
+            controller.setSelectedCategory(category);
           },
           backgroundColor: AppColors.cardBackground,
           selectedColor: AppColors.accent,
