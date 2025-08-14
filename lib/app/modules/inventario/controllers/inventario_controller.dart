@@ -209,21 +209,107 @@ class InventarioController extends GetxController {
   
   Future<void> deactivateProduct(String productId) async {
     try {
+      // Buscar el producto para verificar su stock
+      final product = products.firstWhere((p) => p.id == productId);
+      
+      // Solo permitir desactivación si no hay stock
+      if (product.stock > 0) {
+        Get.snackbar(
+          'Error',
+          'No se puede desactivar un producto con stock disponible (${product.stock} unidades). Debe tener 0 unidades para desactivarlo.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: Duration(seconds: 4),
+        );
+        return;
+      }
+      
       final result = await productRepository.deactivateProduct(productId);
       
       if (result) {
-        products.removeWhere((p) => p.id == productId);
-        products.refresh();
+        // Actualizar el producto en la lista en lugar de eliminarlo
+        final index = products.indexWhere((p) => p.id == productId);
+        if (index >= 0) {
+          products[index] = products[index].copyWith(isActive: false);
+          products.refresh();
+        }
         filterProducts();
         loadInventoryStats();
         
         Get.snackbar(
           'Éxito',
-          'Producto eliminado correctamente',
+          'Producto desactivado correctamente',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
+      }
+    } catch (e) {
+      print('Error al desactivar producto: $e');
+      Get.snackbar(
+        'Error',
+        'No se pudo desactivar el producto',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  Future<void> deleteProduct(String productId) async {
+    try {
+      // Mostrar confirmación antes de eliminar permanentemente
+      final confirmed = await Get.dialog<bool>(
+        AlertDialog(
+          title: Text(
+            'Eliminar Producto',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.red[700],
+            ),
+          ),
+          content: Text(
+            '¿Estás seguro de que deseas eliminar este producto permanentemente?\n\nEsta acción no se puede deshacer.',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(result: false),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Get.back(result: true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Eliminar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        final result = await productRepository.deleteProduct(productId);
+        
+        if (result) {
+          products.removeWhere((p) => p.id == productId);
+          products.refresh();
+          filterProducts();
+          loadInventoryStats();
+          
+          Get.snackbar(
+            'Éxito',
+            'Producto eliminado permanentemente',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
       }
     } catch (e) {
       print('Error al eliminar producto: $e');

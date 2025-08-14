@@ -291,7 +291,9 @@ class InventarioView extends GetView<InventarioController> {
             } else if (value == 'transaction') {
               _showTransactionDialog(Get.context!, product);
             } else if (value == 'deactivate') {
-              _showDeactivateDialog(product);
+              controller.deactivateProduct(product.id);
+            } else if (value == 'delete') {
+              controller.deleteProduct(product.id);
             }
           },
           itemBuilder: (BuildContext context) => [
@@ -309,11 +311,21 @@ class InventarioView extends GetView<InventarioController> {
                 title: Text('Registrar transacción', style: TextStyle(color: AppColors.textPrimary)),
               ),
             ),
+            // Solo mostrar "Desactivar" si hay stock
+            if (product.stock > 0)
+              const PopupMenuItem<String>(
+                value: 'deactivate',
+                child: ListTile(
+                  leading: Icon(Icons.visibility_off, color: AppColors.warning),
+                  title: Text('Desactivar', style: TextStyle(color: AppColors.textPrimary)),
+                ),
+              ),
+            // Siempre mostrar "Eliminar permanentemente"
             const PopupMenuItem<String>(
-              value: 'deactivate',
+              value: 'delete',
               child: ListTile(
-                leading: Icon(Icons.delete, color: AppColors.error),
-                title: Text('Desactivar', style: TextStyle(color: AppColors.textPrimary)),
+                leading: Icon(Icons.delete_forever, color: AppColors.error),
+                title: Text('Eliminar permanentemente', style: TextStyle(color: AppColors.textPrimary)),
               ),
             ),
           ],
@@ -460,29 +472,6 @@ class InventarioView extends GetView<InventarioController> {
               controller.recordTransaction(product.id, product.name);
             },
             child: const Text('Registrar'),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _showDeactivateDialog(Product product) {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Confirmar desactivación'),
-        content: Text('¿Estás seguro de que quieres desactivar "${product.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              controller.deactivateProduct(product.id);
-              Get.back();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Desactivar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

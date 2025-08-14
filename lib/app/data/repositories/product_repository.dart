@@ -241,6 +241,17 @@ class ProductRepository {
     }
   }
   
+  // Eliminar producto permanentemente
+  Future<bool> deleteProduct(String productId) async {
+    try {
+      await _supabase.from('products').delete().eq('id', productId);
+      return true;
+    } catch (e) {
+      print('Error al eliminar producto: $e');
+      return false;
+    }
+  }
+
   // Estadísticas básicas de inventario
   Future<Map<String, dynamic>> getInventoryStats() async {
     try {
