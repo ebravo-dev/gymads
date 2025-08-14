@@ -4,11 +4,7 @@ class Product {
   final String description;
   final String category;
   final double price;
-  final double costPrice;
   final int stock;
-  final String? imageUrl;
-  final String sku;
-  final String barcode;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -19,11 +15,7 @@ class Product {
     required this.description,
     required this.category,
     required this.price,
-    required this.costPrice,
     required this.stock,
-    this.imageUrl,
-    required this.sku,
-    required this.barcode,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
@@ -36,11 +28,7 @@ class Product {
       description: json['description'] ?? '',
       category: json['category'] ?? '',
       price: (json['price'] is num) ? json['price'].toDouble() : 0.0,
-      costPrice: (json['cost_price'] is num) ? json['cost_price'].toDouble() : 0.0,
       stock: json['stock'] ?? 0,
-      imageUrl: json['image_url'],
-      sku: json['sku'] ?? '',
-      barcode: json['barcode'] ?? '',
       isActive: json['is_active'] ?? true,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
@@ -58,11 +46,7 @@ class Product {
       'description': description,
       'category': category,
       'price': price,
-      'cost_price': costPrice,
       'stock': stock,
-      'image_url': imageUrl,
-      'sku': sku,
-      'barcode': barcode,
       'is_active': isActive,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -75,11 +59,7 @@ class Product {
     String? description,
     String? category,
     double? price,
-    double? costPrice,
     int? stock,
-    String? imageUrl,
-    String? sku,
-    String? barcode,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -90,11 +70,7 @@ class Product {
       description: description ?? this.description,
       category: category ?? this.category,
       price: price ?? this.price,
-      costPrice: costPrice ?? this.costPrice,
       stock: stock ?? this.stock,
-      imageUrl: imageUrl ?? this.imageUrl,
-      sku: sku ?? this.sku,
-      barcode: barcode ?? this.barcode,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

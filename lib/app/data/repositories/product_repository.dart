@@ -76,7 +76,7 @@ class ProductRepository {
       final response = await _supabase
           .from('products')
           .select()
-          .or('name.ilike.%$query%,barcode.eq.$query,sku.eq.$query')
+          .ilike('name', '%$query%')
           .eq('is_active', true)
           .order('name', ascending: true);
       

@@ -1,8 +1,5 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:gymads/app/data/services/supabase_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:gymads/app/data/models/product_model.dart';
 import 'package:gymads/app/data/repositories/product_repository.dart';
@@ -27,9 +24,6 @@ class InventarioController extends GetxController {
   
   // Estadísticas
   final RxMap<String, dynamic> inventoryStats = <String, dynamic>{}.obs;
-  
-  // Para la imagen
-  final Rx<File?> productImage = Rx<File?>(null);
   
   // Para transacciones
   final RxList<ProductTransaction> transactions = <ProductTransaction>[].obs;
@@ -56,7 +50,6 @@ class InventarioController extends GetxController {
   
   void resetForm() {
     currentProduct.value = null;
-    productImage.value = null;
     isEditing.value = false;
     quantityController.clear();
     notesController.clear();
@@ -105,8 +98,7 @@ class InventarioController extends GetxController {
       filteredProducts.value = products.where((product) {
         bool matchesSearch = searchQuery.isEmpty || 
             product.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            product.barcode == searchQuery ||
-            product.sku.toLowerCase().contains(searchQuery.toLowerCase());
+            product.description.toLowerCase().contains(searchQuery.toLowerCase());
             
         bool matchesCategory = selectedCategory.value == 'Todas' || 
             product.category == selectedCategory.value;
@@ -130,11 +122,6 @@ class InventarioController extends GetxController {
     isLoading.value = true;
     
     try {
-      String? imageUrl;
-      if (productImage.value != null) {
-        imageUrl = await uploadProductImage(productImage.value!);
-      }
-      
       final now = DateTime.now();
       
       if (isEditing.value && currentProduct.value != null) {
@@ -144,11 +131,7 @@ class InventarioController extends GetxController {
           description: productData['description'],
           category: productData['category'],
           price: double.parse(productData['price']),
-          costPrice: double.parse(productData['costPrice']),
           stock: int.parse(productData['stock']),
-          imageUrl: imageUrl ?? currentProduct.value!.imageUrl,
-          sku: productData['sku'],
-          barcode: productData['barcode'],
           isActive: true,
           updatedAt: now,
         );
@@ -179,11 +162,7 @@ class InventarioController extends GetxController {
           description: productData['description'],
           category: productData['category'],
           price: double.parse(productData['price']),
-          costPrice: double.parse(productData['costPrice']),
           stock: int.parse(productData['stock']),
-          imageUrl: imageUrl,
-          sku: productData['sku'],
-          barcode: productData['barcode'],
           isActive: true,
           createdAt: now,
           updatedAt: now,
@@ -220,41 +199,6 @@ class InventarioController extends GetxController {
       );
     } finally {
       isLoading.value = false;
-    }
-  }
-  
-  Future<String?> uploadProductImage(File file) async {
-    isUploading.value = true;
-    try {
-      final String fileName = 'product_${DateTime.now().millisecondsSinceEpoch}.${file.path.split('.').last}';
-      final response = await SupabaseService.client
-          .storage
-          .from('product_images')
-          .upload(fileName, file);
-      
-      if (response.isNotEmpty) {
-        final imageUrl = SupabaseService.client
-            .storage
-            .from('product_images')
-            .getPublicUrl(fileName);
-        
-        return imageUrl;
-      }
-      return null;
-    } catch (e) {
-      print('Error al subir imagen: $e');
-      return null;
-    } finally {
-      isUploading.value = false;
-    }
-  }
-  
-  Future<void> pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (image != null) {
-      productImage.value = File(image.path);
     }
   }
   
