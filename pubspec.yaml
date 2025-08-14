@@ -25,6 +25,7 @@ dependencies:
   permission_handler: ^11.1.0
   flutter_dotenv: ^5.2.1
   supabase_flutter: ^2.8.4
+  just_audio: ^0.9.39
 
 dev_dependencies:
   flutter_test:
@@ -39,3 +40,4 @@ flutter:
     - assets/
     - assets/icons/
     - assets/images/
+    - assets/audio/

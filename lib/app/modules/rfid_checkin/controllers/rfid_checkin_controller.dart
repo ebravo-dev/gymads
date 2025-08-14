@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
+import '../../../data/services/audio_service.dart';
 import '../../../data/config/rfid_config.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
@@ -97,6 +98,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       
       if (user == null) {
         errorMessage.value = 'Tarjeta RFID no registrada';
+        // Reproducir sonido de error
+        AudioService.playErrorSound();
         isLoading.value = false;
         return;
       }
@@ -104,6 +107,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       // Verificar si la membresía está activa
       if (!user.isActive) {
         errorMessage.value = 'Membresía inactiva';
+        // Reproducir sonido de error
+        AudioService.playErrorSound();
         isLoading.value = false;
         return;
       }
@@ -111,6 +116,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       // Verificar si la membresía no ha expirado
       if (user.daysRemaining <= 0) {
         errorMessage.value = 'Membresía vencida';
+        // Reproducir sonido de error
+        AudioService.playErrorSound();
         isLoading.value = false;
         return;
       }
@@ -129,6 +136,10 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       
       // Mostrar mensaje de bienvenida personalizado
       successMessage.value = '¡Bienvenido(a)!';
+      
+      // Reproducir sonido de bienvenida
+      AudioService.playWelcomeSound();
+      
       isShowingDialog.value = true;
       
       // Limpiar el campo de RFID después de un acceso exitoso

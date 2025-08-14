@@ -16,6 +16,13 @@ class UserModel {
   final DateTime? lastPaymentDate;
   final int daysRemaining;
   final double membershipPrice; // Precio dinámico desde base de datos
+  
+  // Campos de promociones
+  final String? currentPromotionId;
+  final String? currentPromotionName;
+  final double promotionDiscountAmount;
+  final DateTime? promotionAppliedDate;
+  final DateTime? promotionExpiresDate;
 
   // Precios de membresías
   static const Map<String, double> membershipPrices = {
@@ -51,6 +58,13 @@ class UserModel {
     this.lastPaymentDate,
     this.daysRemaining = 0,
     this.membershipPrice = 0.0, // Precio dinámico con valor por defecto
+    
+    // Campos de promociones
+    this.currentPromotionId,
+    this.currentPromotionName,
+    this.promotionDiscountAmount = 0.0,
+    this.promotionAppliedDate,
+    this.promotionExpiresDate,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -111,6 +125,13 @@ class UserModel {
       lastPaymentDate: lastPaymentDate,
       daysRemaining: daysLeft,
       membershipPrice: (json['membership_price'] ?? 0.0).toDouble(), // Precio desde BD
+      
+      // Campos de promociones
+      currentPromotionId: (json['current_promotion_id'] ?? json['currentPromotionId'])?.toString(),
+      currentPromotionName: (json['current_promotion_name'] ?? json['currentPromotionName'])?.toString(),
+      promotionDiscountAmount: (json['promotion_discount_amount'] ?? json['promotionDiscountAmount'] ?? 0.0).toDouble(),
+      promotionAppliedDate: parseDateTime(json['promotion_applied_date'] ?? json['promotionAppliedDate']),
+      promotionExpiresDate: parseDateTime(json['promotion_expires_date'] ?? json['promotionExpiresDate']),
     );
   }
 
@@ -133,6 +154,13 @@ class UserModel {
       'rfid_card': rfidCard, // snake_case
       'user_number': userNumber, // snake_case
       'last_payment_date': lastPaymentDate?.toUtc().toIso8601String(), // snake_case
+      
+      // Campos de promociones
+      'current_promotion_id': currentPromotionId,
+      'current_promotion_name': currentPromotionName,
+      'promotion_discount_amount': promotionDiscountAmount,
+      'promotion_applied_date': promotionAppliedDate?.toUtc().toIso8601String(),
+      'promotion_expires_date': promotionExpiresDate?.toUtc().toIso8601String(),
     };
     
     return jsonMap;
@@ -154,6 +182,13 @@ class UserModel {
     List<dynamic>? accessHistory,
     DateTime? lastPaymentDate,
     double? membershipPrice, // Agregado precio de membresía
+    
+    // Campos de promociones
+    String? currentPromotionId,
+    String? currentPromotionName,
+    double? promotionDiscountAmount,
+    DateTime? promotionAppliedDate,
+    DateTime? promotionExpiresDate,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -170,6 +205,13 @@ class UserModel {
       accessHistory: accessHistory ?? this.accessHistory,
       lastPaymentDate: lastPaymentDate ?? this.lastPaymentDate,
       membershipPrice: membershipPrice ?? this.membershipPrice, // Precio dinámico
+      
+      // Campos de promociones
+      currentPromotionId: currentPromotionId ?? this.currentPromotionId,
+      currentPromotionName: currentPromotionName ?? this.currentPromotionName,
+      promotionDiscountAmount: promotionDiscountAmount ?? this.promotionDiscountAmount,
+      promotionAppliedDate: promotionAppliedDate ?? this.promotionAppliedDate,
+      promotionExpiresDate: promotionExpiresDate ?? this.promotionExpiresDate,
     );
   }
 
@@ -205,6 +247,46 @@ class UserModel {
       total += registrationFee;
     }
 
+    return total;
+  }
+  
+  // Métodos relacionados con promociones
+  
+  /// Verifica si el usuario tiene una promoción activa
+  bool get hasActivePromotion {
+    if (currentPromotionId == null) return false;
+    if (promotionExpiresDate == null) return true; // Sin fecha de expiración
+    return DateTime.now().isBefore(promotionExpiresDate!);
+  }
+  
+  /// Obtiene el texto descriptivo de la promoción activa
+  String get promotionDisplayText {
+    if (!hasActivePromotion) return '';
+    
+    String text = currentPromotionName ?? 'Promoción activa';
+    if (promotionDiscountAmount > 0) {
+      text += ' (-\$${promotionDiscountAmount.toStringAsFixed(2)})';
+    }
+    return text;
+  }
+  
+  /// Verifica si la promoción está por expirar (próximos 7 días)
+  bool get promotionExpiringSoon {
+    if (!hasActivePromotion || promotionExpiresDate == null) return false;
+    final daysUntilExpiration = promotionExpiresDate!.difference(DateTime.now()).inDays;
+    return daysUntilExpiration <= 7 && daysUntilExpiration > 0;
+  }
+  
+  /// Calcula el monto total considerando la promoción activa
+  double calculateTotalWithPromotion() {
+    double total = calculateTotalPayment();
+    
+    if (hasActivePromotion && promotionDiscountAmount > 0) {
+      total -= promotionDiscountAmount;
+      // Asegurar que el total no sea negativo
+      total = total < 0 ? 0 : total;
+    }
+    
     return total;
   }
 }

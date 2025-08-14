@@ -5,15 +5,22 @@ import 'package:get/get.dart';
 import 'package:gymads/app/data/providers/membership_type_provider.dart';
 import 'package:gymads/app/data/models/membership_type_model.dart';
 import 'package:gymads/app/data/models/user_model.dart';
+import 'package:gymads/app/data/models/promotion_model.dart';
 import 'package:gymads/app/data/repositories/user_repository.dart';
+import 'package:gymads/app/data/services/promotion_service.dart';
+import 'package:gymads/app/data/services/ingreso_service.dart';
+import 'package:gymads/app/modules/ingresos/controllers/ingresos_controller.dart';
 import 'package:gymads/app/global_widgets/qr_dialog.dart';
 
 class ClientesController extends GetxController {
   final UserRepository userRepository;
   final MembershipTypeProvider membershipProvider;
+  final IngresoService? ingresoService; // Opcional para evitar problemas de dependencias
+  
   ClientesController({
     required this.userRepository,
     required this.membershipProvider,
+    this.ingresoService,
   });
 
   // Estado observable para la lista de clientes
@@ -48,12 +55,23 @@ class ClientesController extends GetxController {
   final RxDouble membershipCost = 0.0.obs;
   final RxDouble registrationFee = 0.0.obs;
   final RxDouble totalAmount = 0.0.obs;
+  
+  // Información de promociones
+  final RxList<PromotionModel> availablePromotions = <PromotionModel>[].obs;
+  final Rx<PromotionModel?> selectedPromotion = Rx<PromotionModel?>(null);
+  final RxDouble promotionDiscount = 0.0.obs;
+  final RxDouble finalAmount = 0.0.obs;
 
   @override
   void onInit() {
     super.onInit();
     fetchClientes();
     fetchMembershipTypes();
+    
+    // Escuchar cambios en el tipo de membresía para actualizar promociones
+    selectedMembershipType.listen((_) {
+      updateMembershipCost();
+    });
   }
 
   @override
@@ -137,6 +155,136 @@ class ClientesController extends GetxController {
     }
   }
   
+  // Obtener promociones disponibles
+  Future<void> fetchAvailablePromotions() async {
+    try {
+      print('🔍 DEBUG: Iniciando fetchAvailablePromotions...');
+      print('   - Tipo de membresía: ${selectedMembershipType.value}');
+      print('   - Costo membresía: ${membershipCost.value}');
+      print('   - Tarifa registro: ${registrationFee.value}');
+      print('   - Día actual: ${DateTime.now().weekday % 7} (${_getDayName(DateTime.now().weekday % 7)})');
+      
+      final promotionService = Get.find<PromotionService>();
+      
+      // Obtener TODAS las promociones válidas, no solo las mejores
+      final allValidPromotions = await promotionService.getCurrentValidPromotions();
+      
+      print('🎯 DEBUG: Promociones válidas obtenidas del servicio: ${allValidPromotions.length}');
+      for (final promo in allValidPromotions) {
+        print('   - ${promo.name}: ${promo.appliesTo} | Día: ${promo.dayOfWeek} | Activa: ${promo.isCurrentlyValid}');
+      }
+      
+      // Filtrar promociones que apliquen al contexto actual
+      final List<PromotionModel> applicablePromotions = [];
+      
+      for (final promotion in allValidPromotions) {
+        bool isApplicable = false;
+        
+        print('📝 DEBUG: Evaluando promoción "${promotion.name}"...');
+        
+        // Verificar si aplica a registro (cuando hay tarifa de registro)
+        if (registrationFee.value > 0 && 
+           (promotion.appliesTo_('registration') || promotion.appliesTo_('both'))) {
+          isApplicable = true;
+          print('   ✅ Aplica a registro (tarifa: ${registrationFee.value})');
+        }
+        
+        // Verificar si aplica a membresía
+        if (promotion.appliesTo_('membership') || promotion.appliesTo_('both')) {
+          isApplicable = true;
+          print('   ✅ Aplica a membresía');
+        }
+        
+        // Verificar condiciones específicas (día de la semana, tipo de membresía, etc.)
+        if (isApplicable && promotion.isCurrentlyValid) {
+          print('   ✅ Promoción es válida y aplicable inicialmente');
+          
+          // Verificar día de la semana si está especificado
+          if (promotion.dayOfWeek != null) {
+            final today = DateTime.now();
+            final currentDayOfWeek = today.weekday % 7; // 0=domingo, 6=sábado
+            if (promotion.dayOfWeek != currentDayOfWeek) {
+              isApplicable = false;
+              print('   ❌ No aplica por día de semana (requiere: ${_getDayName(promotion.dayOfWeek!)}, hoy: ${_getDayName(currentDayOfWeek)})');
+            } else {
+              print('   ✅ Aplica por día de semana (${_getDayName(promotion.dayOfWeek!)})');
+            }
+          }
+          
+          // Verificar tipo de membresía si está especificado
+          if (promotion.membershipTypes.isNotEmpty &&
+              !promotion.appliesToMembership(selectedMembershipType.value)) {
+            isApplicable = false;
+            print('   ❌ No aplica por tipo de membresía (requiere: ${promotion.membershipTypes}, actual: ${selectedMembershipType.value})');
+          } else if (promotion.membershipTypes.isNotEmpty) {
+            print('   ✅ Aplica por tipo de membresía');
+          }
+          
+          if (isApplicable) {
+            applicablePromotions.add(promotion);
+            print('   🎉 Promoción agregada a la lista aplicable');
+          }
+        } else {
+          print('   ❌ Promoción no válida o no aplicable (isCurrentlyValid: ${promotion.isCurrentlyValid})');
+        }
+      }
+      
+      availablePromotions.assignAll(applicablePromotions);
+      
+      // Debug para verificar las promociones encontradas
+      print('🎯 DEBUG: Promociones disponibles FINALES: ${applicablePromotions.length}');
+      for (final promo in applicablePromotions) {
+        print('   - ${promo.name}: ${promo.appliesTo} | Día: ${promo.dayOfWeek} | Activa: ${promo.isCurrentlyValid}');
+      }
+      
+      // Auto-seleccionar la mejor promoción si hay alguna disponible
+      if (applicablePromotions.isNotEmpty) {
+        PromotionModel? bestPromotion;
+        double bestDiscount = 0.0;
+        
+        for (final promotion in applicablePromotions) {
+          final discount = _calculatePromotionDiscount(promotion);
+          print('💰 DEBUG: Descuento calculado para "${promotion.name}": \$${discount.toStringAsFixed(2)}');
+          if (discount > bestDiscount) {
+            bestDiscount = discount;
+            bestPromotion = promotion;
+          }
+        }
+        
+        if (bestPromotion != null) {
+          selectedPromotion.value = bestPromotion;
+          promotionDiscount.value = bestDiscount;
+          finalAmount.value = totalAmount.value - bestDiscount;
+          print('🏆 DEBUG: Mejor promoción seleccionada: "${bestPromotion.name}" con descuento \$${bestDiscount.toStringAsFixed(2)}');
+        } else {
+          selectedPromotion.value = null;
+          promotionDiscount.value = 0.0;
+          finalAmount.value = totalAmount.value;
+          print('❌ DEBUG: No hay promoción con descuento válido');
+        }
+      } else {
+        selectedPromotion.value = null;
+        promotionDiscount.value = 0.0;
+        finalAmount.value = totalAmount.value;
+        print('❌ DEBUG: No hay promociones aplicables');
+      }
+      
+      // Actualizar la UI
+      update(['promotions']);
+    } catch (e) {
+      print('❌ ERROR al obtener promociones: $e');
+      availablePromotions.clear();
+      selectedPromotion.value = null;
+      promotionDiscount.value = 0.0;
+      finalAmount.value = totalAmount.value;
+    }
+  }
+  
+  String _getDayName(int dayOfWeek) {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    return days[dayOfWeek];
+  }
+  
 
   // Método para filtrar clientes
   List<UserModel> get filteredClientes {
@@ -167,21 +315,72 @@ class ClientesController extends GetxController {
   Future<bool> addCliente(UserModel newClient, {File? photoFile}) async {
     isLoading.value = true;
     try {
-      final success = await userRepository.addUser(
+      final userId = await userRepository.addUser(
         newClient,
         photoFile: photoFile,
       );
-      if (success) {
+      
+      if (userId != null) {
         await fetchClientes();
+        
+        // Actualizar el cliente con el ID recién obtenido
+        final clienteConId = newClient.copyWith(id: userId);
+        
+        // Registrar el ingreso automáticamente si el servicio está disponible
+        if (ingresoService != null) {
+          try {
+            print('🔧 DEBUG: IngresoService disponible, registrando ingreso...');
+            
+            // Obtener información del staff actual (por ahora hardcodeado, después se puede obtener del usuario autenticado)
+            final usuarioStaff = 'Staff'; // TODO: Obtener del usuario autenticado
+            
+            print('🔧 DEBUG: Datos para ingreso:');
+            print('   - clienteId: $userId');
+            print('   - clienteNombre: ${clienteConId.name}');
+            print('   - tipoMembresia: ${clienteConId.membershipType}');
+            print('   - precioRegistro: ${registrationFee.value}');
+            print('   - precioMembresia: ${membershipCost.value}');
+            print('   - metodoPago: ${selectedPaymentMethod.value.toLowerCase()}');
+            print('   - usuarioStaff: $usuarioStaff');
+            print('   - promocion: ${selectedPromotion.value?.name ?? 'Ninguna'}');
+            
+            // Registrar el ingreso
+            final ingresoRegistrado = await ingresoService!.registrarIngresoNuevoCliente(
+              clienteId: userId,
+              clienteNombre: clienteConId.name,
+              tipoMembresia: clienteConId.membershipType,
+              precioRegistro: registrationFee.value,
+              precioMembresia: membershipCost.value,
+              metodoPago: selectedPaymentMethod.value.toLowerCase(),
+              usuarioStaff: usuarioStaff,
+              promocion: selectedPromotion.value,
+              notas: 'Registro de nuevo cliente',
+            );
+            
+            if (ingresoRegistrado) {
+              print('✅ Ingreso registrado correctamente para ${clienteConId.name}');
+              // Refrescar datos de ingresos globalmente
+              IngresosController.refreshIngresosGlobally();
+            } else {
+              print('⚠️ No se pudo registrar el ingreso para ${clienteConId.name}');
+            }
+          } catch (e) {
+            print('❌ Error al registrar ingreso: $e');
+            print('📊 Stack trace: ${StackTrace.current}');
+          }
+        } else {
+          print('⚠️ IngresoService no disponible, no se registrará el ingreso');
+        }
+        
         Get.back(); // Cerrar el diálogo de creación
 
         // Mostrar el diálogo con el QR
         Get.dialog(
           QrDialog(
-            nombre: newClient.name,
-            telefono: newClient.phone,
-            userNumber: newClient.userNumber,
-            totalAmount: totalAmount.value,
+            nombre: clienteConId.name,
+            telefono: clienteConId.phone,
+            userNumber: clienteConId.userNumber,
+            totalAmount: finalAmount.value > 0 ? finalAmount.value : totalAmount.value,
           ),
         );
 
@@ -374,6 +573,34 @@ class ClientesController extends GetxController {
         
         final double total = isNewRegistration ? price + UserModel.registrationFee : price;
 
+        // Registrar el ingreso automáticamente si el servicio está disponible
+        if (ingresoService != null) {
+          try {
+            final usuarioStaff = 'Staff'; // TODO: Obtener del usuario autenticado
+            
+            final ingresoRegistrado = await ingresoService!.registrarIngresoRenovacion(
+              clienteId: client.id!,
+              clienteNombre: client.name,
+              tipoMembresia: membershipType,
+              precioMembresia: price,
+              metodoPago: paymentMethod.toLowerCase(),
+              usuarioStaff: usuarioStaff,
+              promocion: selectedPromotion.value,
+              notas: isNewRegistration ? 'Renovación con registro nuevo' : 'Renovación de membresía',
+            );
+            
+            if (ingresoRegistrado) {
+              print('✅ Ingreso de renovación registrado correctamente para ${client.name}');
+              // Refrescar datos de ingresos globalmente
+              IngresosController.refreshIngresosGlobally();
+            } else {
+              print('⚠️ No se pudo registrar el ingreso de renovación para ${client.name}');
+            }
+          } catch (e) {
+            print('❌ Error al registrar ingreso de renovación: $e');
+          }
+        }
+
         Get.back(); // Cerrar el diálogo de renovación
 
         // Mostrar el QR con el total pagado
@@ -497,8 +724,8 @@ class ClientesController extends GetxController {
       }
     }
     
-    // Actualizar el costo para mostrar en la UI
-    updateMembershipCost();
+    // Inicializar para edición
+    initializeForEdit(client);
   }
 
   // Método para limpiar el formulario
@@ -521,9 +748,90 @@ class ClientesController extends GetxController {
     }
     
     selectedPaymentMethod.value = 'Efectivo';
-    membershipCost.value = UserModel.membershipPrices['normal']!;
+    
+    // Configurar tasas de registro para cliente nuevo
     registrationFee.value = UserModel.registrationFee;
-    updateTotalAmount();
+    
+    // Limpiar promociones
+    availablePromotions.clear();
+    selectedPromotion.value = null;
+    promotionDiscount.value = 0.0;
+    finalAmount.value = 0.0;
+    
+    // Actualizar costos
+    updateMembershipCost();
+  }
+  
+  // Método para inicializar el formulario en modo edición
+  void initializeForEdit(UserModel client) {
+    // Configurar tasas de registro (sin cobrar en edición normal)
+    registrationFee.value = 0.0;
+    
+    // Actualizar costos basados en el tipo de membresía del cliente
+    updateMembershipCost();
+    
+    // Inicializar promociones
+    initializePromotions();
+  }
+  
+  // Método para inicializar el formulario en modo renovación
+  void initializeForRenewal(UserModel client) {
+    // Verificar si es un registro nuevo (más de 3 meses sin pagar)
+    bool isNewRegistration = client.isNewRegistration();
+    
+    // Configurar tarifa de registro si es necesario
+    registrationFee.value = isNewRegistration ? UserModel.registrationFee : 0.0;
+    
+    // Actualizar costos
+    updateMembershipCost();
+    
+    // Inicializar promociones
+    initializePromotions();
+  }
+  
+  // Método para inicializar las promociones en el formulario
+  Future<void> initializePromotions() async {
+    await fetchAvailablePromotions();
+    
+    // Auto-seleccionar la mejor promoción si hay alguna disponible
+    if (availablePromotions.isNotEmpty) {
+      PromotionModel? bestPromotion;
+      double bestDiscount = 0.0;
+      
+      for (final promotion in availablePromotions) {
+        final discount = _calculatePromotionDiscount(promotion);
+        if (discount > bestDiscount) {
+          bestDiscount = discount;
+          bestPromotion = promotion;
+        }
+      }
+      
+      if (bestPromotion != null) {
+        applyPromotion(bestPromotion);
+      }
+    }
+    
+    // Actualizar la UI
+    update(['promotions']);
+  }
+  
+  // Método auxiliar para calcular descuento de una promoción específica
+  double _calculatePromotionDiscount(PromotionModel promotion) {
+    if (!promotion.isCurrentlyValid) return 0.0;
+    
+    double discount = 0.0;
+    
+    // Verificar si aplica a registro
+    if (promotion.appliesTo_('registration') || promotion.appliesTo_('both')) {
+      discount += promotion.calculateDiscount(registrationFee.value);
+    }
+    
+    // Verificar si aplica a membresía  
+    if (promotion.appliesTo_('membership') || promotion.appliesTo_('both')) {
+      discount += promotion.calculateDiscount(membershipCost.value);
+    }
+    
+    return discount;
   }
 
   // Método para generar un número único de usuario
@@ -576,7 +884,12 @@ class ClientesController extends GetxController {
         }
       }
     }
+    
+    // Actualizar el total después de cambiar el costo de membresía
     updateTotalAmount();
+    
+    // Obtener promociones disponibles para el nuevo tipo de membresía
+    fetchAvailablePromotions();
   }
 
   // Método para actualizar tarifa de registro (se cobra solo si es nuevo o expiró hace más de 3 meses)
@@ -588,5 +901,38 @@ class ClientesController extends GetxController {
   // Método para actualizar el monto total
   void updateTotalAmount() {
     totalAmount.value = membershipCost.value + registrationFee.value;
+    
+    // Calcular el monto final considerando promociones
+    if (selectedPromotion.value != null && promotionDiscount.value > 0) {
+      finalAmount.value = totalAmount.value - promotionDiscount.value;
+      // Asegurar que el monto final no sea negativo
+      if (finalAmount.value < 0) finalAmount.value = 0;
+    } else {
+      finalAmount.value = totalAmount.value;
+    }
+  }
+  
+  // Método para aplicar una promoción específica
+  void applyPromotion(PromotionModel? promotion) {
+    selectedPromotion.value = promotion;
+    
+    if (promotion != null) {
+      // Calcular el descuento basado en el tipo de promoción
+      double discount = 0.0;
+      
+      if (promotion.appliesTo_('registration') || promotion.appliesTo_('both')) {
+        discount += promotion.calculateDiscount(registrationFee.value);
+      }
+      
+      if (promotion.appliesTo_('membership') || promotion.appliesTo_('both')) {
+        discount += promotion.calculateDiscount(membershipCost.value);
+      }
+      
+      promotionDiscount.value = discount;
+    } else {
+      promotionDiscount.value = 0.0;
+    }
+    
+    updateTotalAmount();
   }
 }

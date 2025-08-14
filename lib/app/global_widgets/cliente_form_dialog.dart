@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/models/membership_type_model.dart';
+import 'package:gymads/app/data/models/promotion_model.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
 import 'package:gymads/app/modules/shared/widgets/rfid_reader_animation.dart';
+import 'package:gymads/app/modules/clientes/controllers/clientes_controller.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/app/data/config/rfid_config.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
@@ -444,26 +446,9 @@ class ClienteFormDialog extends StatelessWidget {
                               
                               selectedMembershipType.value = value;
                               
-                              // Buscar el modelo de membresía seleccionado
-                              if (membershipTypeModels != null) {
-                                // Buscar en todos los modelos, incluyendo inactivos
-                                final selectedModel = membershipTypeModels!
-                                    .firstWhereOrNull((m) => m.name.toLowerCase().trim() == value.toLowerCase().trim());
-                                if (selectedModel != null) {
-                                  // Usar el precio del modelo de la base de datos
-                                  membershipCost.value = selectedModel.price;
-                                  totalAmount.value = membershipCost.value + registrationFee.value;
-                                  return;
-                                }
-                              }
-                              
-                              // Fallback a los valores estáticos
-                              final key = value.toLowerCase().trim();
-                              final fallbackPrice = UserModel.membershipPrices[key];
-                              membershipCost.value = fallbackPrice != null 
-                                  ? fallbackPrice 
-                                  : (UserModel.membershipPrices['normal'] ?? 0.0);
-                              totalAmount.value = membershipCost.value + registrationFee.value;
+                              // Usar el controlador para actualizar los costos
+                              final controller = Get.find<ClientesController>();
+                              controller.updateMembershipCost();
                             }
                           },
                         );
@@ -530,37 +515,197 @@ class ClienteFormDialog extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Obx(
-                            () => _buildCostRow(
+                          Obx(() {
+                            final controller = Get.find<ClientesController>();
+                            return _buildCostRow(
                               'Membresía:',
-                              membershipCost.value,
+                              controller.membershipCost.value,
+                            );
+                          }),
+                          Obx(() {
+                            final controller = Get.find<ClientesController>();
+                            return controller.registrationFee.value > 0
+                                ? Column(
+                                  children: [
+                                    Divider(
+                                      color: AppColors.disabled,
+                                      height: 16,
+                                    ),
+                                    _buildCostRow(
+                                      'Registro:',
+                                      controller.registrationFee.value,
+                                    ),
+                                  ],
+                                )
+                                : const SizedBox.shrink();
+                          }),
+                          
+                          // Sección de promociones
+                          if (!isEditing || isRenewing) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.orange.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.local_offer,
+                                        color: Colors.orange,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Promociones Disponibles',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange.shade700,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Selector de promociones
+                                  GetBuilder<ClientesController>(
+                                    id: 'promotions',
+                                    builder: (controller) {
+                                      if (controller.availablePromotions.isEmpty) {
+                                        return Text(
+                                          'No hay promociones disponibles',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        );
+                                      }
+
+                                      return Column(
+                                        children: [
+                                          // Opción "Sin promoción"
+                                          Obx(() {
+                                            final currentController = Get.find<ClientesController>();
+                                            return RadioListTile<String?>(
+                                              title: Text(
+                                                'Sin promoción',
+                                                style: TextStyle(fontSize: 14),
+                                              ),
+                                              subtitle: Text(
+                                                'Total: \$${(currentController.membershipCost.value + currentController.registrationFee.value).toStringAsFixed(2)}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                              value: null,
+                                              groupValue: currentController.selectedPromotion.value?.id,
+                                              onChanged: (value) {
+                                                currentController.applyPromotion(null);
+                                              },
+                                              dense: true,
+                                              contentPadding: EdgeInsets.zero,
+                                            );
+                                          }),
+                                          
+                                          // Lista de promociones disponibles
+                                          ...controller.availablePromotions.map((promotion) {
+                                            return Obx(() {
+                                              final currentController = Get.find<ClientesController>();
+                                              final discount = _calculatePromotionDiscount(promotion, currentController.membershipCost.value, currentController.registrationFee.value);
+                                              final finalAmount = (currentController.membershipCost.value + currentController.registrationFee.value) - discount;
+                                              
+                                              return RadioListTile<String>(
+                                                title: Text(
+                                                  promotion.name,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                subtitle: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    if (promotion.description?.isNotEmpty == true)
+                                                      Text(
+                                                        promotion.description!,
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.grey.shade600,
+                                                        ),
+                                                      ),
+                                                    Text(
+                                                      'Descuento: -\$${discount.toStringAsFixed(2)} | Total: \$${finalAmount.toStringAsFixed(2)}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.green.shade700,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                value: promotion.id!,
+                                                groupValue: currentController.selectedPromotion.value?.id,
+                                                onChanged: (value) {
+                                                  currentController.applyPromotion(promotion);
+                                                },
+                                                dense: true,
+                                                contentPadding: EdgeInsets.zero,
+                                              );
+                                            });
+                                          }).toList(),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          Obx(
-                            () =>
-                                registrationFee.value > 0
-                                    ? Column(
-                                      children: [
-                                        Divider(
-                                          color: AppColors.disabled,
-                                          height: 16,
-                                        ),
-                                        _buildCostRow(
-                                          'Registro:',
-                                          registrationFee.value,
-                                        ),
-                                      ],
-                                    )
-                                    : const SizedBox.shrink(),
-                          ),
+                          ],
+                          
                           Divider(color: AppColors.disabled, height: 16),
-                          Obx(
-                            () => _buildCostRow(
-                              'Total a pagar:',
-                              totalAmount.value,
-                              isTotal: true,
-                            ),
-                          ),
+                          
+                          // Mostrar descuento si hay promoción aplicada
+                          Obx(() {
+                            final controller = Get.find<ClientesController>();
+                            if (controller.selectedPromotion.value != null && 
+                                controller.promotionDiscount.value > 0) {
+                              return Column(
+                                children: [
+                                  _buildCostRow(
+                                    'Subtotal:',
+                                    controller.totalAmount.value,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  _buildCostRow(
+                                    'Descuento (${controller.selectedPromotion.value!.name}):',
+                                    -controller.promotionDiscount.value,
+                                  ),
+                                  Divider(color: AppColors.disabled, height: 12),
+                                  _buildCostRow(
+                                    'Total final:',
+                                    controller.finalAmount.value,
+                                    isTotal: true,
+                                  ),
+                                ],
+                              );
+                            } else {
+                              return _buildCostRow(
+                                'Total a pagar:',
+                                controller.totalAmount.value,
+                                isTotal: true,
+                              );
+                            }
+                          }),
                         ],
                       ),
                     ),
@@ -633,6 +778,13 @@ class ClienteFormDialog extends StatelessWidget {
                                 userNumber: userNumberController.text,
                                 rfidCard: rfidController.text.isEmpty ? null : rfidController.text,
                                 lastPaymentDate: now, // Siempre actualizar fecha de último pago
+                                
+                                // Información de promoción aplicada
+                                currentPromotionId: Get.find<ClientesController>().selectedPromotion.value?.id,
+                                currentPromotionName: Get.find<ClientesController>().selectedPromotion.value?.name,
+                                promotionDiscountAmount: Get.find<ClientesController>().promotionDiscount.value,
+                                promotionAppliedDate: Get.find<ClientesController>().selectedPromotion.value != null ? now : null,
+                                promotionExpiresDate: Get.find<ClientesController>().selectedPromotion.value?.endDate,
                               );
 
                               onSave(user, photoFile.value);
@@ -774,5 +926,24 @@ class ClienteFormDialog extends StatelessWidget {
         Get.back(); // Cerrar el diálogo
       }
     }
+  }
+  
+  // Método para calcular el descuento de una promoción
+  double _calculatePromotionDiscount(PromotionModel promotion, double membershipCost, double registrationFee) {
+    if (!promotion.isCurrentlyValid) return 0.0;
+    
+    double discount = 0.0;
+    
+    // Verificar si aplica a registro
+    if (promotion.appliesTo_('registration') || promotion.appliesTo_('both')) {
+      discount += promotion.calculateDiscount(registrationFee);
+    }
+    
+    // Verificar si aplica a membresía  
+    if (promotion.appliesTo_('membership') || promotion.appliesTo_('both')) {
+      discount += promotion.calculateDiscount(membershipCost);
+    }
+    
+    return discount;
   }
 }

@@ -137,7 +137,8 @@ class UserRepository {
   }
 
   /// Agrega un nuevo usuario con foto
-  Future<bool> addUser(UserModel user, {File? photoFile}) async {
+  /// Añade un nuevo usuario y devuelve su ID si es exitoso
+  Future<String?> addUser(UserModel user, {File? photoFile}) async {
     try {
       if (kDebugMode) {
         print('👤 Iniciando proceso de creación de usuario en UserRepository');
@@ -194,24 +195,31 @@ class UserRepository {
         print('👤 Respuesta de la API: $response');
       }
       
-      if (!response['error']) {
+      if (!response['error'] && response['data'] != null) {
+        final String userId = response['data']['id'];
         if (kDebugMode) {
-          print('✅ Usuario creado correctamente');
+          print('✅ Usuario creado correctamente con ID: $userId');
         }
-        return true;
+        return userId;
       } else {
         if (kDebugMode) {
           print('❌ Error al crear usuario: ${response['message']}');
         }
-        return false;
+        return null;
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ ERROR en UserRepository.addUser: $e');
         print('❌ Stack trace: ${StackTrace.current}');
       }
-      return false;
+      return null;
     }
+  }
+
+  /// Añade un nuevo usuario (versión original que devuelve bool para compatibilidad)
+  Future<bool> addUserLegacy(UserModel user, {File? photoFile}) async {
+    final userId = await addUser(user, photoFile: photoFile);
+    return userId != null;
   }
 
   /// Agrega un usuario con ID específico

@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/services/audio_service.dart';
 import 'package:flutter/foundation.dart';
 
 class ChecadorController extends GetxController {
@@ -39,18 +40,24 @@ class ChecadorController extends GetxController {
 
         if (user == null) {
           errorMessage.value = 'Usuario no encontrado';
+          // Reproducir sonido de error
+          AudioService.playErrorSound();
           continue;
         }
 
         // Verificar si la membresía está activa
         if (!user.isActive) {
           errorMessage.value = 'Membresía inactiva';
+          // Reproducir sonido de error
+          AudioService.playErrorSound();
           continue;
         }
 
         // Verificar si la membresía no ha expirado
         if (user.daysRemaining <= 0) {
           errorMessage.value = 'Membresía vencida';
+          // Reproducir sonido de error
+          AudioService.playErrorSound();
           continue;
         }
 
@@ -64,6 +71,9 @@ class ChecadorController extends GetxController {
         if (user.id != null) {
           await userRepository.updateUser(user.id!, updatedUser);
         }
+
+        // Reproducir sonido de bienvenida
+        AudioService.playWelcomeSound();
 
         // Mostrar el diálogo
         isShowingDialog.value = true;
