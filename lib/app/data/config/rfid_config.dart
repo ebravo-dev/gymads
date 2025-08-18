@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// Clase para manejar la configuración del lector RFID ESP32
 class RfidConfig {
   // URL del ESP32 (por defecto es la IP local que proporcionaste)
-  static String get baseUrl => dotenv.env['ESP32_API_URL'] ?? 'http://192.168.1.140/api';
+  static String get baseUrl => dotenv.env['ESP32_API_URL'] ?? 'http://192.168.1.136/api';
   
   // Método para actualizar la configuración (útil si cambia la IP)
   static void updateConfig({String? newUrl}) {
@@ -34,4 +34,13 @@ class RfidConfig {
   
   // Intervalo de verificación para nuevas tarjetas (en milisegundos)
   static int get pollingIntervalMs => 500;
+  
+  // Estados de membresía para el sistema de LEDs
+  static const String membershipActive = 'ACTIVE';
+  static const String membershipExpiring = 'EXPIRING';
+  static const String membershipExpired = 'EXPIRED';
+  static const String membershipNotFound = 'NOT_FOUND';
+  
+  // Días de advertencia antes del vencimiento
+  static int get expiringWarningDays => 5;
 }
