@@ -12,7 +12,7 @@ class IngresosView extends GetView<IngresosController> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ingresos'),
-        backgroundColor: AppColors.accent,
+        backgroundColor: const Color.fromARGB(255, 0, 0, 0),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
