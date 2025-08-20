@@ -27,6 +27,7 @@ dependencies:
   supabase_flutter: ^2.8.4
   just_audio: ^0.9.39
   uuid: ^4.2.1
+  shared_preferences: ^2.4.9
 
 dev_dependencies:
   flutter_test:

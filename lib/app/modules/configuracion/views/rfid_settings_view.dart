@@ -36,13 +36,8 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
             
             const SizedBox(height: 24),
             
-            // Configuración de IP
-            _buildIpConfiguration(),
-            
-            const SizedBox(height: 24),
-            
-            // Información del dispositivo
-            _buildDeviceInfo(),
+            // Configuración WiFi
+            _buildWiFiConfiguration(),
             
             const SizedBox(height: 24),
             
@@ -57,6 +52,7 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
   Widget _buildConnectionStatus() {
     return Obx(() {
       final isConnected = controller.rfidConnectionStatus.value;
+      final statusMessage = controller.connectionStatusMessage.value;
       
       return Card(
         elevation: 4,
@@ -74,29 +70,27 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isConnected ? AppColors.success.withOpacity(0.2) : AppColors.error.withOpacity(0.2),
+                    color: isConnected ? AppColors.success.withOpacity(0.2) : AppColors.warning.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isConnected ? Icons.wifi : Icons.wifi_off,
+                    isConnected ? Icons.check_circle : Icons.settings_ethernet,
                     size: 40,
-                    color: isConnected ? AppColors.success : AppColors.error,
+                    color: isConnected ? AppColors.success : AppColors.warning,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  isConnected ? 'ESP32 Conectado' : 'ESP32 Desconectado',
+                  isConnected ? 'ESP32 Conectado' : 'ESP32 Configuración',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: isConnected ? AppColors.success : AppColors.error,
+                    color: isConnected ? AppColors.success : AppColors.warning,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isConnected 
-                    ? 'El lector RFID está funcionando correctamente'
-                    : 'Verifica la conexión y configuración',
+                  statusMessage,
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
@@ -110,199 +104,6 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
         ),
       );
     });
-  }
-  
-  Widget _buildIpConfiguration() {
-    return Card(
-      elevation: 4,
-      color: AppColors.cardBackground,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.titleColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.router,
-                    color: AppColors.titleColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Configuración de Red',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            // Campo de IP
-            TextField(
-              controller: controller.rfidIpController,
-              decoration: InputDecoration(
-                labelText: 'Dirección IP del ESP32',
-                hintText: '192.168.1.136',
-                prefixIcon: const Icon(Icons.language, color: AppColors.titleColor),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.titleColor, width: 2),
-                ),
-                labelStyle: const TextStyle(color: AppColors.textSecondary),
-                hintStyle: const TextStyle(color: AppColors.textHint),
-                filled: true,
-                fillColor: AppColors.containerBackground.withOpacity(0.5),
-              ),
-              keyboardType: TextInputType.text,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // URL actual
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.containerBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.titleColor.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.link, color: AppColors.titleColor, size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'URL Configurada:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.titleColor,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBackground,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      controller.currentRfidIp.value,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildDeviceInfo() {
-    return Card(
-      elevation: 4,
-      color: AppColors.cardBackground,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.info.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.info_outline,
-                  color: AppColors.info,
-                  size: 24,
-                ),
-              ),
-              title: const Text(
-                'Información del Dispositivo',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-            ),
-            const SizedBox(height: 20),
-            
-            _buildInfoRow(
-              icon: Icons.memory,
-              label: 'Dispositivo',
-              value: 'ESP32 + MFRC522',
-            ),
-            const SizedBox(height: 12),
-            
-            _buildInfoRow(
-              icon: Icons.nfc,
-              label: 'Protocolo',
-              value: 'RFID 13.56MHz',
-            ),
-            const SizedBox(height: 12),
-            
-            _buildInfoRow(
-              icon: Icons.api,
-              label: 'Endpoints',
-              value: '3 endpoints disponibles',
-            ),
-            const SizedBox(height: 12),
-            
-            _buildInfoRow(
-              icon: Icons.schedule,
-              label: 'Timeout',
-              value: '15 segundos',
-            ),
-          ],
-        ),
-      ),
-    );
   }
   
   Widget _buildActionButtons() {
@@ -321,11 +122,11 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : const Icon(Icons.wifi_find),
+              : const Icon(Icons.refresh),
             label: Text(
               controller.isLoading.value 
-                ? 'Probando conexión...' 
-                : 'Probar Conexión',
+                ? 'Verificando...' 
+                : 'Verificar Conexión',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(
@@ -342,76 +143,294 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
         
         const SizedBox(height: 12),
         
-        // Botón de guardar configuración
-        SizedBox(
+        // Información sobre configuración automática
+        Container(
           width: double.infinity,
-          child: Obx(() => ElevatedButton.icon(
-            onPressed: controller.isLoading.value 
-              ? null 
-              : controller.updateRfidIp,
-            icon: const Icon(Icons.save),
-            label: const Text(
-              'Guardar Configuración',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.titleColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.info.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.info.withOpacity(0.3)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.auto_awesome, color: AppColors.info, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Configuración Automática',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.info,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'La configuración del ESP32 se actualiza automáticamente cuando se conecta a WiFi. No necesitas configurar direcciones IP manualmente.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              elevation: 3,
-            ),
-          )),
+            ],
+          ),
         ),
       ],
     );
   }
   
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
-        const SizedBox(width: 12),
-        Flexible(
-          flex: 2,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-              fontSize: 14,
+  Widget _buildWiFiConfiguration() {
+    return Card(
+      elevation: 4,
+      color: AppColors.cardBackground,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.wifi,
+                    color: AppColors.info,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Configuración WiFi ESP32',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ),
+              ],
             ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          flex: 3,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            const SizedBox(height: 20),
+            
+            // Estado WiFi actual
+            Obx(() => Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: controller.rfidConnectionStatus.value 
+                  ? AppColors.success.withOpacity(0.1)
+                  : AppColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: controller.rfidConnectionStatus.value 
+                    ? AppColors.success.withOpacity(0.3)
+                    : AppColors.warning.withOpacity(0.3)
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 3,
-              softWrap: true,
-            ),
-          ),
+              child: Row(
+                children: [
+                  Icon(
+                    controller.rfidConnectionStatus.value ? Icons.wifi : Icons.wifi_off,
+                    color: controller.rfidConnectionStatus.value 
+                      ? AppColors.success 
+                      : AppColors.warning,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      controller.rfidConnectionStatus.value 
+                        ? 'ESP32 conectado a WiFi'
+                        : 'ESP32 puede estar en modo configuración',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: controller.rfidConnectionStatus.value 
+                          ? AppColors.success 
+                          : AppColors.warning,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+            
+            const SizedBox(height: 16),
+            
+            // Botones de configuración WiFi - DINÁMICOS según estado
+            Obx(() {
+              final isConnected = controller.rfidConnectionStatus.value;
+              
+              if (!isConnected) {
+                // ESP32 NO CONECTADO - Solo mostrar botón de configuración
+                return Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: controller.openWiFiSetup,
+                        icon: const Icon(Icons.settings_ethernet),
+                        label: const Text(
+                          'Configurar WiFi del ESP32',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.warning,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.wifi_off,
+                            color: AppColors.warning,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'ESP32 no conectado. Configura la conexión WiFi para continuar.',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              } else {
+                // ESP32 CONECTADO - Mostrar opciones de cambio y reset
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        // Cambiar Red WiFi
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: controller.changeWiFiNetwork,
+                            icon: const Icon(Icons.wifi_find),
+                            label: const Text(
+                              'Cambiar Red',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Reset de fábrica
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: controller.factoryResetConfiguration,
+                            icon: const Icon(Icons.factory, size: 18),
+                            label: const Text(
+                              'Reset Fábrica',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.error,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: AppColors.success,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'ESP32 Conectado',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.success,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '• Cambiar Red: Conecta a otra red WiFi\n• Reset Fábrica: Elimina toda la configuración',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }
+            }),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

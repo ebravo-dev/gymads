@@ -141,7 +141,7 @@ class ConfiguracionView extends GetView<ConfiguracionController> {
           iconColor: AppColors.titleColor,
           title: 'Lector RFID',
           subtitle: controller.rfidConnectionStatus.value 
-            ? 'Conectado - ${controller.extractIpFromUrl(controller.currentRfidIp.value)}'
+            ? 'Conectado y funcionando'
             : 'Configurar conexión del lector',
           onTap: () => controller.openRfidSettings(),
           trailing: _buildStatusIndicator(controller.rfidConnectionStatus.value),

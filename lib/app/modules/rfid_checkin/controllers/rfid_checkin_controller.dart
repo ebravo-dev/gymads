@@ -7,6 +7,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/audio_service.dart';
 import '../../../data/config/rfid_config.dart';
+import '../../configuracion/controllers/configuracion_controller.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;
@@ -21,6 +22,10 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   final successMessage = ''.obs;
   final rfidInput = ''.obs;
   
+  // Estado de conexión del lector RFID
+  final isRfidConnected = false.obs;
+  final connectionStatusMessage = 'Verificando conexión...'.obs;
+  
   // Datos del usuario
   final isShowingDialog = false.obs;
   final userName = ''.obs;
@@ -30,6 +35,9 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   
   // Timer para verificar periódicamente la tarjeta RFID
   Timer? _rfidCheckTimer;
+  
+  // Timer para verificar periódicamente la conexión ESP32
+  Timer? _connectionCheckTimer;
   
   @override
   void onInit() {
@@ -51,19 +59,62 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       animationController.repeat();
     });
     
-    // Iniciar verificación periódica de RFID
+    // Verificar estado de conexión del ESP32
+    checkRfidConnection();
+    
+    // Verificar conexión cada 10 segundos
+    _connectionCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      checkRfidConnection();
+    });
+    
+    // Iniciar verificación periódica de RFID solo si está conectado
     startRfidChecking();
+  }
+  
+  // Verificar conexión del ESP32
+  Future<void> checkRfidConnection() async {
+    try {
+      connectionStatusMessage.value = 'Verificando conexión con ESP32...';
+      
+      // Usar el servicio real de RFID para verificar la conexión
+      final isConnected = await RfidReaderService.startReading();
+      isRfidConnected.value = isConnected;
+      
+      if (isConnected) {
+        connectionStatusMessage.value = 'ESP32 conectado y funcionando';
+        errorMessage.value = '';
+      } else {
+        connectionStatusMessage.value = 'ESP32 no conectado';
+        errorMessage.value = 'No se puede conectar al lector RFID. Verifica la configuración.';
+      }
+      
+    } catch (e) {
+      isRfidConnected.value = false;
+      connectionStatusMessage.value = 'Error de conexión';
+      errorMessage.value = 'Error al conectar con el ESP32: ${e.toString()}';
+    }
   }
   
   void startRfidChecking() {
     _rfidCheckTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-      if (!isShowingDialog.value && !isLoading.value) {
+      // Solo verificar tarjetas si el ESP32 está conectado
+      if (isRfidConnected.value && !isShowingDialog.value && !isLoading.value) {
         final uid = await RfidReaderService.checkForCard();
         if (uid != null) {
           checkAccessByRfid(uid);
         }
       }
     });
+  }
+  
+  // Reintentar conexión con el ESP32
+  Future<void> retryConnection() async {
+    await checkRfidConnection();
+  }
+  
+  // Ir a configuración RFID
+  void goToRfidConfiguration() {
+    Get.toNamed('/configuracion');
   }
 
   // Controlador para el campo de entrada RFID
@@ -73,6 +124,7 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   void onClose() {
     rfidTextController.dispose();
     _rfidCheckTimer?.cancel();
+    _connectionCheckTimer?.cancel();
     animationController.dispose();
     super.onClose();
   }
