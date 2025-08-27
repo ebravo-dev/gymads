@@ -25,7 +25,6 @@ class _CircularCameraViewState extends State<CircularCameraView>
   List<CameraDescription> _cameras = [];
   bool _isInitialized = false;
   bool _isTakingPicture = false;
-  bool _usingFrontCamera = true; // Por defecto usar cámara frontal
   String? _errorMessage;
 
   @override
@@ -67,19 +66,16 @@ class _CircularCameraViewState extends State<CircularCameraView>
         throw Exception('No se encontraron cámaras disponibles');
       }
 
-      // Seleccionar cámara (frontal por defecto)
-      CameraDescription selectedCamera;
-      if (_usingFrontCamera) {
-        selectedCamera = _cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.front,
-          orElse: () => _cameras.first,
-        );
-      } else {
-        selectedCamera = _cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.back,
-          orElse: () => _cameras.first,
-        );
+      // Seleccionar ÚNICAMENTE cámara trasera
+      final backCameras = _cameras.where(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+      ).toList();
+      
+      if (backCameras.isEmpty) {
+        throw Exception('No se encontró cámara trasera disponible');
       }
+      
+      CameraDescription selectedCamera = backCameras.first;
 
       await _controller?.dispose();
       _controller = CameraController(
@@ -103,16 +99,6 @@ class _CircularCameraViewState extends State<CircularCameraView>
         });
       }
     }
-  }
-
-  Future<void> _switchCamera() async {
-    if (_cameras.length < 2) return;
-
-    setState(() {
-      _usingFrontCamera = !_usingFrontCamera;
-    });
-
-    await _initializeCamera();
   }
 
   Future<void> _takePhoto() async {
@@ -228,16 +214,6 @@ class _CircularCameraViewState extends State<CircularCameraView>
                   size: 28,
                 ),
               ),
-              // Botón cambiar cámara
-              if (_cameras.length > 1)
-                IconButton(
-                  onPressed: _switchCamera,
-                  icon: const Icon(
-                    Icons.flip_camera_ios,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
             ],
           ),
         ),
@@ -260,29 +236,6 @@ class _CircularCameraViewState extends State<CircularCameraView>
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-
-        // Indicador de cámara activa
-        Positioned(
-          bottom: 120,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text(
-                _usingFrontCamera ? 'Cámara frontal' : 'Cámara trasera',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                ),
               ),
             ),
           ),

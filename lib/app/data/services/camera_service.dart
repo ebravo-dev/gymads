@@ -7,22 +7,47 @@ class CameraService {
   CameraController? controller;
   List<CameraDescription> cameras = [];
 
+  /// Verificar si hay cámara trasera disponible
+  Future<bool> hasBackCamera() async {
+    try {
+      cameras = await availableCameras();
+      return cameras.any(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error al verificar cámaras disponibles: $e');
+      }
+      return false;
+    }
+  }
+
   Future<void> initializeCamera() async {
     try {
       cameras = await availableCameras();
-      // Inicializar con la cámara trasera
+      
+      // Buscar específicamente la cámara trasera
+      final backCamera = cameras.where(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+      ).toList();
+      
+      if (backCamera.isEmpty) {
+        throw Exception('No se encontró cámara trasera disponible');
+      }
+      
+      // Inicializar ÚNICAMENTE con la cámara trasera
       controller = CameraController(
-        cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.back,
-          orElse: () => cameras.first,
-        ),
+        backCamera.first,
         ResolutionPreset.high,
+        enableAudio: false, // No necesitamos audio para fotos
       );
+      
       await controller?.initialize();
     } catch (e) {
       if (kDebugMode) {
-        print('Error al inicializar la cámara: $e');
+        print('Error al inicializar la cámara trasera: $e');
       }
+      rethrow; // Re-lanzar error para que el llamador pueda manejarlo
     }
   }
 
@@ -54,5 +79,22 @@ class CameraService {
 
   void dispose() {
     controller?.dispose();
+  }
+
+  /// Verificar si la cámara está inicializada y lista
+  bool get isInitialized => controller?.value.isInitialized ?? false;
+
+  /// Obtener la cámara que está siendo usada (debe ser trasera)
+  CameraDescription? get currentCamera {
+    if (controller != null) {
+      return controller!.description;
+    }
+    return null;
+  }
+
+  /// Verificar si la cámara actual es trasera
+  bool get isBackCamera {
+    final camera = currentCamera;
+    return camera?.lensDirection == CameraLensDirection.back;
   }
 }
