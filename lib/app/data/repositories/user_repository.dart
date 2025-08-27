@@ -36,41 +36,87 @@ class UserRepository {
   /// Obtiene un usuario por su número de usuario (userNumber)
   Future<UserModel?> getUserByNumber(String userNumber) async {
     try {
-      final response = await _apiProvider.getAll();
-
-      if (response['error'] == true || response['data'] == null) {
-        if (kDebugMode) {
-          print('Error en la respuesta o datos nulos');
-          print('Response: $response');
-        }
-        return null;
+      if (kDebugMode) {
+        print('🔍 Buscando usuario con número: $userNumber');
       }
 
-      final data = response['data'];
-      if (data is! List) {
+      // Verificar si el provider es SupabaseApiProvider para usar el método específico
+      Map<String, dynamic> response;
+      
+      if (_apiProvider.runtimeType.toString().contains('SupabaseApiProvider')) {
+        final supabaseProvider = _apiProvider as dynamic;
+        response = await supabaseProvider.getUserByNumber(userNumber);
+        
         if (kDebugMode) {
-          print('Data no es una lista');
+          print('🔍 Respuesta getUserByNumber específico: $response');
         }
-        return null;
-      }
+      } else {
+        // Fallback para otros providers: buscar en toda la lista
+        response = await _apiProvider.getAll();
 
-      // Buscar el usuario que coincida con el userNumber
-      for (var item in data) {
-        if (item is Map<String, dynamic> && item['userNumber'] == userNumber) {
+        if (response['error'] == true || response['data'] == null) {
           if (kDebugMode) {
-            print('Usuario encontrado. Datos: $item');
+            print('❌ Error en la respuesta o datos nulos');
+            print('Response: $response');
           }
-          return UserModel.fromJson(item);
+          return null;
         }
+
+        final data = response['data'];
+        if (data is! List) {
+          if (kDebugMode) {
+            print('❌ Data no es una lista');
+          }
+          return null;
+        }
+
+        // Buscar el usuario que coincida con el userNumber
+        for (var item in data) {
+          if (item is Map<String, dynamic> && item['user_number'] == userNumber) {
+            if (kDebugMode) {
+              print('✅ Usuario encontrado en lista. Datos: $item');
+            }
+            return UserModel.fromJson(item);
+          }
+        }
+
+        if (kDebugMode) {
+          print('❌ No se encontró ningún usuario con el número: $userNumber');
+        }
+        return null;
+      }
+
+      // Procesar respuesta del método específico
+      if (response['error'] == true) {
+        if (kDebugMode) {
+          print('❌ Error en getUserByNumber: ${response['message']}');
+        }
+        return null;
+      }
+
+      if (response['data'] == null) {
+        if (kDebugMode) {
+          print('ℹ️ Usuario con número $userNumber no encontrado');
+        }
+        return null;
+      }
+
+      final userData = response['data'];
+      if (userData is Map<String, dynamic>) {
+        if (kDebugMode) {
+          print('✅ Usuario encontrado. Datos: $userData');
+        }
+        return UserModel.fromJson(userData);
       }
 
       if (kDebugMode) {
-        print('No se encontró ningún usuario con el número: $userNumber');
+        print('❌ Formato de datos incorrecto');
       }
       return null;
     } catch (e) {
       if (kDebugMode) {
-        print('Error al obtener usuario por número: $e');
+        print('❌ Error al obtener usuario por número: $e');
+        print('❌ Stack trace: ${StackTrace.current}');
       }
       return null;
     }

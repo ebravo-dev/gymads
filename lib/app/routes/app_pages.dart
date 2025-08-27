@@ -13,8 +13,6 @@ import '../modules/ingresos/views/ingresos_view.dart';
 import '../modules/inventario/bindings/inventario_binding.dart';
 import '../modules/inventario/views/inventario_view.dart';
 import '../modules/inventario/views/product_form_view.dart';
-import '../modules/checkin/bindings/checkin_binding.dart';
-import '../modules/checkin/views/checkin_view.dart';
 import '../modules/rfid_checkin/bindings/rfid_checkin_binding.dart';
 import '../modules/rfid_checkin/views/rfid_checkin_view.dart';
 import '../modules/membresias/bindings/membresias_binding.dart';
@@ -59,11 +57,6 @@ class AppPages {
       name: _Paths.INGRESOS,
       page: () => const IngresosView(),
       binding: IngresosBinding(),
-    ),
-    GetPage(
-      name: _Paths.CHECKIN,
-      page: () => const CheckinView(),
-      binding: CheckinBinding(),
     ),
     GetPage(
       name: _Paths.RFID_CHECKIN,

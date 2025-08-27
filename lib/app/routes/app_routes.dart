@@ -9,7 +9,6 @@ abstract class Routes {
   static const INVENTARIO = _Paths.INVENTARIO;
   static const PRODUCT_FORM = _Paths.PRODUCT_FORM;
   static const INGRESOS = _Paths.INGRESOS;
-  static const CHECKIN = _Paths.CHECKIN;
   static const RFID_CHECKIN = _Paths.RFID_CHECKIN;
   static const MEMBRESIAS = _Paths.MEMBRESIAS;
   static const PROMOCIONES = _Paths.PROMOCIONES;
@@ -24,7 +23,6 @@ abstract class _Paths {
   static const INVENTARIO = '/inventario';
   static const PRODUCT_FORM = '/inventario/product-form';
   static const INGRESOS = '/ingresos';
-  static const CHECKIN = '/checkin';
   static const RFID_CHECKIN = '/rfid-checkin';
   static const MEMBRESIAS = '/membresias';
   static const PROMOCIONES = '/promociones';
