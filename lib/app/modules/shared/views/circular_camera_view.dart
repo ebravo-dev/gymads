@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
@@ -25,7 +26,6 @@ class _CircularCameraViewState extends State<CircularCameraView>
   List<CameraDescription> _cameras = [];
   bool _isInitialized = false;
   bool _isTakingPicture = false;
-  bool _usingFrontCamera = true; // Por defecto usar cámara frontal
   String? _errorMessage;
 
   @override
@@ -67,24 +67,21 @@ class _CircularCameraViewState extends State<CircularCameraView>
         throw Exception('No se encontraron cámaras disponibles');
       }
 
-      // Seleccionar cámara (frontal por defecto)
-      CameraDescription selectedCamera;
-      if (_usingFrontCamera) {
-        selectedCamera = _cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.front,
-          orElse: () => _cameras.first,
-        );
-      } else {
-        selectedCamera = _cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.back,
-          orElse: () => _cameras.first,
-        );
+      // Seleccionar ÚNICAMENTE cámara trasera
+      final backCameras = _cameras.where(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+      ).toList();
+      
+      if (backCameras.isEmpty) {
+        throw Exception('No se encontró cámara trasera disponible');
       }
+      
+      CameraDescription selectedCamera = backCameras.first;
 
       await _controller?.dispose();
       _controller = CameraController(
         selectedCamera,
-        ResolutionPreset.medium,
+        ResolutionPreset.high, // Cambiar a high para mejor calidad
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -105,16 +102,6 @@ class _CircularCameraViewState extends State<CircularCameraView>
     }
   }
 
-  Future<void> _switchCamera() async {
-    if (_cameras.length < 2) return;
-
-    setState(() {
-      _usingFrontCamera = !_usingFrontCamera;
-    });
-
-    await _initializeCamera();
-  }
-
   Future<void> _takePhoto() async {
     if (_isTakingPicture || !_isInitialized || _controller == null) return;
 
@@ -123,6 +110,7 @@ class _CircularCameraViewState extends State<CircularCameraView>
         _isTakingPicture = true;
       });
 
+      // Capturar la foto con la resolución completa de la cámara
       final XFile photoFile = await _controller!.takePicture();
 
       // Crear archivo en directorio temporal
@@ -143,6 +131,8 @@ class _CircularCameraViewState extends State<CircularCameraView>
           // Ignorar errores al eliminar archivos temporales
         }
 
+        // Nota: La foto se guarda completa. Si necesitas recorte circular,
+        // se puede implementar en el procesamiento posterior
         widget.onPhotoTaken(resultFile);
       } else {
         throw Exception('No se pudo guardar la foto');
@@ -199,9 +189,14 @@ class _CircularCameraViewState extends State<CircularCameraView>
 
     return Stack(
       children: [
-        // Vista previa de la cámara a pantalla completa
+        // Vista previa de la cámara que llena toda la pantalla
         Positioned.fill(
-          child: CameraPreview(_controller!),
+          child: Transform.scale(
+            scale: 1.0,
+            child: Center(
+              child: CameraPreview(_controller!),
+            ),
+          ),
         ),
 
         // Máscara circular con superposición
@@ -211,78 +206,21 @@ class _CircularCameraViewState extends State<CircularCameraView>
           ),
         ),
 
-        // Controles superiores
+        // Botón cerrar - Posicionado arriba fuera del área de la cámara
         Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Botón cerrar
-              IconButton(
-                onPressed: widget.onCancel,
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              // Botón cambiar cámara
-              if (_cameras.length > 1)
-                IconButton(
-                  onPressed: _switchCamera,
-                  icon: const Icon(
-                    Icons.flip_camera_ios,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-        // Instrucciones
-        Positioned(
-          top: 80,
+          top: 40, // Más arriba que antes
           left: 20,
-          right: 20,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
-              borderRadius: BorderRadius.circular(20),
+              color: Colors.black.withOpacity(0.6),
+              shape: BoxShape.circle,
             ),
-            child: Text(
-              'Coloca la cara del cliente dentro del círculo',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
+            child: IconButton(
+              onPressed: widget.onCancel,
+              icon: const Icon(
+                Icons.close,
                 color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-
-        // Indicador de cámara activa
-        Positioned(
-          bottom: 120,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text(
-                _usingFrontCamera ? 'Cámara frontal' : 'Cámara trasera',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                ),
+                size: 24,
               ),
             ),
           ),
@@ -390,12 +328,12 @@ class CircularMaskPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double centerX = size.width / 2;
-    final double centerY = size.height / 2;
+    // Ajustar el centro vertical para mejor posicionamiento
+    final double centerY = size.height * 0.45; // Ligeramente más arriba del centro
     
-    // Hacer el círculo adaptable al tamaño de la pantalla
-    final double radius = size.width < size.height
-        ? size.width * 0.35  // En orientación vertical
-        : size.height * 0.35; // En orientación horizontal
+    // Calcular el radio basado en la altura de la pantalla para mejor precisión
+    // Usar un factor que tenga más relación con la captura real
+    final double radius = (size.height * 0.25).clamp(120.0, 200.0);
 
     // Crear path para el círculo
     final Path circlePath = Path()
@@ -412,20 +350,30 @@ class CircularMaskPainter extends CustomPainter {
       circlePath,
     );
 
-    // Dibujar la máscara semitransparente
+    // Dibujar la máscara semitransparente (menos opaca para ver mejor)
     canvas.drawPath(
       maskPath,
-      Paint()..color = Colors.black.withOpacity(0.6),
+      Paint()..color = Colors.black.withOpacity(0.7), // Aumentado de 0.6 a 0.7
     );
 
-    // Dibujar el borde del círculo
+    // Dibujar el borde del círculo con mejor visibilidad
     canvas.drawCircle(
       Offset(centerX, centerY),
       radius,
       Paint()
         ..color = Colors.white
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0,
+        ..strokeWidth = 4.0, // Aumentar grosor para mejor visibilidad
+    );
+
+    // Dibujar un círculo interior para mejor definición del área
+    canvas.drawCircle(
+      Offset(centerX, centerY),
+      radius - 2,
+      Paint()
+        ..color = Colors.white.withOpacity(0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
     );
 
     // Añadir puntos de referencia para alinear la cara
