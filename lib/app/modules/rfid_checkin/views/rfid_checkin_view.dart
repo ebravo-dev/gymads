@@ -25,7 +25,10 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
       body: SafeArea(
         child: Stack(
           children: [
-            _buildMainContent(context, isTabletSize, isSmallPhone),
+            // Mostrar advertencia si no está conectado, sino mostrar contenido principal
+            Obx(() => controller.isRfidConnected.value
+                ? _buildMainContent(context, isTabletSize, isSmallPhone)
+                : _buildConnectionWarning(context, isTabletSize, isSmallPhone)),
             
             // Indicador de carga
             Obx(() => controller.isLoading.value
@@ -612,6 +615,276 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
               ),
             );
           }
+        ),
+      ),
+    );
+  }
+  
+  // Pantalla de advertencia cuando el ESP32 no está conectado
+  Widget _buildConnectionWarning(BuildContext context, bool isTabletSize, bool isSmallPhone) {
+    final paddingValue = ResponsiveValues.getSpacing(context,
+      mobile: 24,
+      smallPhone: 16,
+      tablet: 32
+    );
+    
+    final titleSize = ResponsiveValues.getFontSize(context,
+      mobile: 28,
+      smallPhone: 24,
+      tablet: 36
+    );
+    
+    final subtitleSize = ResponsiveValues.getFontSize(context,
+      mobile: 18,
+      smallPhone: 16,
+      tablet: 22
+    );
+    
+    final buttonTextSize = ResponsiveValues.getFontSize(context,
+      mobile: 16,
+      smallPhone: 14,
+      tablet: 20
+    );
+
+    return Container(
+      padding: EdgeInsets.all(paddingValue),
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height - (paddingValue * 2),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+          // Icono de advertencia animado
+          AnimatedBuilder(
+            animation: controller.animationController,
+            builder: (context, child) {
+              final animValue = controller.animationController.value * pi * 2;
+              final sinValue = sin(animValue).clamp(-1.0, 1.0);
+              final pulseValue = 0.95 + (0.05 * sinValue);
+              
+              return Transform.scale(
+                scale: pulseValue,
+                child: Container(
+                  padding: EdgeInsets.all(isTabletSize ? 32 : 24),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.orange,
+                      width: 3,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.wifi_off,
+                    size: isTabletSize ? 80 : (isSmallPhone ? 50 : 64),
+                    color: Colors.orange,
+                  ),
+                ),
+              );
+            },
+          ),
+          
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 24,
+            smallPhone: 16,
+            tablet: 40
+          )),
+          
+          // Título de advertencia
+          Text(
+            'Lector RFID Desconectado',
+            style: TextStyle(
+              fontSize: titleSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.orange,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 12,
+            smallPhone: 8,
+            tablet: 24
+          )),
+          
+          // Mensaje de estado
+          Obx(() => Text(
+            controller.connectionStatusMessage.value,
+            style: TextStyle(
+              fontSize: subtitleSize,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          )),
+          
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 8,
+            smallPhone: 6,
+            tablet: 16
+          )),
+          
+          // Mensaje de descripción
+          Text(
+            'El sistema no puede detectar el lector RFID ESP32.\nVerifica que esté conectado a WiFi y funcionando correctamente.',
+            style: TextStyle(
+              fontSize: ResponsiveValues.getFontSize(context,
+                mobile: 16,
+                smallPhone: 14,
+                tablet: 18
+              ),
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 24,
+            smallPhone: 16,
+            tablet: 48
+          )),
+          
+          // Botones de acción
+          Column(
+            children: [
+              // Botón reintentar
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: controller.retryConnection,
+                  icon: Icon(
+                    Icons.refresh,
+                    size: isTabletSize ? 28 : 24,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    'Reintentar Conexión',
+                    style: TextStyle(
+                      fontSize: buttonTextSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      vertical: isTabletSize ? 18 : 16
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    side: BorderSide(
+                      color: Colors.lightBlue,
+                      width: 2,
+                    ),
+                    elevation: 3,
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: ResponsiveValues.getSpacing(context,
+                mobile: 8,
+                smallPhone: 6,
+                tablet: 16
+              )),
+              
+              // Botón configurar
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: controller.goToRfidConfiguration,
+                  icon: Icon(
+                    Icons.settings,
+                    size: isTabletSize ? 24 : 20,
+                    color: Colors.orange,
+                  ),
+                  label: Text(
+                    'Configurar Lector RFID',
+                    style: TextStyle(
+                      fontSize: buttonTextSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.orange, width: 2),
+                    padding: EdgeInsets.symmetric(
+                      vertical: isTabletSize ? 18 : 16
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 16,
+            smallPhone: 12,
+            tablet: 32
+          )),
+          
+          // Información adicional
+          Container(
+            padding: EdgeInsets.all(isTabletSize ? 20 : 16),
+            decoration: BoxDecoration(
+              color: AppColors.info.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.info.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: AppColors.info,
+                  size: isTabletSize ? 24 : 20,
+                ),
+                SizedBox(width: isTabletSize ? 12 : 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Información',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.info,
+                          fontSize: ResponsiveValues.getFontSize(context,
+                            mobile: 16,
+                            smallPhone: 14,
+                            tablet: 18
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'El lector RFID ESP32 debe estar conectado a WiFi para funcionar. Ve a Configuración para verificar la conexión.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: ResponsiveValues.getFontSize(context,
+                            mobile: 14,
+                            smallPhone: 12,
+                            tablet: 16
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
         ),
       ),
     );

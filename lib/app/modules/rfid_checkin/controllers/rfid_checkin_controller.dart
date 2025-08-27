@@ -7,6 +7,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/audio_service.dart';
 import '../../../data/config/rfid_config.dart';
+import '../../configuracion/controllers/configuracion_controller.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;
@@ -21,6 +22,10 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   final successMessage = ''.obs;
   final rfidInput = ''.obs;
   
+  // Estado de conexión del lector RFID
+  final isRfidConnected = false.obs;
+  final connectionStatusMessage = 'Verificando conexión...'.obs;
+  
   // Datos del usuario
   final isShowingDialog = false.obs;
   final userName = ''.obs;
@@ -30,6 +35,9 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   
   // Timer para verificar periódicamente la tarjeta RFID
   Timer? _rfidCheckTimer;
+  
+  // Timer para verificar periódicamente la conexión ESP32
+  Timer? _connectionCheckTimer;
   
   @override
   void onInit() {
@@ -51,19 +59,62 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       animationController.repeat();
     });
     
-    // Iniciar verificación periódica de RFID
+    // Verificar estado de conexión del ESP32
+    checkRfidConnection();
+    
+    // Verificar conexión cada 10 segundos
+    _connectionCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      checkRfidConnection();
+    });
+    
+    // Iniciar verificación periódica de RFID solo si está conectado
     startRfidChecking();
+  }
+  
+  // Verificar conexión del ESP32
+  Future<void> checkRfidConnection() async {
+    try {
+      connectionStatusMessage.value = 'Verificando conexión con ESP32...';
+      
+      // Usar el servicio real de RFID para verificar la conexión
+      final isConnected = await RfidReaderService.startReading();
+      isRfidConnected.value = isConnected;
+      
+      if (isConnected) {
+        connectionStatusMessage.value = 'ESP32 conectado y funcionando';
+        errorMessage.value = '';
+      } else {
+        connectionStatusMessage.value = 'ESP32 no conectado';
+        errorMessage.value = 'No se puede conectar al lector RFID. Verifica la configuración.';
+      }
+      
+    } catch (e) {
+      isRfidConnected.value = false;
+      connectionStatusMessage.value = 'Error de conexión';
+      errorMessage.value = 'Error al conectar con el ESP32: ${e.toString()}';
+    }
   }
   
   void startRfidChecking() {
     _rfidCheckTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-      if (!isShowingDialog.value && !isLoading.value) {
+      // Solo verificar tarjetas si el ESP32 está conectado
+      if (isRfidConnected.value && !isShowingDialog.value && !isLoading.value) {
         final uid = await RfidReaderService.checkForCard();
         if (uid != null) {
           checkAccessByRfid(uid);
         }
       }
     });
+  }
+  
+  // Reintentar conexión con el ESP32
+  Future<void> retryConnection() async {
+    await checkRfidConnection();
+  }
+  
+  // Ir a configuración RFID
+  void goToRfidConfiguration() {
+    Get.toNamed('/configuracion');
   }
 
   // Controlador para el campo de entrada RFID
@@ -73,6 +124,7 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   void onClose() {
     rfidTextController.dispose();
     _rfidCheckTimer?.cancel();
+    _connectionCheckTimer?.cancel();
     animationController.dispose();
     super.onClose();
   }
@@ -96,61 +148,71 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         (user) => user.rfidCard == rfidCode
       );
       
+      String membershipStatus;
+      
       if (user == null) {
+        // Usuario no encontrado
+        membershipStatus = RfidConfig.membershipNotFound;
         errorMessage.value = 'Tarjeta RFID no registrada';
-        // Reproducir sonido de error
         AudioService.playErrorSound();
-        isLoading.value = false;
-        return;
-      }
-      
-      // Verificar si la membresía está activa
-      if (!user.isActive) {
-        errorMessage.value = 'Membresía inactiva';
-        // Reproducir sonido de error
+      } else if (!user.isActive || user.daysRemaining <= 0) {
+        // Membresía expirada o inactiva
+        membershipStatus = RfidConfig.membershipExpired;
+        errorMessage.value = user.daysRemaining <= 0 ? 'Membresía vencida' : 'Membresía inactiva';
         AudioService.playErrorSound();
-        isLoading.value = false;
-        return;
+      } else if (user.daysRemaining <= RfidConfig.expiringWarningDays) {
+        // Membresía por vencer
+        membershipStatus = RfidConfig.membershipExpiring;
+        
+        // Actualizar datos para mostrar
+        userName.value = user.name;
+        daysLeft.value = user.daysRemaining;
+        userPhotoUrl.value = user.photoUrl ?? '';
+        membershipType.value = user.membershipType;
+        
+        // Registrar el acceso
+        final updatedUser = user.addAccessRecord();
+        if (user.id != null) {
+          await userRepository.updateUser(user.id!, updatedUser);
+        }
+        
+        successMessage.value = '¡Bienvenido(a)! Tu membresía vence pronto';
+        AudioService.playWelcomeSound();
+        isShowingDialog.value = true;
+      } else {
+        // Membresía activa
+        membershipStatus = RfidConfig.membershipActive;
+        
+        // Actualizar datos para mostrar
+        userName.value = user.name;
+        daysLeft.value = user.daysRemaining;
+        userPhotoUrl.value = user.photoUrl ?? '';
+        membershipType.value = user.membershipType;
+        
+        // Registrar el acceso
+        final updatedUser = user.addAccessRecord();
+        if (user.id != null) {
+          await userRepository.updateUser(user.id!, updatedUser);
+        }
+        
+        successMessage.value = '¡Bienvenido(a)!';
+        AudioService.playWelcomeSound();
+        isShowingDialog.value = true;
       }
       
-      // Verificar si la membresía no ha expirado
-      if (user.daysRemaining <= 0) {
-        errorMessage.value = 'Membresía vencida';
-        // Reproducir sonido de error
-        AudioService.playErrorSound();
-        isLoading.value = false;
-        return;
+      // Enviar estado de membresía al ESP32 para control de LEDs
+      await RfidReaderService.sendMembershipStatus(rfidCode, membershipStatus);
+      
+      // Si el acceso fue exitoso, mostrar diálogo y cerrarlo después de 3 segundos
+      if (membershipStatus == RfidConfig.membershipActive || membershipStatus == RfidConfig.membershipExpiring) {
+        // Limpiar el campo de RFID después de un acceso exitoso
+        rfidTextController.clear();
+        rfidInput.value = '';
+        
+        // Cerrar la pantalla de bienvenida después de 3 segundos
+        await Future.delayed(const Duration(seconds: 3));
+        isShowingDialog.value = false;
       }
-      
-      // Actualizar datos para mostrar
-      userName.value = user.name;
-      daysLeft.value = user.daysRemaining;
-      userPhotoUrl.value = user.photoUrl ?? '';
-      membershipType.value = user.membershipType;
-      
-      // Registrar el acceso
-      final updatedUser = user.addAccessRecord();
-      if (user.id != null) {
-        await userRepository.updateUser(user.id!, updatedUser);
-      }
-      
-      // Mostrar mensaje de bienvenida personalizado
-      successMessage.value = '¡Bienvenido(a)!';
-      
-      // Reproducir sonido de bienvenida
-      AudioService.playWelcomeSound();
-      
-      isShowingDialog.value = true;
-      
-      // Limpiar el campo de RFID después de un acceso exitoso
-      rfidTextController.clear();
-      rfidInput.value = '';
-      
-      // Reproducir sonido de bienvenida si lo deseas aquí
-      
-      // Cerrar la pantalla de bienvenida después de 3 segundos
-      await Future.delayed(const Duration(seconds: 3));
-      isShowingDialog.value = false;
       
     } catch (e) {
       if (kDebugMode) {

@@ -61,5 +61,40 @@ class RfidReaderService {
     }
   }
   
+  // Método para enviar el estado de membresía al ESP32
+  static Future<bool> sendMembershipStatus(String uid, String status) async {
+    try {
+      if (kDebugMode) {
+        print('Enviando estado de membresía al ESP32: UID=$uid, Status=$status');
+      }
+
+      final response = await http.post(
+        Uri.parse('${RfidConfig.baseUrl}/membership'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'uid': uid,
+          'status': status,
+        }),
+      ).timeout(const Duration(seconds: 5));
+      
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Estado de membresía enviado correctamente');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('Error al enviar estado de membresía: ${response.statusCode}');
+        }
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error al enviar estado de membresía: $e');
+      }
+      return false;
+    }
+  }
+  
   // Este es el fin de la clase RfidReaderService
 }

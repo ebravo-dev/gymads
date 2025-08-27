@@ -4,12 +4,15 @@ import '../modules/checador/bindings/checador_binding.dart';
 import '../modules/checador/views/checador_view.dart';
 import '../modules/clientes/bindings/clientes_binding.dart';
 import '../modules/clientes/views/clientes_view.dart';
+import '../modules/configuracion/bindings/configuracion_binding.dart';
+import '../modules/configuracion/views/configuracion_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/ingresos/bindings/ingresos_binding.dart';
 import '../modules/ingresos/views/ingresos_view.dart';
 import '../modules/inventario/bindings/inventario_binding.dart';
 import '../modules/inventario/views/inventario_view.dart';
+import '../modules/inventario/views/product_form_view.dart';
 import '../modules/checkin/bindings/checkin_binding.dart';
 import '../modules/checkin/views/checkin_view.dart';
 import '../modules/rfid_checkin/bindings/rfid_checkin_binding.dart';
@@ -48,6 +51,11 @@ class AppPages {
       binding: InventarioBinding(),
     ),
     GetPage(
+      name: _Paths.PRODUCT_FORM,
+      page: () => const ProductFormView(),
+      binding: InventarioBinding(),
+    ),
+    GetPage(
       name: _Paths.INGRESOS,
       page: () => const IngresosView(),
       binding: IngresosBinding(),
@@ -71,6 +79,11 @@ class AppPages {
       name: _Paths.PROMOCIONES,
       page: () => const PromocionesView(),
       binding: PromocionesBinding(),
+    ),
+    GetPage(
+      name: _Paths.CONFIGURACION,
+      page: () => const ConfiguracionView(),
+      binding: ConfiguracionBinding(),
     ),
   ];
 }

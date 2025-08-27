@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import '../controllers/navigation_controller.dart';
 import '../data/providers/storage_provider.dart';
 import '../data/providers/supabase/supabase_storage_provider.dart';
 import '../data/providers/supabase/supabase_api_provider.dart';
@@ -10,6 +11,9 @@ import '../data/providers/supabase/supabase_api_provider.dart';
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
+    // Controladores globales
+    Get.put<NavigationController>(NavigationController(), permanent: true);
+    
     // Proveedores
     Get.lazyPut<StorageProvider>(() => StorageProvider(), fenix: true);
     Get.lazyPut<SupabaseStorageProvider>(() => SupabaseStorageProvider(), fenix: true);
