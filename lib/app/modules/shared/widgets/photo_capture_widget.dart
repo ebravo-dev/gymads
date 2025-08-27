@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../views/circular_camera_view.dart';
 
 class PhotoCaptureWidget extends StatelessWidget {
   final Function(File) onPhotoTaken;
@@ -52,25 +53,44 @@ class PhotoCaptureWidget extends StatelessWidget {
   Future<void> _takePicture() async {
     await _checkAndRequestCameraPermission();
 
-    final ImagePicker picker = ImagePicker();
     try {
-      final XFile? photo = await picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.rear,
-        imageQuality: 80,
+      // Usar la vista de cámara circular
+      await Get.to<File>(
+        () => CircularCameraView(
+          onPhotoTaken: (File imageFile) {
+            _tempImageFile.value = imageFile;
+            onPhotoTaken(imageFile);
+            Get.back(); // Regresar automáticamente después de tomar la foto
+          },
+          onCancel: () {
+            Get.back(); // Solo regresar sin hacer nada
+          },
+        ),
+        transition: Transition.rightToLeft,
+        duration: const Duration(milliseconds: 300),
       );
-
-      if (photo != null) {
-        final file = File(photo.path);
-        _tempImageFile.value = file;
-        onPhotoTaken(file);
-      }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudo tomar la foto. Por favor, intenta de nuevo.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      // Fallback a ImagePicker si hay problemas con la cámara nativa
+      try {
+        final ImagePicker picker = ImagePicker();
+        final XFile? photo = await picker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.front, // Frontal por defecto
+          imageQuality: 80,
+        );
+
+        if (photo != null) {
+          final file = File(photo.path);
+          _tempImageFile.value = file;
+          onPhotoTaken(file);
+        }
+      } catch (fallbackError) {
+        Get.snackbar(
+          'Error',
+          'No se pudo tomar la foto. Por favor, intenta de nuevo.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
     }
   }
 
