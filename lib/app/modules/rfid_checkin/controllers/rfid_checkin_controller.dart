@@ -7,7 +7,6 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/audio_service.dart';
 import '../../../data/config/rfid_config.dart';
-import '../../configuracion/controllers/configuracion_controller.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;

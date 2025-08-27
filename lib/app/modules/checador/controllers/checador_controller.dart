@@ -14,6 +14,7 @@ class ChecadorController extends GetxController {
   final userName = ''.obs;
   final daysLeft = 0.obs;
   final userPhotoUrl = ''.obs;
+  final membershipType = ''.obs;
   final isLoading = false.obs;
   final errorMessage = ''.obs;
 
@@ -100,6 +101,7 @@ class ChecadorController extends GetxController {
         userName.value = user.name;
         daysLeft.value = user.daysRemaining;
         userPhotoUrl.value = user.photoUrl ?? '';
+        membershipType.value = user.membershipType;
 
         // Registrar el acceso
         try {
