@@ -648,10 +648,15 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
 
     return Container(
       padding: EdgeInsets.all(paddingValue),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height - (paddingValue * 2),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
           // Icono de advertencia animado
           AnimatedBuilder(
             animation: controller.animationController,
@@ -682,7 +687,11 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
             },
           ),
           
-          SizedBox(height: isTabletSize ? 40 : 32),
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 24,
+            smallPhone: 16,
+            tablet: 40
+          )),
           
           // Título de advertencia
           Text(
@@ -695,7 +704,11 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
             textAlign: TextAlign.center,
           ),
           
-          SizedBox(height: isTabletSize ? 24 : 16),
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 12,
+            smallPhone: 8,
+            tablet: 24
+          )),
           
           // Mensaje de estado
           Obx(() => Text(
@@ -708,7 +721,11 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
             textAlign: TextAlign.center,
           )),
           
-          SizedBox(height: isTabletSize ? 16 : 12),
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 8,
+            smallPhone: 6,
+            tablet: 16
+          )),
           
           // Mensaje de descripción
           Text(
@@ -724,7 +741,11 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
             textAlign: TextAlign.center,
           ),
           
-          SizedBox(height: isTabletSize ? 48 : 32),
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 24,
+            smallPhone: 16,
+            tablet: 48
+          )),
           
           // Botones de acción
           Column(
@@ -736,7 +757,8 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                   onPressed: controller.retryConnection,
                   icon: Icon(
                     Icons.refresh,
-                    size: isTabletSize ? 24 : 20,
+                    size: isTabletSize ? 28 : 24,
+                    color: Colors.white,
                   ),
                   label: Text(
                     'Reintentar Conexión',
@@ -754,12 +776,20 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    side: BorderSide(
+                      color: Colors.lightBlue,
+                      width: 2,
+                    ),
                     elevation: 3,
                   ),
                 ),
               ),
               
-              SizedBox(height: isTabletSize ? 16 : 12),
+              SizedBox(height: ResponsiveValues.getSpacing(context,
+                mobile: 8,
+                smallPhone: 6,
+                tablet: 16
+              )),
               
               // Botón configurar
               SizedBox(
@@ -793,7 +823,11 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
             ],
           ),
           
-          SizedBox(height: isTabletSize ? 32 : 24),
+          SizedBox(height: ResponsiveValues.getSpacing(context,
+            mobile: 16,
+            smallPhone: 12,
+            tablet: 32
+          )),
           
           // Información adicional
           Container(
@@ -850,6 +884,8 @@ class RfidCheckinView extends GetView<RfidCheckinController> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
