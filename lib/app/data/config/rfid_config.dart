@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -9,22 +8,20 @@ class RfidConfig {
   // Clave para guardar la URL en SharedPreferences
   static const String _urlKey = 'esp32_api_url';
   
-  // URL por defecto (se actualizará dinámicamente desde el Arduino)
-  static const String _defaultUrl = 'http://192.168.1.136/api';
-  
   // Variable estática para mantener la URL actual en memoria
   static String? _currentUrl;
   
   // URL del ESP32 con persistencia en SharedPreferences
-  static String get baseUrl {
+  static String? get baseUrl {
     // Si ya tenemos la URL en memoria, la devolvemos
     if (_currentUrl != null) return _currentUrl!;
     
-    // Si no, intentamos obtenerla de dotenv o usar la por defecto
-    String url = dotenv.env['ESP32_API_URL'] ?? _defaultUrl;
-    _currentUrl = url;
-    return url;
+    // Si no hay URL configurada, devolver null (requiere configuración Bluetooth)
+    return null;
   }
+  
+  // Verificar si el ESP32 está configurado y disponible
+  static bool get isConfigured => _currentUrl != null && _currentUrl!.isNotEmpty;
   
   // Cargar la configuración guardada
   static Future<void> loadConfig() async {
@@ -33,76 +30,103 @@ class RfidConfig {
       final savedUrl = prefs.getString(_urlKey);
       
       if (savedUrl != null && savedUrl.isNotEmpty) {
-        _currentUrl = savedUrl;
-        dotenv.env['ESP32_API_URL'] = savedUrl;
         if (kDebugMode) {
-          print('Configuración ESP32 cargada desde preferencias');
+          print('Configuración ESP32 cargada desde preferencias: $savedUrl');
         }
         
         // Verificar si la IP guardada sigue siendo válida
-        if (!(await _testConnection(savedUrl))) {
+        if (await _testConnection(savedUrl)) {
+          _currentUrl = savedUrl;
           if (kDebugMode) {
-            print('IP guardada no responde, intentando detectar automáticamente...');
+            print('IP guardada es válida: $savedUrl');
           }
-          await _detectEspIp();
+        } else {
+          if (kDebugMode) {
+            print('IP guardada no responde, se requiere configuración via Bluetooth');
+          }
+          _currentUrl = null; // Forzar reconfiguración
+          // Limpiar preferencias inválidas
+          await prefs.remove(_urlKey);
         }
       } else {
-        // Si no hay URL guardada, intentar detectar automáticamente
-        await _detectEspIp();
+        if (kDebugMode) {
+          print('No hay configuración guardada, se requiere configuración via Bluetooth');
+        }
+        _currentUrl = null;
       }
     } catch (e) {
       if (kDebugMode) {
         print('Error al cargar configuración RFID: $e');
       }
-      _currentUrl = _defaultUrl;
+      _currentUrl = null;
     }
   }
 
-  // Detecta automáticamente la IP del ESP32
-  static Future<void> _detectEspIp() async {
-    // Lista de IPs posibles a verificar
-    final possibleIps = [
-      '192.168.4.1',    // IP por defecto en modo AP
-      '192.168.1.136',  // IP común en redes domésticas
-      '192.168.0.136',  // Otra IP común
-      '10.0.0.136',     // IP en algunas redes
-      '192.168.1.100',  // Rango común adicional
-      '192.168.0.100',  
-    ];
-
-    for (final ip in possibleIps) {
-      final testUrl = 'http://$ip/api';
-      if (await _testConnection(testUrl)) {
-        if (kDebugMode) {
-          print('ESP32 encontrado automáticamente en: $ip');
-        }
-        await updateConfig(newUrl: testUrl);
-        return;
+  // Verificar si hay configuración IP disponible
+  static bool get hasConfiguredIP => _currentUrl != null && _currentUrl!.isNotEmpty;
+  
+  // Configurar IP desde Bluetooth
+  static Future<bool> configureFromBluetooth(String ipAddress) async {
+    if (ipAddress.isEmpty) {
+      if (kDebugMode) {
+        print('IP desde Bluetooth está vacía');
       }
+      return false;
     }
-
+    
+    String validatedUrl = 'http://$ipAddress/api';
+    
     if (kDebugMode) {
-      print('No se pudo detectar automáticamente la IP del ESP32, usando IP por defecto');
+      print('Configurando ESP32 desde Bluetooth: $validatedUrl');
     }
-    _currentUrl = _defaultUrl;
-    await saveConfig(_defaultUrl);
+    
+    // Probar la conexión primero
+    if (await _testConnection(validatedUrl)) {
+      _currentUrl = validatedUrl;
+      await saveConfig(validatedUrl);
+      
+      if (kDebugMode) {
+        print('Configuración ESP32 actualizada exitosamente desde Bluetooth: $validatedUrl');
+      }
+      return true;
+    } else {
+      if (kDebugMode) {
+        print('IP desde Bluetooth no responde: $ipAddress');
+      }
+      return false;
+    }
+  }
+  
+  // Forzar actualización de IP (sin validación para casos donde sabemos que es correcta)
+  static void forceUpdateIP(String ipAddress) {
+    if (ipAddress.isNotEmpty) {
+      String validatedUrl = 'http://$ipAddress/api';
+      _currentUrl = validatedUrl;
+      
+      if (kDebugMode) {
+        print('IP forzada desde Bluetooth: $validatedUrl');
+      }
+      
+      // Guardar en background sin bloquear
+      saveConfig(validatedUrl);
+    }
   }
 
   // Probar conexión con una URL específica
   static Future<bool> _testConnection(String url) async {
     try {
       final testUrl = url.endsWith('/api') ? url : '$url/api';
-      final statusUrl = '$testUrl/wifi/status';
+      final statusUrl = '$testUrl/status';
       
       final response = await http.get(
         Uri.parse(statusUrl),
         headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 2));
+      ).timeout(const Duration(seconds: 3));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (kDebugMode) {
-          print('ESP32 encontrado en $url (modo: ${data['mode'] ?? 'unknown'})');
+          print('ESP32 encontrado en $url (status: ${data['status'] ?? 'unknown'})');
         }
         return true;
       }
@@ -127,16 +151,32 @@ class RfidConfig {
     }
   }
   
-  // Método para actualizar la configuración cuando cambie la IP del Arduino
+  // Método para actualizar la configuración cuando el ESP32 envíe su IP via Bluetooth
   static Future<void> updateConfig({String? newUrl}) async {
-    if (newUrl != null) {
+    if (newUrl != null && newUrl.isNotEmpty) {
       final validatedUrl = validateUrl(newUrl);
       _currentUrl = validatedUrl;
-      dotenv.env['ESP32_API_URL'] = validatedUrl;
       await saveConfig(validatedUrl);
       
       if (kDebugMode) {
-        print('Configuración ESP32 actualizada automáticamente desde dispositivo');
+        print('Configuración ESP32 actualizada: $validatedUrl');
+      }
+    }
+  }
+  
+  // Limpiar configuración (para forzar reconfiguración)
+  static Future<void> clearConfig() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_urlKey);
+      _currentUrl = null;
+      
+      if (kDebugMode) {
+        print('Configuración ESP32 limpiada');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error al limpiar configuración: $e');
       }
     }
   }

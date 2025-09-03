@@ -73,6 +73,16 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   // Verificar conexión del ESP32
   Future<void> checkRfidConnection() async {
     try {
+      connectionStatusMessage.value = 'Verificando configuración ESP32...';
+      
+      // Primero verificar si hay configuración
+      if (!RfidConfig.isConfigured) {
+        isRfidConnected.value = false;
+        connectionStatusMessage.value = 'ESP32 no configurado';
+        errorMessage.value = 'Se requiere configurar el ESP32 via Bluetooth primero.';
+        return;
+      }
+      
       connectionStatusMessage.value = 'Verificando conexión con ESP32...';
       
       // Usar el servicio real de RFID para verificar la conexión
@@ -83,8 +93,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         connectionStatusMessage.value = 'ESP32 conectado y funcionando';
         errorMessage.value = '';
       } else {
-        connectionStatusMessage.value = 'ESP32 no conectado';
-        errorMessage.value = 'No se puede conectar al lector RFID. Verifica la configuración.';
+        connectionStatusMessage.value = 'ESP32 no responde';
+        errorMessage.value = 'No se puede conectar al lector RFID. Verifica la configuración via Bluetooth.';
       }
       
     } catch (e) {
@@ -226,6 +236,11 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   // Obtener la dirección IP actual del lector RFID
   String getReaderIpAddress() {
     final baseUrl = RfidConfig.baseUrl;
+    
+    if (baseUrl == null || baseUrl.isEmpty) {
+      return 'No configurado';
+    }
+    
     // Extraer solo la dirección IP del formato http://192.168.1.x/api
     if (baseUrl.contains('://') && baseUrl.contains('/api')) {
       final parts = baseUrl.split('://');
@@ -258,8 +273,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       formattedIp = '$formattedIp/api';
     }
     
-    // Actualizar la configuración
-    RfidConfig.updateConfig(newUrl: formattedIp);
+    // Actualizar la configuración usando el nuevo método
+    RfidConfig.forceUpdateIP(newIp); // Usar la IP sin formato para el método interno
     
     if (kDebugMode) {
       print('Dirección IP del lector RFID actualizada a: $formattedIp');
@@ -267,6 +282,13 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
     
     // Reiniciar el timer para usar la nueva IP
     _rfidCheckTimer?.cancel();
-    startRfidChecking();
+    
+    // Verificar conexión con la nueva IP
+    checkRfidConnection();
+    
+    // Reiniciar checking solo si está conectado
+    if (isRfidConnected.value) {
+      startRfidChecking();
+    }
   }
 }
