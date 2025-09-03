@@ -247,7 +247,7 @@ class PointOfSaleController extends GetxController {
       
       // Crear objeto de venta
       final sale = Sale(
-        clienteId: '', // Cliente vacío para ventas directas de productos
+        // No incluir clienteId para ventas directas de productos
         clienteNombre: 'Venta Directa',
         concepto: 'Venta de productos',
         tipoMembresia: 'ninguna',

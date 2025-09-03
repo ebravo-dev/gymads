@@ -1,7 +1,7 @@
 /// Modelo para representar una venta
 class Sale {
   final String? id;
-  final String clienteId;
+  final String? clienteId; // Cambiado a opcional
   final String clienteNombre;
   final String concepto;
   final String tipoMembresia;
@@ -29,7 +29,7 @@ class Sale {
 
   Sale({
     this.id,
-    required this.clienteId,
+    this.clienteId, // Cambiado a opcional
     required this.clienteNombre,
     required this.concepto,
     required this.tipoMembresia,
@@ -137,8 +137,8 @@ class Sale {
       json['id'] = id;
     }
     
-    // Solo incluir cliente_id si no está vacío (para ventas con cliente específico)
-    if (clienteId.isNotEmpty) {
+    // Solo incluir cliente_id si no es null y no está vacío (para ventas con cliente específico)
+    if (clienteId != null && clienteId!.isNotEmpty) {
       json['cliente_id'] = clienteId;
     }
     
@@ -188,6 +188,11 @@ class Sale {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       items: items ?? this.items,
+      impuestos: impuestos,
+      montoRecibido: montoRecibido,
+      cambio: cambio,
+      ventaTipo: ventaTipo,
+      subtotal: subtotal,
     );
   }
 }

@@ -13,10 +13,9 @@ class IngresoProvider {
     int limit = 100,
   }) async {
     try {
-      var query = _supabase.from('ingresos').select('''
-        *,
-        users!cliente_id(name, phone)
-      ''');
+      // Ya no necesitamos JOIN porque eliminamos las foreign keys
+      // Los nombres de cliente están en cliente_nombre
+      var query = _supabase.from('ingresos').select('*');
 
       // Aplicar filtros
       if (fechaInicio != null) {
