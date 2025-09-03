@@ -163,12 +163,12 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         // Usuario no encontrado
         membershipStatus = RfidConfig.membershipNotFound;
         errorMessage.value = 'Tarjeta RFID no registrada';
-        AudioService.playErrorSound();
+        AudioService.playDeniedSound();
       } else if (!user.isActive || user.daysRemaining <= 0) {
         // Membresía expirada o inactiva
         membershipStatus = RfidConfig.membershipExpired;
         errorMessage.value = user.daysRemaining <= 0 ? 'Membresía vencida' : 'Membresía inactiva';
-        AudioService.playErrorSound();
+        AudioService.playDeniedSound();
       } else if (user.daysRemaining <= RfidConfig.expiringWarningDays) {
         // Membresía por vencer
         membershipStatus = RfidConfig.membershipExpiring;
