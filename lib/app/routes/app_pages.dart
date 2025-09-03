@@ -19,6 +19,8 @@ import '../modules/membresias/bindings/membresias_binding.dart';
 import '../modules/membresias/views/membresias_view.dart';
 import '../modules/promociones/bindings/promociones_binding.dart';
 import '../modules/promociones/views/promociones_view.dart';
+import '../modules/point_of_sale/bindings/point_of_sale_binding.dart';
+import '../modules/point_of_sale/views/point_of_sale_view.dart';
 
 part 'app_routes.dart';
 
@@ -77,6 +79,11 @@ class AppPages {
       name: _Paths.CONFIGURACION,
       page: () => const ConfiguracionView(),
       binding: ConfiguracionBinding(),
+    ),
+    GetPage(
+      name: _Paths.POINT_OF_SALE,
+      page: () => const PointOfSaleView(),
+      binding: PointOfSaleBinding(),
     ),
   ];
 }

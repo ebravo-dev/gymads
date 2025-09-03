@@ -224,6 +224,15 @@ class HomeView extends GetView<HomeController> {
                             onTap: controller.goToInventario,
                           ),
                           
+                          // Opción de Punto de Venta
+                          ButtonMenuWidget(
+                            icon: Icons.point_of_sale,
+                            label: 'Punto de Venta',
+                            description: 'Ventas y facturación',
+                            color: Colors.blue.shade300,
+                            onTap: controller.goToPointOfSale,
+                          ),
+                          
                           // Opción de Registrar Pago
                           ButtonMenuWidget(
                             icon: Icons.attach_money,

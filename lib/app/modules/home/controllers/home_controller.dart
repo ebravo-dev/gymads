@@ -41,6 +41,11 @@ class HomeController extends GetxController {
     statusMessages.add('Navegando a Inventario...');
     Get.toNamed(Routes.INVENTARIO);
   }
+
+  void goToPointOfSale() {
+    statusMessages.add('Navegando a Punto de Venta...');
+    Get.toNamed(Routes.POINT_OF_SALE);
+  }
   
   void goToMembresias() {
     statusMessages.add('Navegando a Gestión de Membresías...');

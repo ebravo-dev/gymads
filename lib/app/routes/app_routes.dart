@@ -13,6 +13,7 @@ abstract class Routes {
   static const MEMBRESIAS = _Paths.MEMBRESIAS;
   static const PROMOCIONES = _Paths.PROMOCIONES;
   static const CONFIGURACION = _Paths.CONFIGURACION;
+  static const POINT_OF_SALE = _Paths.POINT_OF_SALE;
 }
 
 abstract class _Paths {
@@ -27,4 +28,5 @@ abstract class _Paths {
   static const MEMBRESIAS = '/membresias';
   static const PROMOCIONES = '/promociones';
   static const CONFIGURACION = '/configuracion';
+  static const POINT_OF_SALE = '/point-of-sale';
 }
