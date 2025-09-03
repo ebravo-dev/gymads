@@ -21,41 +21,42 @@ class HomeView extends GetView<HomeController> {
     return Scaffold(
       appBar: AppBar(
         title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'ADS\nFITNESS',
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.titleColor,
-                  fontSize: ResponsiveValues.getFontSize(context, 
-                    mobile: 38, 
-                    smallPhone: 32, 
-                    tablet: 44
-                  ),
-                  letterSpacing: 5,
-                ),
-              ),
-            ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+        'GYMONE',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: const Color.fromARGB(255, 87, 102, 216),
+          fontSize: ResponsiveValues.getFontSize(context, 
+        mobile: 38, 
+        smallPhone: 32, 
+        tablet: 44
+          ),
+          letterSpacing: 2, // Reducido de 5 a 2 para juntar más las letras
+        ),
+          ),
+        ),
           ],
         ),
 
         systemOverlayStyle:
-            context.theme.platform == TargetPlatform.iOS
-                ? const SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.light,
-                )
-                : const SystemUiOverlayStyle(
-                  systemNavigationBarColor: Colors.black,
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.light,
-                ),
+        context.theme.platform == TargetPlatform.iOS
+        ? const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+        )
+        : const SystemUiOverlayStyle(
+          systemNavigationBarColor: Colors.black,
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+        ),
 
-        centerTitle: false,
+        centerTitle: true,
         backgroundColor: AppColors.backgroundColor,
         elevation: 0,
         toolbarHeight: isTabletSize ? 170 : 150,
