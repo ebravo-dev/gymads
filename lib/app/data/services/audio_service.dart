@@ -4,31 +4,6 @@ import 'package:flutter/foundation.dart';
 /// Servicio para manejar la reproducción de audio en la aplicación
 class AudioService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
-  static bool _isInitialized = false;
-  
-  /// Inicializa el reproductor de audio
-  static Future<void> _initialize() async {
-    if (_isInitialized) return;
-    
-    try {
-      if (kDebugMode) {
-        print('🔊 Inicializando reproductor de audio...');
-      }
-      
-      // Cargar el archivo de audio desde assets
-      await _audioPlayer.setAsset('assets/audio/welcome.mp3');
-      _isInitialized = true;
-      
-      if (kDebugMode) {
-        print('✅ Reproductor de audio inicializado correctamente');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error al inicializar reproductor de audio: $e');
-        print('📊 Tipo de error: ${e.runtimeType}');
-      }
-    }
-  }
   
   /// Reproduce el sonido de bienvenida cuando un usuario escanea exitosamente
   static Future<void> playWelcomeSound() async {
@@ -37,8 +12,8 @@ class AudioService {
         print('🔊 Reproduciendo sonido de bienvenida...');
       }
       
-      // Inicializar si es necesario
-      await _initialize();
+      // Cargar el archivo de audio de bienvenida
+      await _audioPlayer.setAsset('assets/audio/welcome.mp3');
       
       // Configurar volumen a 80%
       await _audioPlayer.setVolume(0.8);
@@ -68,8 +43,8 @@ class AudioService {
         print('🔊 Reproduciendo sonido de error...');
       }
       
-      // Inicializar si es necesario
-      await _initialize();
+      // Cargar el archivo de audio de bienvenida (usado como error)
+      await _audioPlayer.setAsset('assets/audio/welcome.mp3');
       
       // Configurar para error (volumen más bajo y velocidad más lenta)
       await _audioPlayer.setVolume(0.6); // Más bajo para error
@@ -100,6 +75,37 @@ class AudioService {
     }
   }
   
+  /// Reproduce el sonido de acceso denegado cuando el usuario no está registrado
+  static Future<void> playDeniedSound() async {
+    try {
+      if (kDebugMode) {
+        print('🔊 Reproduciendo sonido de acceso denegado...');
+      }
+      
+      // Cargar el archivo de audio de denegado
+      await _audioPlayer.setAsset('assets/audio/denegado.mp3');
+      
+      // Configurar volumen a 85%
+      await _audioPlayer.setVolume(0.85);
+      
+      // Configurar velocidad normal
+      await _audioPlayer.setSpeed(1.0);
+      
+      // Reproducir desde el inicio
+      await _audioPlayer.seek(Duration.zero);
+      await _audioPlayer.play();
+      
+      if (kDebugMode) {
+        print('✅ Sonido de acceso denegado reproducido correctamente');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error al reproducir sonido de acceso denegado: $e');
+        print('📊 Tipo de error: ${e.runtimeType}');
+      }
+    }
+  }
+  
   /// Reproduce un sonido de éxito con configuración específica
   static Future<void> playSuccessSound() async {
     try {
@@ -107,8 +113,8 @@ class AudioService {
         print('🔊 Reproduciendo sonido de éxito...');
       }
       
-      // Inicializar si es necesario
-      await _initialize();
+      // Cargar el archivo de audio de bienvenida
+      await _audioPlayer.setAsset('assets/audio/welcome.mp3');
       
       // Configurar para éxito (velocidad más rápida)
       await _audioPlayer.setVolume(0.8);
@@ -156,7 +162,6 @@ class AudioService {
   static Future<void> dispose() async {
     try {
       await _audioPlayer.dispose();
-      _isInitialized = false;
       if (kDebugMode) {
         print('🗑️ Recursos de audio liberados');
       }

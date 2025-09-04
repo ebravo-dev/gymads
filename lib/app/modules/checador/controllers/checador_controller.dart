@@ -48,8 +48,8 @@ class ChecadorController extends GetxController {
             print('❌ Usuario no encontrado para el número: $userNumber');
           }
           errorMessage.value = 'Usuario no registrado con número: $userNumber';
-          // Reproducir sonido de error
-          AudioService.playErrorSound();
+          // Reproducir sonido de acceso denegado cuando NO está registrado
+          AudioService.playDeniedSound();
           
           // Mantener el mensaje de error visible por 3 segundos
           await Future.delayed(const Duration(seconds: 3));
@@ -69,8 +69,8 @@ class ChecadorController extends GetxController {
             print('⚠️ Membresía inactiva para usuario: ${user.name}');
           }
           errorMessage.value = 'Membresía inactiva para ${user.name}';
-          // Reproducir sonido de error
-          AudioService.playErrorSound();
+          // Reproducir sonido de acceso denegado (membresía inactiva)
+          AudioService.playDeniedSound();
           
           // Mantener el mensaje de error visible por 3 segundos
           await Future.delayed(const Duration(seconds: 3));
@@ -84,8 +84,8 @@ class ChecadorController extends GetxController {
             print('⚠️ Membresía vencida para usuario: ${user.name}');
           }
           errorMessage.value = 'Membresía vencida para ${user.name}';
-          // Reproducir sonido de error
-          AudioService.playErrorSound();
+          // Reproducir sonido de acceso denegado (membresía vencida)
+          AudioService.playDeniedSound();
           
           // Mantener el mensaje de error visible por 3 segundos
           await Future.delayed(const Duration(seconds: 3));
