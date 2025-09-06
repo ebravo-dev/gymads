@@ -51,6 +51,15 @@ String receivedCommand = "";
 bool wifiConnected = false;
 bool bluetoothEnabled = false;
 bool bluetoothClientConnected = false;
+bool usingStaticIP = false;
+bool changeWiFiInProgress = false; // Deshabilitar reconexión automática durante cambio de WiFi
+
+// Valores de IP estática
+IPAddress staticIP;
+IPAddress gateway;
+IPAddress subnet;
+IPAddress dns1(8, 8, 8, 8); // Google DNS
+IPAddress dns2(8, 8, 4, 4); // Google DNS alternativo
 
 // Estados de membresía
 const String MEMBERSHIP_ACTIVE = "ACTIVE";
@@ -286,6 +295,9 @@ void processBluetoothCommand(String command) {
   else if (cmd == "connect_wifi") {
     handleBLEWiFiConnect(doc);
   }
+  else if (cmd == "change_wifi") {
+    handleBLEWiFiChange(doc);
+  }
   else if (cmd == "get_ip") {
     sendCurrentIPBLE();
   }
@@ -296,52 +308,273 @@ void processBluetoothCommand(String command) {
     resetWiFiConfig();
     sendBLEResponse("success", "WiFi configuration reset");
   }
+  else if (cmd == "set_static_ip") {
+    handleSetStaticIP(doc);
+  }
+  else if (cmd == "restart_wifi") {
+    handleRestartWiFi();
+  }
   else {
     sendBLEResponse("ERROR", "Unknown command: " + cmd);
+  }
+}
+
+// Manejar configuración de IP estática a través de BLE
+void handleSetStaticIP(DynamicJsonDocument& doc) {
+  bool useStaticIP = doc["use_static_ip"].as<bool>();
+  
+  preferences.begin("wifi-config", false);
+  preferences.putBool("static_ip_enabled", useStaticIP);
+  
+  if (useStaticIP) {
+    // Guardar la configuración de IP estática
+    String staticIPStr = doc["static_ip"].as<String>();
+    String gatewayStr = doc["gateway"].as<String>();
+    String subnetStr = doc["subnet"].as<String>();
+    
+    if (staticIPStr.length() > 0 && gatewayStr.length() > 0 && subnetStr.length() > 0) {
+      preferences.putString("static_ip", staticIPStr);
+      preferences.putString("gateway", gatewayStr);
+      preferences.putString("subnet", subnetStr);
+      
+      Serial.println("Configuración IP estática guardada:");
+      Serial.println("IP: " + staticIPStr);
+      Serial.println("Gateway: " + gatewayStr);
+      Serial.println("Subnet: " + subnetStr);
+      
+      sendBLEResponse("success", "Static IP configuration saved");
+      
+      // Avisar que se necesita reconectar para aplicar la configuración
+      sendBLEResponse("info", "Reconnect to WiFi to apply static IP");
+    } else {
+      sendBLEResponse("error", "Invalid static IP configuration");
+    }
+  } else {
+    // Desactivar IP estática (usar DHCP)
+    usingStaticIP = false;
+    sendBLEResponse("success", "Static IP disabled, using DHCP");
+    
+    // Avisar que se necesita reconectar para aplicar la configuración
+    sendBLEResponse("info", "Reconnect to WiFi to apply DHCP");
+  }
+  
+  preferences.end();
+}
+
+// Reiniciar módulo WiFi para resolver problemas de escaneo
+void handleRestartWiFi() {
+  Serial.println("Reiniciando módulo WiFi...");
+  
+  // Desconectar WiFi actual si está conectado
+  if (wifiConnected) {
+    WiFi.disconnect(true);
+    wifiConnected = false;
+    digitalWrite(LED_WIFI, LOW);
+    server.stop();
+  }
+  
+  // Reiniciar módulo WiFi
+  WiFi.mode(WIFI_OFF);
+  delay(1000);
+  WiFi.mode(WIFI_STA);
+  delay(1000);
+  
+  // Resetear variables de estado
+  usingStaticIP = false;
+  changeWiFiInProgress = false; // Restaurar reconexión automática
+  
+  Serial.println("Módulo WiFi reiniciado");
+  sendBLEResponse("success", "WiFi module restarted");
+  
+  // Intentar reconectar automáticamente si hay configuración guardada
+  preferences.begin("wifi-config", true);
+  String ssid = preferences.getString("ssid", "");
+  preferences.end();
+  
+  if (ssid.length() > 0) {
+    Serial.println("Intentando reconectar a la red guardada...");
+    if (connectToSavedWiFi()) {
+      setupServerRoutes();
+      server.begin();
+      sendBLEResponse("info", "Reconnected to saved WiFi");
+    } else {
+      sendBLEResponse("info", "Could not reconnect. Ready for new configuration");
+    }
+  } else {
+    sendBLEResponse("info", "No saved WiFi configuration. Ready for setup");
   }
 }
 
 // Enviar datos por BLE
 void sendBLEData(String data) {
   if (deviceConnected && pTxCharacteristic != NULL) {
-    pTxCharacteristic->setValue(data.c_str());
-    pTxCharacteristic->notify();
-    delay(10); // Pequeña pausa para asegurar la transmisión
-    Serial.println("Enviado por BLE: " + data);
+    // Si el mensaje es pequeño, enviarlo directamente
+    if (data.length() <= 500) { // Aumentar umbral
+      pTxCharacteristic->setValue(data.c_str());
+      pTxCharacteristic->notify();
+      delay(50); // Pausa más larga para asegurar la transmisión
+      Serial.println("Enviado por BLE: " + data);
+    } else {
+      // Fragmentar mensajes largos
+      sendBLEDataFragmented(data);
+    }
   } else {
     Serial.println("No hay cliente BLE conectado para enviar: " + data);
   }
 }
 
+// Enviar datos largos fragmentados por BLE
+void sendBLEDataFragmented(String data) {
+  Serial.println("Enviando datos fragmentados, tamaño total: " + String(data.length()));
+  
+  const int fragmentSize = 400; // Tamaño máximo por fragmento
+  int totalFragments = (data.length() + fragmentSize - 1) / fragmentSize;
+  
+  // Enviar header con información de fragmentación
+  DynamicJsonDocument headerDoc(256);
+  headerDoc["type"] = "fragmented_start";
+  headerDoc["total_length"] = data.length();
+  headerDoc["total_fragments"] = totalFragments;
+  headerDoc["fragment_size"] = fragmentSize;
+  
+  String headerJson;
+  serializeJson(headerDoc, headerJson);
+  
+  pTxCharacteristic->setValue(headerJson.c_str());
+  pTxCharacteristic->notify();
+  delay(200); // Aumentar delay después del header
+  
+  // Enviar cada fragmento
+  for (int i = 0; i < totalFragments; i++) {
+    int startIndex = i * fragmentSize;
+    int endIndex = min(startIndex + fragmentSize, (int)data.length());
+    String fragment = data.substring(startIndex, endIndex);
+    
+    DynamicJsonDocument fragmentDoc(512);
+    fragmentDoc["type"] = "fragment";
+    fragmentDoc["fragment_index"] = i;
+    fragmentDoc["total_fragments"] = totalFragments;
+    fragmentDoc["data"] = fragment;
+    
+    String fragmentJson;
+    serializeJson(fragmentDoc, fragmentJson);
+    
+    Serial.println("DEBUG: Enviando fragmento " + String(i) + " de " + String(fragment.length()) + " bytes");
+    Serial.println("DEBUG: Fragmento " + String(i) + " contenido: " + fragment.substring(0, min(50, (int)fragment.length())) + "...");
+    
+    pTxCharacteristic->setValue(fragmentJson.c_str());
+    pTxCharacteristic->notify();
+    delay(150); // Aumentar delay entre fragmentos
+    
+    Serial.println("Fragmento " + String(i + 1) + "/" + String(totalFragments) + " enviado");
+  }
+  
+  // Enviar mensaje de finalización
+  DynamicJsonDocument endDoc(128);
+  endDoc["type"] = "fragmented_end";
+  endDoc["total_fragments"] = totalFragments;
+  
+  String endJson;
+  serializeJson(endDoc, endJson);
+  
+  pTxCharacteristic->setValue(endJson.c_str());
+  pTxCharacteristic->notify();
+  delay(100); // Aumentar delay final
+  
+  Serial.println("Datos fragmentados enviados completamente");
+}
+
 // Escanear redes WiFi vía BLE
 void handleBLEWiFiScan() {
   Serial.println("Escaneando redes WiFi por solicitud BLE...");
+  Serial.println("=== DEBUG: Iniciando handleBLEWiFiScan v3.2 ===");
   
+  // Asegurar que WiFi esté en modo correcto y desconectado
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
+  WiFi.disconnect(true);
+  delay(500); // Dar más tiempo para que se establezca el modo
   
+  Serial.println("DEBUG: WiFi configurado en modo STA, iniciando escaneo...");
   int networks = WiFi.scanNetworks();
+  Serial.println("DEBUG: Resultado del escaneo: " + String(networks));
   
-  DynamicJsonDocument doc(2048);
+  // Verificar si hubo error en el escaneo
+  if (networks < 0) {
+    Serial.println("ERROR: Error en escaneo WiFi: " + String(networks));
+    
+    // Enviar respuesta de error
+    DynamicJsonDocument doc(256);
+    doc["status"] = "error";
+    doc["command"] = "scan_wifi";
+    doc["error_code"] = networks;
+    doc["message"] = "Error al escanear redes WiFi";
+    doc["count"] = 0;
+    doc["networks"] = JsonArray();
+    
+    String response;
+    serializeJson(doc, response);
+    Serial.println("DEBUG: Enviando respuesta de error: " + response);
+    sendBLEData(response);
+    
+    Serial.println("Error enviado por BLE");
+    return;
+  }
+  
+  // Si no hay redes encontradas
+  if (networks == 0) {
+    Serial.println("WARNING: No se encontraron redes WiFi");
+    
+    DynamicJsonDocument doc(256);
+    doc["status"] = "success";
+    doc["command"] = "scan_wifi";
+    doc["count"] = 0;
+    doc["total_found"] = 0;
+    doc["message"] = "No se encontraron redes WiFi";
+    doc["networks"] = JsonArray();
+    
+    String response;
+    serializeJson(doc, response);
+    Serial.println("DEBUG: Enviando respuesta sin redes: " + response);
+    sendBLEData(response);
+    
+    Serial.println("Respuesta de 0 redes enviada por BLE");
+    return;
+  }
+  
+  // Limitar a las 5 mejores redes para reducir tamaño del mensaje
+  int networksToSend = min(networks, 5);
+  
+  DynamicJsonDocument doc(768); // Reducir tamaño del buffer
   doc["status"] = "success";
   doc["command"] = "scan_wifi";
-  doc["count"] = networks;
+  doc["count"] = networksToSend;
+  doc["total_found"] = networks;
   
   JsonArray networksArray = doc.createNestedArray("networks");
   
-  for (int i = 0; i < networks && i < 10; i++) { // Limitar a 10 redes para evitar overflow
+  for (int i = 0; i < networksToSend; i++) {
     JsonObject network = networksArray.createNestedObject();
-    network["ssid"] = WiFi.SSID(i);
+    
+    String ssid = WiFi.SSID(i);
+    // Truncar SSID si es muy largo para reducir tamaño
+    if (ssid.length() > 20) {
+      ssid = ssid.substring(0, 17) + "...";
+    }
+    
+    network["ssid"] = ssid;
     network["rssi"] = WiFi.RSSI(i);
     network["secure"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
   }
   
   String response;
   serializeJson(doc, response);
+  
+  Serial.println("DEBUG: Tamaño del mensaje de redes: " + String(response.length()) + " bytes");
+  Serial.println("DEBUG: Enviando respuesta: " + response.substring(0, min(100, (int)response.length())) + "...");
   sendBLEData(response);
   
-  Serial.println("Enviadas " + String(networks) + " redes por BLE");
+  Serial.println("Enviadas " + String(networksToSend) + " de " + String(networks) + " redes por BLE");
+  Serial.println("=== DEBUG: handleBLEWiFiScan v3.2 completado ===");
 }
 
 // Conectar a WiFi vía BLE
@@ -351,9 +584,58 @@ void handleBLEWiFiConnect(DynamicJsonDocument& doc) {
   
   Serial.println("Conectando a WiFi: " + ssid);
   
+  // Abrir preferencias
+  preferences.begin("wifi-config", false);
+  
   // Guardar credenciales
   preferences.putString("ssid", ssid);
   preferences.putString("password", password);
+  
+  // Verificar si se enviaron datos de IP estática
+  bool useStaticIP = doc.containsKey("use_static_ip") ? doc["use_static_ip"].as<bool>() : false;
+  preferences.putBool("static_ip_enabled", useStaticIP);
+  
+  if (useStaticIP) {
+    String staticIPStr = doc["static_ip"].as<String>();
+    String gatewayStr = doc["gateway"].as<String>();
+    String subnetStr = doc["subnet"].as<String>();
+    
+    // Guardar configuración de IP estática
+    preferences.putString("static_ip", staticIPStr);
+    preferences.putString("gateway", gatewayStr);
+    preferences.putString("subnet", subnetStr);
+    
+    Serial.println("Configuración IP estática guardada:");
+    Serial.println("IP: " + staticIPStr);
+    Serial.println("Gateway: " + gatewayStr);
+    Serial.println("Subnet: " + subnetStr);
+    
+    // Configurar IP estática para la conexión actual
+    IPAddress staticIP;
+    IPAddress gateway;
+    IPAddress subnet;
+    
+    if (staticIP.fromString(staticIPStr) && 
+        gateway.fromString(gatewayStr) && 
+        subnet.fromString(subnetStr)) {
+      
+      if (!WiFi.config(staticIP, gateway, subnet, dns1, dns2)) {
+        Serial.println("Error al configurar IP estática");
+      } else {
+        Serial.println("IP estática configurada exitosamente");
+        usingStaticIP = true;
+      }
+    } else {
+      Serial.println("Error en formato de IP estática");
+      usingStaticIP = false;
+    }
+  } else {
+    Serial.println("Usando DHCP (IP dinámica)");
+    usingStaticIP = false;
+  }
+  
+  // Cerrar preferencias
+  preferences.end();
   
   // Intentar conectar
   WiFi.mode(WIFI_STA);
@@ -379,6 +661,9 @@ void handleBLEWiFiConnect(DynamicJsonDocument& doc) {
     digitalWrite(LED_WIFI, HIGH);
     wifiConnected = true;
     
+    // Restaurar reconexión automática ya que la conexión fue exitosa
+    changeWiFiInProgress = false;
+    
     // Iniciar servidor HTTP
     setupServerRoutes();
     server.begin();
@@ -391,8 +676,32 @@ void handleBLEWiFiConnect(DynamicJsonDocument& doc) {
     Serial.println("Error al conectar WiFi");
     digitalWrite(LED_WIFI, LOW);
     wifiConnected = false;
+    
+    // Restaurar reconexión automática incluso si falló la conexión
+    changeWiFiInProgress = false;
+    
     sendBLEResponse("error", "Failed to connect to WiFi");
   }
+}
+
+// Cambiar WiFi - desconectar sin auto-reconexión
+void handleBLEWiFiChange(DynamicJsonDocument& doc) {
+  Serial.println("Iniciando cambio de WiFi...");
+  
+  // Activar flag para evitar reconexión automática
+  changeWiFiInProgress = true;
+  
+  // Desconectar WiFi actual sin auto-reconexión
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  delay(1000);
+  
+  // Reiniciar modo WiFi
+  WiFi.mode(WIFI_STA);
+  delay(1000);
+  
+  // Responder que está listo para nueva configuración
+  sendBLEResponse("success", "Ready for new WiFi configuration");
 }
 
 // Enviar IP actual por BLE
@@ -407,6 +716,16 @@ void sendCurrentIPBLE() {
     doc["ssid"] = WiFi.SSID();
     doc["rssi"] = WiFi.RSSI();
     doc["mac_address"] = WiFi.macAddress();
+    doc["using_static_ip"] = usingStaticIP;
+    
+    // Incluir información de IP estática si está configurada
+    if (usingStaticIP) {
+      preferences.begin("wifi-config", true); // Solo lectura
+      doc["static_ip"] = preferences.getString("static_ip", "");
+      doc["gateway"] = preferences.getString("gateway", "");
+      doc["subnet"] = preferences.getString("subnet", "");
+      preferences.end();
+    }
   } else {
     doc["ip_address"] = "";
     doc["error"] = "WiFi not connected";
@@ -434,10 +753,20 @@ void sendBLEStatus() {
   doc["bluetooth_client_connected"] = bluetoothClientConnected;
   doc["uptime"] = millis();
   doc["last_rfid_uid"] = lastUid;
+  doc["using_static_ip"] = usingStaticIP;
   
   if (wifiConnected) {
     doc["ip_address"] = WiFi.localIP().toString();
     doc["ssid"] = WiFi.SSID();
+    
+    // Incluir información de IP estática si está configurada
+    if (usingStaticIP) {
+      preferences.begin("wifi-config", true); // Solo lectura
+      doc["static_ip"] = preferences.getString("static_ip", "");
+      doc["gateway"] = preferences.getString("gateway", "");
+      doc["subnet"] = preferences.getString("subnet", "");
+      preferences.end();
+    }
   }
   
   String response;
@@ -461,8 +790,17 @@ void sendBLEResponse(String status, String message) {
 
 // Intentar conectar a WiFi guardado
 bool connectToSavedWiFi() {
+  // Abrir preferencias para leer configuración WiFi
+  preferences.begin("wifi-config", false);
   String ssid = preferences.getString("ssid", "");
   String password = preferences.getString("password", "");
+  
+  // Verificar si hay configuración de IP estática guardada
+  usingStaticIP = preferences.getBool("static_ip_enabled", false);
+  String staticIPStr = preferences.getString("static_ip", "");
+  String gatewayStr = preferences.getString("gateway", "");
+  String subnetStr = preferences.getString("subnet", "");
+  preferences.end();
   
   if (ssid.length() == 0) {
     Serial.println("No hay credenciales WiFi guardadas");
@@ -471,6 +809,29 @@ bool connectToSavedWiFi() {
   
   Serial.println("Intentando conectar a: " + ssid);
   WiFi.mode(WIFI_STA);
+  
+  // Configurar IP estática si está habilitada
+  if (usingStaticIP && staticIPStr.length() > 0 && gatewayStr.length() > 0 && subnetStr.length() > 0) {
+    Serial.println("Usando configuración IP estática:");
+    staticIP.fromString(staticIPStr);
+    gateway.fromString(gatewayStr);
+    subnet.fromString(subnetStr);
+    
+    Serial.print("IP: ");
+    Serial.println(staticIPStr);
+    Serial.print("Gateway: ");
+    Serial.println(gatewayStr);
+    Serial.print("Subnet: ");
+    Serial.println(subnetStr);
+    
+    if (!WiFi.config(staticIP, gateway, subnet, dns1, dns2)) {
+      Serial.println("Error al configurar IP estática");
+    }
+  } else {
+    Serial.println("Usando DHCP");
+    usingStaticIP = false;
+  }
+  
   WiFi.begin(ssid.c_str(), password.c_str());
   
   // LED parpadeando durante conexión
@@ -505,9 +866,27 @@ void checkWiFiConnection() {
     wifiConnected = false;
     digitalWrite(LED_WIFI, LOW);
     
-    // Intentar reconectar automáticamente
-    if (!connectToSavedWiFi()) {
-      Serial.println("No se pudo reconectar - Bluetooth disponible para reconfiguración");
+    // Resetear variables relacionadas con IP estática
+    usingStaticIP = false;
+    
+    // Detener el servidor HTTP
+    server.stop();
+    
+    // Solo intentar reconectar si no estamos en proceso de cambio de WiFi
+    if (!changeWiFiInProgress) {
+      Serial.println("Intentando reconectar WiFi...");
+      if (!connectToSavedWiFi()) {
+        Serial.println("No se pudo reconectar - Bluetooth disponible para reconfiguración");
+        
+        // Asegurar que el modo WiFi esté correcto para futuras configuraciones
+        WiFi.mode(WIFI_STA);
+        WiFi.disconnect(true);
+        
+        // LED Bluetooth parpadeando para indicar que está listo para configuración
+        digitalWrite(LED_BLUETOOTH, LOW);
+      }
+    } else {
+      Serial.println("Cambio de WiFi en progreso - Reconexión automática deshabilitada");
     }
   }
 }
@@ -516,9 +895,20 @@ void checkWiFiConnection() {
 void resetWiFiConfig() {
   Serial.println("Reiniciando configuración WiFi");
   
+  // Abrir preferencias
+  preferences.begin("wifi-config", false);
+  
   // Limpiar credenciales guardadas
   preferences.remove("ssid");
   preferences.remove("password");
+  
+  // Limpiar configuración de IP estática
+  preferences.remove("static_ip_enabled");
+  preferences.remove("static_ip");
+  preferences.remove("gateway");
+  preferences.remove("subnet");
+  
+  preferences.end();
   
   // Desconectar WiFi
   if (wifiConnected) {
@@ -526,6 +916,12 @@ void resetWiFiConfig() {
     wifiConnected = false;
     digitalWrite(LED_WIFI, LOW);
   }
+  
+  // Resetear variables de IP estática
+  usingStaticIP = false;
+  
+  // Restaurar reconexión automática
+  changeWiFiInProgress = false;
   
   Serial.println("Configuración WiFi eliminada - Bluetooth listo para nueva configuración");
 }
@@ -574,19 +970,29 @@ void handleDiscover() {
   DynamicJsonDocument doc(512);
   doc["device_id"] = "ESP32_RFID_GYMADS";
   doc["device_type"] = "RFID_READER";
-  doc["version"] = "3.1.0";
+  doc["version"] = "3.2.0";
   doc["bluetooth_type"] = "BLE";
   doc["manufacturer"] = "GYMADS";
   doc["wifi_connected"] = wifiConnected;
   doc["bluetooth_enabled"] = bluetoothEnabled;
   doc["status"] = "ONLINE";
   doc["uptime"] = millis();
+  doc["using_static_ip"] = usingStaticIP;
   
   if (wifiConnected) {
     doc["ip_address"] = WiFi.localIP().toString();
     doc["mac_address"] = WiFi.macAddress();
     doc["ssid"] = WiFi.SSID();
     doc["rssi"] = WiFi.RSSI();
+    
+    // Incluir información de IP estática si está configurada
+    if (usingStaticIP) {
+      preferences.begin("wifi-config", true); // Solo lectura
+      doc["static_ip"] = preferences.getString("static_ip", "");
+      doc["gateway"] = preferences.getString("gateway", "");
+      doc["subnet"] = preferences.getString("subnet", "");
+      preferences.end();
+    }
   }
   
   // Información adicional útil para la app

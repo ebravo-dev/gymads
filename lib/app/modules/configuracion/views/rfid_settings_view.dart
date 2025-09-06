@@ -362,7 +362,7 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
                       child: Obx(() => ElevatedButton.icon(
                         onPressed: controller.isConnectingWifi.value 
                           ? null 
-                          : controller.scanWiFiNetworks,
+                          : (isConnected ? controller.changeWiFiNetwork : controller.scanWiFiNetworks),
                         icon: controller.isConnectingWifi.value
                           ? const SizedBox(
                               width: 16,

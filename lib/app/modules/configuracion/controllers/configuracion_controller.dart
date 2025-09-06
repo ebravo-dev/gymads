@@ -8,6 +8,7 @@ import '../../../data/config/rfid_config.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/bluetooth_service.dart';
 import '../views/rfid_settings_view.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class ConfiguracionController extends GetxController {
   // Variables observables para la configuración
@@ -341,7 +342,70 @@ class ConfiguracionController extends GetxController {
       );
       return;
     }
-    
+
+    // Mostrar diálogo de carga mejorado
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Indicador de carga con color personalizado
+              const SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.info),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Ícono WiFi
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.wifi_find,
+                  color: AppColors.info,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Mensaje de estado
+              Obx(() => Text(
+                connectionStatusMessage.value,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              )),
+              const SizedBox(height: 8),
+              // Mensaje adicional
+              const Text(
+                'Por favor espera...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
     try {
       isLoading.value = true;
       connectionStatusMessage.value = 'Escaneando redes WiFi...';
@@ -349,28 +413,50 @@ class ConfiguracionController extends GetxController {
       List<Map<String, dynamic>> networks = await BluetoothService.scanWiFiNetworks();
       availableNetworks.value = networks;
       
+      // Cerrar diálogo de carga
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+      
       if (networks.isNotEmpty) {
-        connectionStatusMessage.value = 'Redes WiFi encontradas';
+        connectionStatusMessage.value = 'Redes WiFi encontradas: ${networks.length}';
         _showNetworkSelectionDialog(networks);
       } else {
         connectionStatusMessage.value = 'No se encontraron redes WiFi';
         Get.snackbar(
           'WiFi',
-          'No se encontraron redes WiFi disponibles',
+          'No se encontraron redes WiFi disponibles.\n\nPosibles causas:\n• El ESP32 perdió conexión WiFi\n• No hay redes cerca\n• Error en el módulo WiFi',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.orange,
           colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+          mainButton: TextButton(
+            onPressed: () {
+              Get.back(); // Cerrar snackbar
+              restartESP32WiFi(); // Reiniciar WiFi
+            },
+            child: const Text(
+              'Reiniciar WiFi',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
         );
       }
       
     } catch (e) {
+      // Cerrar diálogo de carga si está abierto
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+      
       connectionStatusMessage.value = 'Error al escanear WiFi';
       Get.snackbar(
         'Error WiFi',
-        'Error al escanear redes: $e',
+        'Error al escanear redes: $e\n\nIntenta:\n• Verificar que el ESP32 esté encendido\n• Reconectar Bluetooth\n• Reiniciar el ESP32',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
+        duration: const Duration(seconds: 6),
       );
     } finally {
       isLoading.value = false;
@@ -495,6 +581,69 @@ class ConfiguracionController extends GetxController {
       );
       return;
     }
+
+    // Mostrar diálogo de carga mejorado para la conexión
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Indicador de carga con color personalizado
+              const SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Ícono WiFi conectando
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.wifi,
+                  color: AppColors.accent,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Mensaje de estado
+              Obx(() => Text(
+                connectionStatusMessage.value,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              )),
+              const SizedBox(height: 8),
+              // Mensaje adicional
+              const Text(
+                'Esto puede tomar unos segundos...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
     
     try {
       isConnectingWifi.value = true;
@@ -512,6 +661,11 @@ class ConfiguracionController extends GetxController {
           rfidConnectionStatus.value = true;
           connectionStatusMessage.value = 'ESP32 configurado exitosamente';
           
+          // Cerrar cualquier diálogo abierto
+          if (Get.isDialogOpen == true) {
+            Get.back();
+          }
+          
           Get.snackbar(
             'WiFi Configurado',
             'ESP32 conectado a $ssid con IP: $ipAddress',
@@ -522,8 +676,18 @@ class ConfiguracionController extends GetxController {
           );
         } else {
           connectionStatusMessage.value = 'WiFi conectado pero no se obtuvo IP';
+          
+          // Cerrar diálogo de carga aunque no se obtuvo IP
+          if (Get.isDialogOpen == true) {
+            Get.back();
+          }
         }
       } else {
+        // Cerrar diálogo de carga en caso de error de conexión
+        if (Get.isDialogOpen == true) {
+          Get.back();
+        }
+        
         connectionStatusMessage.value = 'Error al conectar WiFi';
         Get.snackbar(
           'Error WiFi',
@@ -535,6 +699,11 @@ class ConfiguracionController extends GetxController {
       }
       
     } catch (e) {
+      // Cerrar diálogo de carga en caso de excepción
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+      
       connectionStatusMessage.value = 'Error de configuración WiFi';
       Get.snackbar(
         'Error',
@@ -739,5 +908,114 @@ class ConfiguracionController extends GetxController {
       'Configuración de aplicación próximamente',
       snackPosition: SnackPosition.BOTTOM,
     );
+  }
+  
+  // Reiniciar módulo WiFi del ESP32
+  Future<void> restartESP32WiFi() async {
+    if (!bluetoothConnected.value) {
+      Get.snackbar(
+        'Error',
+        'Primero conecta con el ESP32 via Bluetooth',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    
+    try {
+      isLoading.value = true;
+      connectionStatusMessage.value = 'Reiniciando módulo WiFi...';
+      
+      bool success = await BluetoothService.restartWiFiModule();
+      
+      if (success) {
+        connectionStatusMessage.value = 'Módulo WiFi reiniciado';
+        Get.snackbar(
+          'WiFi',
+          'Módulo WiFi reiniciado exitosamente.\nAhora puedes escanear redes nuevamente.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        
+        // Esperar un momento y luego escanear automáticamente
+        await Future.delayed(const Duration(seconds: 2));
+        scanWiFiNetworks();
+      } else {
+        connectionStatusMessage.value = 'Error al reiniciar WiFi';
+        Get.snackbar(
+          'Error',
+          'No se pudo reiniciar el módulo WiFi',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+      
+    } catch (e) {
+      connectionStatusMessage.value = 'Error al reiniciar WiFi';
+      Get.snackbar(
+        'Error',
+        'Error al reiniciar módulo WiFi: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Cambiar red WiFi - nuevo método que usa changeWiFiNetwork
+  Future<void> changeWiFiNetwork() async {
+    if (!bluetoothConnected.value) {
+      Get.snackbar(
+        'Error',
+        'Primero conecta con el ESP32 via Bluetooth',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      connectionStatusMessage.value = 'Desconectando WiFi actual...';
+      
+      bool success = await BluetoothService.changeWiFiNetwork();
+      
+      if (success) {
+        connectionStatusMessage.value = 'Listo para nueva configuración WiFi';
+        
+        // Esperar un momento antes de escanear
+        await Future.delayed(const Duration(seconds: 2));
+        
+        // Proceder con el escaneo de redes
+        await scanWiFiNetworks();
+      } else {
+        connectionStatusMessage.value = 'Error al cambiar WiFi';
+        Get.snackbar(
+          'Error',
+          'No se pudo desconectar el WiFi actual',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      connectionStatusMessage.value = 'Error al cambiar WiFi';
+      Get.snackbar(
+        'Error',
+        'Error al cambiar WiFi: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
   }
 }
