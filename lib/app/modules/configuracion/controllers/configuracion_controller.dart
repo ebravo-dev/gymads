@@ -13,9 +13,9 @@ class ConfiguracionController extends GetxController {
   final RxBool isLoading = false.obs;
   
   // Variables para información de cuenta
-  final RxString userName = 'Staff Usuario'.obs;
-  final RxString userEmail = 'staff@gymads.com'.obs;
-  final RxString userRole = 'Staff'.obs;
+  final RxString userName = 'Eder Blanco'.obs;
+  final RxString userEmail = 'eder@gymads.com'.obs;
+  final RxString userRole = 'Admin'.obs;
   
   // Variables para configuración del lector RFID
   final RxBool rfidConnectionStatus = false.obs;
@@ -65,9 +65,9 @@ class ConfiguracionController extends GetxController {
     await RfidConfig.loadConfig();
     
     // TODO: Cargar información de usuario desde autenticación
-    userName.value = 'Staff Usuario';
-    userEmail.value = 'staff@gymads.com';
-    userRole.value = 'Staff';
+    userName.value = 'Eder Blanco';
+    userEmail.value = 'eder@gymads.com';
+    userRole.value = 'Admin';
     
     // Verificar estado inicial
     connectionStatusMessage.value = 'Verificando configuración...';
