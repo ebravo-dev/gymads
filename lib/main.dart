@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gymads/app/data/config/rfid_config.dart';
 import 'package:gymads/app/data/services/supabase_service.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
+import 'package:gymads/app/data/services/image_cache_service.dart';
 import 'app/bindings/initial_binding.dart';
 import 'app/routes/app_pages.dart';
 import 'core/theme/app_theme.dart';
@@ -18,6 +19,10 @@ void main() async {
     // Inicializar Supabase usando nuestro servicio configurado
     await SupabaseService.initialize();
     print('Supabase inicializado correctamente');
+    
+    // Inicializar servicio de caché de imágenes
+    await ImageCacheService.instance.initialize();
+    print('Servicio de caché de imágenes inicializado');
     
     // Verificar conexión a la base de datos
     await SupabaseService.testDatabaseConnection();

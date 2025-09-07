@@ -168,25 +168,23 @@ class ClienteCard extends StatelessWidget {
                             ),
                           ),
                           child: CircleAvatar(
-                            radius: 32,
-                            backgroundColor: AppColors.cardBackground,
-                            backgroundImage:
-                                cliente.photoUrl != null
-                                    ? NetworkImage(cliente.photoUrl!)
-                                    : null,
-                            child:
-                                cliente.photoUrl == null
-                                    ? Text(
-                                      cliente.name.isNotEmpty
-                                          ? cliente.name[0].toUpperCase()
-                                          : '?',
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    )
-                                    : null,
+                            radius: 30, // Reducido para acomodar el borde
+                            backgroundColor: primaryColor.withOpacity(0.1),
+                            backgroundImage: cliente.photoUrl != null && cliente.photoUrl!.isNotEmpty
+                                ? NetworkImage(cliente.photoUrl!)
+                                : null,
+                            child: cliente.photoUrl == null || cliente.photoUrl!.isEmpty
+                                ? Text(
+                                    cliente.name.isNotEmpty
+                                        ? cliente.name[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
+                                  )
+                                : null,
                           ),
                         ),
                       ),

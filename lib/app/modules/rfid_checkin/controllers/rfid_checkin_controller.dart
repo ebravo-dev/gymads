@@ -6,6 +6,7 @@ import '../../../data/repositories/user_repository.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/audio_service.dart';
+import '../../../data/services/image_cache_service.dart';
 import '../../../data/config/rfid_config.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
@@ -41,6 +42,9 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   @override
   void onInit() {
     super.onInit();
+    
+    // Inicializar servicio de caché de imágenes
+    _initializeImageCache();
     
     // Inicializar el controlador de animación con configuración óptima para visibilidad
     animationController = AnimationController(
@@ -129,6 +133,20 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   // Controlador para el campo de entrada RFID
   final TextEditingController rfidTextController = TextEditingController();
   
+  // Inicializar servicio de caché de imágenes
+  Future<void> _initializeImageCache() async {
+    try {
+      await ImageCacheService.instance.initialize();
+      if (kDebugMode) {
+        print('✅ Servicio de caché de imágenes inicializado');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error inicializando caché de imágenes: $e');
+      }
+    }
+  }
+  
   @override
   void onClose() {
     rfidTextController.dispose();
@@ -179,15 +197,28 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Registrar el acceso
-        final updatedUser = user.addAccessRecord();
-        if (user.id != null) {
-          await userRepository.updateUser(user.id!, updatedUser);
+        // Precargar imagen sincronizada antes de mostrar el diálogo
+        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+          try {
+            await ImageCacheService.instance.getUserImage(user.id!, user.photoUrl!, isThumbnail: false);
+            if (kDebugMode) {
+              print('✅ Imagen precargada exitosamente para ${user.name}');
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error precargando imagen para ${user.name}: $e');
+            }
+          }
         }
         
         successMessage.value = '¡Bienvenido(a)! Tu membresía vence pronto';
         AudioService.playWelcomeSound();
         isShowingDialog.value = true;
+        
+        // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null) {
+          _registerAccessInBackground(user);
+        }
       } else {
         // Membresía activa
         membershipStatus = RfidConfig.membershipActive;
@@ -198,15 +229,28 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Registrar el acceso
-        final updatedUser = user.addAccessRecord();
-        if (user.id != null) {
-          await userRepository.updateUser(user.id!, updatedUser);
+        // Precargar imagen sincronizada antes de mostrar el diálogo
+        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+          try {
+            await ImageCacheService.instance.getUserImage(user.id!, user.photoUrl!, isThumbnail: false);
+            if (kDebugMode) {
+              print('✅ Imagen precargada exitosamente para ${user.name}');
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error precargando imagen para ${user.name}: $e');
+            }
+          }
         }
         
         successMessage.value = '¡Bienvenido(a)!';
         AudioService.playWelcomeSound();
         isShowingDialog.value = true;
+        
+        // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null) {
+          _registerAccessInBackground(user);
+        }
       }
       
       // Enviar estado de membresía al ESP32 para control de LEDs
@@ -233,6 +277,25 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
     }
   }
   
+  // Registrar acceso en segundo plano para no bloquear la UI
+  void _registerAccessInBackground(UserModel user) {
+    Future(() async {
+      try {
+        final updatedUser = user.addAccessRecord();
+        if (user.id != null) {
+          await userRepository.updateUser(user.id!, updatedUser);
+          if (kDebugMode) {
+            print('✅ Registro de acceso guardado en segundo plano para: ${user.name}');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error al registrar acceso en segundo plano: $e');
+        }
+      }
+    });
+  }
+
   // Obtener la dirección IP actual del lector RFID
   String getReaderIpAddress() {
     final baseUrl = RfidConfig.baseUrl;
