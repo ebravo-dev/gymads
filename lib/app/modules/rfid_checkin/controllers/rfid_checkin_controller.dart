@@ -197,28 +197,23 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Precargar imagen sincronizada antes de mostrar el diálogo
-        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-          try {
-            await ImageCacheService.instance.getUserImage(user.id!, user.photoUrl!, isThumbnail: false);
-            if (kDebugMode) {
-              print('✅ Imagen precargada exitosamente para ${user.name}');
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              print('❌ Error precargando imagen para ${user.name}: $e');
-            }
-          }
-        }
-        
+        // Mostrar diálogo inmediatamente sin esperar la imagen
         successMessage.value = '¡Bienvenido(a)! Tu membresía vence pronto';
         AudioService.playWelcomeSound();
         isShowingDialog.value = true;
+        
+        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+          _preloadImageInBackground(user.id!, user.photoUrl!);
+        }
         
         // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
         if (user.id != null) {
           _registerAccessInBackground(user);
         }
+        
+        // Enviar estado de membresía al ESP32 para control de LEDs EN SEGUNDO PLANO
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
       } else {
         // Membresía activa
         membershipStatus = RfidConfig.membershipActive;
@@ -229,32 +224,24 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Precargar imagen sincronizada antes de mostrar el diálogo
-        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-          try {
-            await ImageCacheService.instance.getUserImage(user.id!, user.photoUrl!, isThumbnail: false);
-            if (kDebugMode) {
-              print('✅ Imagen precargada exitosamente para ${user.name}');
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              print('❌ Error precargando imagen para ${user.name}: $e');
-            }
-          }
-        }
-        
+        // Mostrar diálogo inmediatamente sin esperar la imagen
         successMessage.value = '¡Bienvenido(a)!';
         AudioService.playWelcomeSound();
         isShowingDialog.value = true;
+        
+        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+          _preloadImageInBackground(user.id!, user.photoUrl!);
+        }
         
         // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
         if (user.id != null) {
           _registerAccessInBackground(user);
         }
+        
+        // Enviar estado de membresía al ESP32 para control de LEDs EN SEGUNDO PLANO
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
       }
-      
-      // Enviar estado de membresía al ESP32 para control de LEDs
-      await RfidReaderService.sendMembershipStatus(rfidCode, membershipStatus);
       
       // Si el acceso fue exitoso, mostrar diálogo y cerrarlo después de 3 segundos
       if (membershipStatus == RfidConfig.membershipActive || membershipStatus == RfidConfig.membershipExpiring) {
@@ -265,6 +252,9 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         // Cerrar la pantalla de bienvenida después de 3 segundos
         await Future.delayed(const Duration(seconds: 3));
         isShowingDialog.value = false;
+      } else {
+        // Para casos de error (usuario no encontrado, membresía vencida), enviar estado de LEDs en segundo plano
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
       }
       
     } catch (e) {
@@ -291,6 +281,38 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       } catch (e) {
         if (kDebugMode) {
           print('❌ Error al registrar acceso en segundo plano: $e');
+        }
+      }
+    });
+  }
+
+  // Enviar estado de membresía al ESP32 para control de LEDs en segundo plano
+  void _sendMembershipStatusToESP32(String rfidCode, String status) {
+    Future(() async {
+      try {
+        await RfidReaderService.sendMembershipStatus(rfidCode, status);
+        if (kDebugMode) {
+          print('✅ Estado de membresía enviado al ESP32: $rfidCode -> $status');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error enviando estado al ESP32: $e');
+        }
+      }
+    });
+  }
+
+  // Precargar imagen en segundo plano para no bloquear la UI
+  void _preloadImageInBackground(String userId, String photoUrl) {
+    Future(() async {
+      try {
+        await ImageCacheService.instance.getUserImage(userId, photoUrl, isThumbnail: false);
+        if (kDebugMode) {
+          print('✅ Imagen precargada exitosamente en segundo plano para usuario: $userId');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error precargando imagen en segundo plano: $e');
         }
       }
     });

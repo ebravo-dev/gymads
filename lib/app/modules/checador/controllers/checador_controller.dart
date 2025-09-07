@@ -81,7 +81,7 @@ class ChecadorController extends GetxController {
           // Reproducir sonido de acceso denegado cuando NO está registrado
           AudioService.playDeniedSound();
           
-          // Enviar estado al ESP32 para LEDs rojos
+          // Enviar estado al ESP32 para LEDs rojos EN SEGUNDO PLANO
           _sendMembershipStatusToESP32(userNumber, membershipNotFound);
           
           // Mantener el mensaje de error visible por 3 segundos
@@ -105,7 +105,7 @@ class ChecadorController extends GetxController {
           // Reproducir sonido de acceso denegado (membresía inactiva)
           AudioService.playDeniedSound();
           
-          // Enviar estado al ESP32 para LEDs rojos
+          // Enviar estado al ESP32 para LEDs rojos EN SEGUNDO PLANO
           _sendMembershipStatusToESP32(userNumber, membershipExpired);
           
           // Mantener el mensaje de error visible por 3 segundos
@@ -123,7 +123,7 @@ class ChecadorController extends GetxController {
           // Reproducir sonido de acceso denegado (membresía vencida)
           AudioService.playDeniedSound();
           
-          // Enviar estado al ESP32 para LEDs rojos
+          // Enviar estado al ESP32 para LEDs rojos EN SEGUNDO PLANO
           _sendMembershipStatusToESP32(userNumber, membershipExpired);
           
           // Mantener el mensaje de error visible por 3 segundos
@@ -171,7 +171,7 @@ class ChecadorController extends GetxController {
           _registerAccessInBackground(user);
         }
 
-        // Determinar estado de membresía para LEDs
+        // Determinar estado de membresía para LEDs y enviar en segundo plano
         String membershipStatus;
         if (user.daysRemaining <= expiringWarningDays) {
           membershipStatus = membershipExpiring; // LED amarillo
@@ -179,7 +179,7 @@ class ChecadorController extends GetxController {
           membershipStatus = membershipActive; // LED verde
         }
 
-        // Enviar estado al ESP32 para control de LEDs
+        // Enviar estado al ESP32 para control de LEDs EN SEGUNDO PLANO
         _sendMembershipStatusToESP32(userNumber, membershipStatus);
 
         // Cerrar el diálogo después de 4 segundos
