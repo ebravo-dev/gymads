@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
-import '../../../controllers/navigation_controller.dart';
-import '../../../routes/app_pages.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/bluetooth_service.dart';
@@ -40,8 +38,8 @@ class ConfiguracionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Actualizar el índice de navegación cuando se inicialice la vista Configuración
-    NavigationController.to.updateIndexFromRoute(Routes.CONFIGURACION);
+    // Ya no necesitamos actualizar el índice de navegación porque eliminamos el bottom navigation
+    // NavigationController.to.updateIndexFromRoute(Routes.CONFIGURACION);
     
     // Cargar configuración inicial
     loadInitialConfig();

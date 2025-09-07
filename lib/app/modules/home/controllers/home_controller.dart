@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import '../../../controllers/navigation_controller.dart';
 import '../../../routes/app_pages.dart';
 
 class HomeController extends GetxController {
@@ -8,13 +7,6 @@ class HomeController extends GetxController {
 
   // Lista observable de mensajes de estado
   final RxList<String> statusMessages = <String>[].obs;
-
-  @override
-  void onInit() {
-    super.onInit();
-    // Actualizar el índice de navegación cuando se inicialice la vista Home
-    NavigationController.to.updateIndexFromRoute(Routes.HOME);
-  }
 
   // Funciones para manejar las opciones del menú
   void goToCheckIns() {

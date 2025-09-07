@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../global_widgets/bottom_navigation.dart';
 import '../controllers/configuracion_controller.dart';
 
 class ConfiguracionView extends GetView<ConfiguracionController> {
@@ -36,7 +35,6 @@ class ConfiguracionView extends GetView<ConfiguracionController> {
           _buildConfigurationOptions(),
         ],
       )),
-      bottomNavigationBar: const BottomNavigation(),
     );
   }
   

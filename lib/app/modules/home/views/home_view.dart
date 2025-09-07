@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/responsive_utils.dart';
-import '../../../global_widgets/bottom_navigation.dart';
+import '../../../routes/app_pages.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/button_menu_widget.dart';
 
@@ -14,52 +14,65 @@ class HomeView extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     // Utilizamos las funciones de valores responsivos
-    final spacing = ResponsiveValues.getSpacing(context);
     final bool isTabletSize = MediaQuery.of(context).size.width > 600;
     final bool isSmallPhone = MediaQuery.of(context).size.width < 360;
     
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-        'GYMONE',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontWeight: FontWeight.w900,
-          color: const Color.fromARGB(255, 87, 102, 216),
-          fontSize: ResponsiveValues.getFontSize(context, 
-        mobile: 38, 
-        smallPhone: 32, 
-        tablet: 44
-          ),
-          letterSpacing: 2, // Reducido de 5 a 2 para juntar más las letras
-        ),
-          ),
-        ),
-          ],
-        ),
-
-        systemOverlayStyle:
-        context.theme.platform == TargetPlatform.iOS
-        ? const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-        )
-        : const SystemUiOverlayStyle(
-          systemNavigationBarColor: Colors.black,
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-        ),
-
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.3),
+        systemOverlayStyle: context.theme.platform == TargetPlatform.iOS
+            ? const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+              )
+            : const SystemUiOverlayStyle(
+                systemNavigationBarColor: Colors.black,
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+              ),
         centerTitle: true,
-        backgroundColor: AppColors.backgroundColor,
-        elevation: 0,
         toolbarHeight: isTabletSize ? 170 : 150,
+        title: Text(
+          'GYMONE',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            color: const Color.fromARGB(255, 16, 213, 232),
+            fontSize: ResponsiveValues.getFontSize(context, 
+              mobile: 42, 
+              smallPhone: 36, 
+              tablet: 48
+            ),
+            letterSpacing: 3,
+          ),
+        ),
+        
+        // Botón de configuración solo con icono
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: IconButton(
+              onPressed: () => Get.toNamed(Routes.CONFIGURACION),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.settings,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Container(
         color: AppColors.backgroundColor,
@@ -279,7 +292,6 @@ class HomeView extends GetView<HomeController> {
           ),
         ),
       ),
-      bottomNavigationBar: const BottomNavigation(),
     );
   }
 }
