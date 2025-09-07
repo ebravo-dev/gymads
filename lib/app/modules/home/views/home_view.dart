@@ -210,7 +210,7 @@ class HomeView extends GetView<HomeController> {
                           // Opción de Check-in con RFID
                           ButtonMenuWidget(
                             icon: Icons.contactless,
-                            label: 'RFID',
+                            label: 'Lector',
                             description: 'Acceso con tarjeta',
                             color: Colors.indigo.shade300,
                             onTap: controller.goToRfidCheckIn,
@@ -228,7 +228,7 @@ class HomeView extends GetView<HomeController> {
                           // Opción de Punto de Venta
                           ButtonMenuWidget(
                             icon: Icons.point_of_sale,
-                            label: 'Punto de Venta',
+                            label: 'Vender',
                             description: 'Ventas y facturación',
                             color: Colors.blue.shade300,
                             onTap: controller.goToPointOfSale,
