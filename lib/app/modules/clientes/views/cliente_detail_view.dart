@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/core/theme/app_colors.dart';
+import 'package:gymads/app/global_widgets/qr_dialog.dart';
 import '../controllers/clientes_controller.dart';
 
 class ClienteDetailView extends GetView<ClientesController> {
@@ -327,26 +328,127 @@ class ClienteDetailView extends GetView<ClientesController> {
   Widget _buildQuickInfoCards() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _buildInfoCard(
-              icon: Icons.phone_outlined,
-              title: 'Teléfono',
-              value: cliente.phone,
-              color: AppColors.info,
-            ),
+          // Primera fila: Teléfono y RFID
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard(
+                  icon: Icons.phone_outlined,
+                  title: 'Teléfono',
+                  value: cliente.phone,
+                  color: AppColors.info,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildInfoCard(
+                  icon: Icons.credit_card_outlined,
+                  title: 'RFID',
+                  value: cliente.rfidCard ?? 'No asignada',
+                  color: cliente.rfidCard != null ? AppColors.success : AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildInfoCard(
-              icon: Icons.credit_card_outlined,
-              title: 'RFID',
-              value: cliente.rfidCard ?? 'No asignada',
-              color: cliente.rfidCard != null ? AppColors.success : AppColors.textSecondary,
-            ),
+          const SizedBox(height: 16),
+          
+          // Segunda fila: QR Code (centrado, más ancho)
+          _buildQrCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQrCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.titleColor.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.titleColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: Column(
+        children: [
+          // Header con icono y título
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.titleColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.qr_code_outlined,
+                  color: AppColors.titleColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Código QR de Acceso',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.titleColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Botón de acción
+          _buildQrActionButton(
+            label: 'Ver QR',
+            icon: Icons.visibility_outlined,
+            color: AppColors.info,
+            onPressed: _showQrDialog,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQrActionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.1),
+        foregroundColor: color,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: color.withOpacity(0.3)),
+        ),
       ),
     );
   }
@@ -759,6 +861,18 @@ class ClienteDetailView extends GetView<ClientesController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Métodos para manejar las acciones del QR
+  void _showQrDialog() {
+    Get.dialog(
+      QrDialog(
+        nombre: cliente.name,
+        telefono: cliente.phone,
+        userNumber: cliente.userNumber,
+        totalAmount: cliente.membershipPrice,
       ),
     );
   }

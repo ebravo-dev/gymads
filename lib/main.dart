@@ -5,6 +5,7 @@ import 'package:gymads/app/data/config/rfid_config.dart';
 import 'package:gymads/app/data/services/supabase_service.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
 import 'package:gymads/app/data/services/image_cache_service.dart';
+import 'package:gymads/app/modules/clientes/services/qr_cache_service.dart';
 import 'app/bindings/initial_binding.dart';
 import 'app/routes/app_pages.dart';
 import 'core/theme/app_theme.dart';
@@ -23,6 +24,10 @@ void main() async {
     // Inicializar servicio de caché de imágenes
     await ImageCacheService.instance.initialize();
     print('Servicio de caché de imágenes inicializado');
+    
+    // Inicializar servicio de caché de QR codes
+    QrCacheService().initialize();
+    print('Servicio de caché de QR codes inicializado');
     
     // Verificar conexión a la base de datos
     await SupabaseService.testDatabaseConnection();
