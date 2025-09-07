@@ -8,6 +8,18 @@ class HomeController extends GetxController {
   // Lista observable de mensajes de estado
   final RxList<String> statusMessages = <String>[].obs;
 
+  // Función para obtener el saludo según la hora
+  String getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 6 && hour < 12) {
+      return 'Buenos días';
+    } else if (hour >= 12 && hour < 18) {
+      return 'Buenas tardes';
+    } else {
+      return 'Buenas noches';
+    }
+  }
+
   // Funciones para manejar las opciones del menú
   void goToCheckIns() {
     statusMessages.add('Navegando a la pantalla de Check-Ins...');

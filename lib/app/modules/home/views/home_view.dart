@@ -128,15 +128,37 @@ class HomeView extends GetView<HomeController> {
                         ],
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Bienvenido Admin',
+                            controller.getGreeting(),
                             style: TextStyle(
                               fontSize: ResponsiveValues.getFontSize(context,
-                                mobile: 22,
-                                smallPhone: 20,
-                                tablet: 26
+                                mobile: 18,
+                                smallPhone: 16,
+                                tablet: 20
+                              ),
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.8),
+                              shadows: const [
+                                Shadow(
+                                  offset: Offset(1, 1),
+                                  blurRadius: 3,
+                                  color: Colors.black26,
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.left,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Bienvenido Eder',
+                            style: TextStyle(
+                              fontSize: ResponsiveValues.getFontSize(context,
+                                mobile: 26,
+                                smallPhone: 24,
+                                tablet: 30
                               ),
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -148,19 +170,7 @@ class HomeView extends GetView<HomeController> {
                                 ),
                               ],
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSmallPhone ? 12 : 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Text('Abrir Administrativo'),
+                            textAlign: TextAlign.left,
                           ),
                         ],
                       ),
