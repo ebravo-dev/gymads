@@ -602,16 +602,7 @@ class ClientesController extends GetxController {
 
         Get.back(); // Cerrar el diálogo de renovación
 
-        // Mostrar el QR con el total pagado
-        Get.dialog(
-          QrDialog(
-            nombre: updatedClient.name,
-            telefono: updatedClient.phone,
-            userNumber: updatedClient.userNumber,
-            totalAmount: total,
-          ),
-        );
-
+        // Mostrar mensaje de éxito con el total pagado
         Get.snackbar(
           'Éxito',
           'Membresía renovada correctamente. Monto cobrado: \$${total.toStringAsFixed(2)}',
