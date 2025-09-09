@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -41,7 +43,30 @@ class _QrDialogState extends State<QrDialog> {
 
   Future<void> _loadQrImage() async {
     try {
-      final qrFile = await _qrCacheService.getQrImage(widget.userNumber);
+      // Primero verificamos si existe un QR en caché para minimizar espera
+      final existingQrFile = await _qrCacheService.getQrImage(widget.userNumber);
+      
+      if (existingQrFile != null && await existingQrFile.exists()) {
+        if (mounted) {
+          setState(() {
+            _qrImageFile = existingQrFile;
+            _isLoading = false;
+          });
+        }
+        
+        // Si ya tenemos el QR en caché, no necesitamos regenerarlo ni subirlo
+        return;
+      }
+      
+      // Si no hay QR en caché, generamos uno nuevo
+      final qrBytes = await _generateVisualQrImage(widget.userNumber);
+      
+      if (qrBytes == null) {
+        throw Exception('No se pudo generar el QR');
+      }
+      
+      // Actualizar el QR en caché y Supabase con esta versión exacta
+      final qrFile = await _qrCacheService.updateQrWithBytes(widget.userNumber, qrBytes);
       
       if (mounted) {
         setState(() {
@@ -51,10 +76,25 @@ class _QrDialogState extends State<QrDialog> {
       }
     } catch (e) {
       print('Error al cargar imagen QR: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      
+      // Si falla la regeneración y aún no tenemos un QR, mostrar fallback
+      if (_qrImageFile == null && mounted) {
+        try {
+          final existingQrFile = await _qrCacheService.getQrImage(widget.userNumber);
+          if (mounted) {
+            setState(() {
+              _qrImageFile = existingQrFile;
+              _isLoading = false;
+            });
+          }
+        } catch (fallbackError) {
+          // En caso de fallo total, dejamos que se muestre el QR generado en tiempo real por QrImageView
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
       }
     }
   }
@@ -67,18 +107,10 @@ class _QrDialogState extends State<QrDialog> {
     });
     
     try {
-      // Obtener el archivo QR de la caché o generarlo si no existe
-      File? qrFile;
+      // Forzar regeneración del QR exactamente como se muestra
+      final qrImage = await _generateVisualQrImage(widget.userNumber);
       
-      // Si ya tenemos el archivo cacheado, lo usamos
-      if (_qrImageFile != null) {
-        qrFile = _qrImageFile;
-      } else {
-        // Si no, intentamos obtenerlo del cache service
-        qrFile = await _qrCacheService.getQrImage(widget.userNumber);
-      }
-
-      if (qrFile == null || !await qrFile.exists()) {
+      if (qrImage == null) {
         Get.snackbar(
           'Error',
           'No se pudo generar el código QR',
@@ -88,7 +120,7 @@ class _QrDialogState extends State<QrDialog> {
         );
         return;
       }
-
+      
       // Crear nombre único para el archivo
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'QR_${widget.nombre.replaceAll(' ', '_')}_${widget.userNumber}_$timestamp.png';
@@ -97,8 +129,11 @@ class _QrDialogState extends State<QrDialog> {
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/$fileName');
       
-      // Copiar el archivo QR al archivo temporal
-      await qrFile.copy(tempFile.path);
+      // Guardar el QR regenerado en el archivo temporal
+      await tempFile.writeAsBytes(qrImage);
+      
+      // También actualizar el caché y Supabase con esta versión
+      await _qrCacheService.updateQrWithBytes(widget.userNumber, qrImage);
       
       if (!await tempFile.exists()) {
         throw Exception('No se pudo crear el archivo temporal');
@@ -140,6 +175,60 @@ class _QrDialogState extends State<QrDialog> {
           _isSharingQr = false;
         });
       }
+    }
+  }
+
+  // Método para generar una imagen QR exactamente igual a la mostrada
+  Future<Uint8List?> _generateVisualQrImage(String userNumber) async {
+    try {
+      // NOTA: Estos parámetros DEBEN ser exactamente iguales a los usados en 
+      // QrImageView en el método build y también en QrCacheService._generateQrBytes
+      
+      // Nota: Usamos directamente QrPainter ya que maneja internamente la creación del QrCode
+      
+      // Pintar usando los mismos parámetros exactos que la vista
+      final qrPainter = QrPainter(
+        data: userNumber,
+        version: QrVersions.auto,
+        eyeStyle: const QrEyeStyle(
+          eyeShape: QrEyeShape.square,
+          color: Colors.black,
+        ),
+        dataModuleStyle: const QrDataModuleStyle(
+          dataModuleShape: QrDataModuleShape.square,
+          color: Colors.black,
+        ),
+        color: Colors.black,
+        emptyColor: Colors.white,
+        gapless: false,
+        errorCorrectionLevel: QrErrorCorrectLevel.M,
+      );
+      
+      // Crear una imagen del QR con fondo blanco
+      final pictureRecorder = ui.PictureRecorder();
+      final canvas = Canvas(pictureRecorder);
+      const size = Size(512, 512); // Tamaño grande para mejor calidad
+      
+      // Fondo blanco explícito
+      final paint = Paint()..color = Colors.white;
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
+      
+      // Dibujar el QR en el canvas
+      qrPainter.paint(canvas, size);
+      
+      final picture = pictureRecorder.endRecording();
+      final img = await picture.toImage(size.width.toInt(), size.height.toInt());
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (byteData == null) {
+        throw Exception('No se pudo generar la imagen del QR');
+      }
+      
+      print('✅ QR generado exitosamente para: $userNumber');
+      return byteData.buffer.asUint8List();
+    } catch (e) {
+      print('❌ Error al generar imagen QR: $e');
+      return null;
     }
   }
 
@@ -221,10 +310,33 @@ Total pagado: \$${widget.totalAmount.toStringAsFixed(2)}''';
                               width: 200,
                               height: 200,
                               decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  image: FileImage(_qrImageFile!),
-                                  fit: BoxFit.contain,
-                                ),
+                                color: Colors.white,
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Image.file(
+                                _qrImageFile!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  print('Error al cargar imagen QR: $error');
+                                  // Si falla la carga del archivo, mostrar el QR generado en tiempo real
+                                  return QrImageView(
+                                    data: widget.userNumber,
+                                    version: QrVersions.auto,
+                                    size: 200.0,
+                                    foregroundColor: Colors.black,
+                                    backgroundColor: Colors.white,
+                                    gapless: false,
+                                    eyeStyle: const QrEyeStyle(
+                                      eyeShape: QrEyeShape.square,
+                                      color: Colors.black,
+                                    ),
+                                    dataModuleStyle: const QrDataModuleStyle(
+                                      dataModuleShape: QrDataModuleShape.square,
+                                      color: Colors.black,
+                                    ),
+                                    errorCorrectionLevel: QrErrorCorrectLevel.M,
+                                  );
+                                },
                               ),
                             )
                           : QrImageView(
@@ -233,6 +345,16 @@ Total pagado: \$${widget.totalAmount.toStringAsFixed(2)}''';
                               size: 200.0,
                               foregroundColor: Colors.black,
                               backgroundColor: Colors.white,
+                              gapless: false,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.square,
+                                color: Colors.black,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: Colors.black,
+                              ),
+                              errorCorrectionLevel: QrErrorCorrectLevel.M,
                             ),
                   const SizedBox(height: 12),
                   Text(
