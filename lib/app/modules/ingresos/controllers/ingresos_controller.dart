@@ -23,10 +23,14 @@ class IngresosController extends GetxController {
   final selectedMetodoPago = Rx<String?>(null);
   final fechaInicio = Rx<DateTime?>(null);
   final fechaFin = Rx<DateTime?>(null);
+  
+  // Tipo de gráfica
+  final selectedChartType = 'barras'.obs; // 'barras', 'pastel', 'lineas'
+  final List<String> chartTypes = ['barras', 'pastel', 'lineas'];
 
   // Opciones para filtros
   final List<String> periodos = ['dia', 'semana', 'mes'];
-  final List<String> conceptos = ['nuevo_registro', 'renovacion', 'registro'];
+  final List<String> conceptos = ['registro', 'renovacion', 'producto'];
   final List<String> metodosPago = ['efectivo', 'tarjeta', 'transferencia'];
 
   @override
@@ -118,38 +122,75 @@ class IngresosController extends GetxController {
 
   /// Actualiza el período seleccionado y recarga datos
   void changePeriodo(String nuevoPeriodo) {
-    selectedPeriodo.value = nuevoPeriodo;
-    final now = DateTime.now();
-    
-    switch (nuevoPeriodo) {
-      case 'dia':
-        fechaInicio.value = DateTime(now.year, now.month, now.day);
-        fechaFin.value = DateTime(now.year, now.month, now.day, 23, 59, 59);
-        break;
-      case 'semana':
-        final inicioSemana = now.subtract(Duration(days: now.weekday - 1));
-        fechaInicio.value = DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day);
-        fechaFin.value = inicioSemana.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
-        break;
-      case 'mes':
-        fechaInicio.value = DateTime(now.year, now.month, 1);
-        fechaFin.value = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-        break;
+    try {
+      selectedPeriodo.value = nuevoPeriodo;
+      final now = DateTime.now();
+      
+      switch (nuevoPeriodo) {
+        case 'dia':
+          fechaInicio.value = DateTime(now.year, now.month, now.day);
+          fechaFin.value = DateTime(now.year, now.month, now.day, 23, 59, 59);
+          break;
+        case 'semana':
+          final inicioSemana = now.subtract(Duration(days: now.weekday - 1));
+          fechaInicio.value = DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day);
+          fechaFin.value = inicioSemana.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+          break;
+        case 'mes':
+          fechaInicio.value = DateTime(now.year, now.month, 1);
+          fechaFin.value = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+          break;
+        default:
+          print('⚠️ Período no reconocido: $nuevoPeriodo');
+          fechaInicio.value = DateTime(now.year, now.month, 1);
+          fechaFin.value = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+      }
+      
+      refreshData();
+    } catch (e) {
+      print('❌ Error al cambiar período: $e');
+      Get.snackbar(
+        'Error',
+        'Error al cambiar período: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
-    
-    refreshData();
   }
 
   /// Actualiza el filtro de concepto
   void changeConcepto(String? concepto) {
-    selectedConcepto.value = concepto;
-    fetchIngresos();
+    try {
+      selectedConcepto.value = concepto;
+      fetchIngresos();
+    } catch (e) {
+      print('❌ Error al cambiar concepto: $e');
+      Get.snackbar(
+        'Error',
+        'Error al aplicar filtro: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 
   /// Actualiza el filtro de método de pago
   void changeMetodoPago(String? metodoPago) {
-    selectedMetodoPago.value = metodoPago;
-    fetchIngresos();
+    try {
+      selectedMetodoPago.value = metodoPago;
+      fetchIngresos();
+    } catch (e) {
+      print('❌ Error al cambiar método de pago: $e');
+      Get.snackbar(
+        'Error',
+        'Error al aplicar filtro: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 
   /// Establece un rango de fechas personalizado
@@ -161,11 +202,38 @@ class IngresosController extends GetxController {
 
   /// Recarga todos los datos
   Future<void> refreshData() async {
-    await Future.wait([
-      fetchEstadisticas(),
-      fetchIngresos(),
-      fetchDatosGrafica(),
-    ]);
+    isLoading.value = true;
+    errorMessage.value = '';
+    
+    try {
+      await Future.wait([
+        fetchEstadisticas().catchError((e) {
+          print('❌ Error al refrescar estadísticas: $e');
+          return null;
+        }),
+        fetchIngresos().catchError((e) {
+          print('❌ Error al refrescar ingresos: $e');
+          return null;
+        }),
+        fetchDatosGrafica().catchError((e) {
+          print('❌ Error al refrescar datos de gráfica: $e');
+          return null;
+        }),
+      ]);
+    } catch (e) {
+      print('❌ Error general al refrescar datos: $e');
+      errorMessage.value = 'Error al actualizar datos: $e';
+      
+      Get.snackbar(
+        'Error',
+        'Error al actualizar datos. Intente nuevamente.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   /// Método público para refrescar datos desde otros módulos
@@ -222,10 +290,94 @@ class IngresosController extends GetxController {
     }
   }
 
+  /// Cambia el tipo de gráfica
+  void changeChartType(String chartType) {
+    try {
+      selectedChartType.value = chartType;
+      // No es necesario recargar datos, sólo cambiar la visualización
+    } catch (e) {
+      print('❌ Error al cambiar tipo de gráfica: $e');
+      Get.snackbar(
+        'Error',
+        'Error al cambiar tipo de gráfica: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   /// Calcula el porcentaje de crecimiento
   double calcularPorcentajeCrecimiento(double actual, double anterior) {
     if (anterior == 0) return actual > 0 ? 100 : 0;
     return ((actual - anterior) / anterior) * 100;
+  }
+
+  /// Obtiene datos para la gráfica de tipo pie
+  Map<String, double> getDatosPastel() {
+    try {
+      // Para la gráfica de pastel usamos los datos por concepto
+      if (estadisticas.value.ingresosPorConcepto.isEmpty) {
+        return {};
+      }
+      
+      Map<String, double> datosFormateados = {};
+      
+      // Transformar las claves para mostrar nombres más amigables
+      estadisticas.value.ingresosPorConcepto.forEach((key, value) {
+        switch (key) {
+          case 'registro':
+            datosFormateados['Nuevo Registro'] = value;
+            break;
+          case 'renovacion':
+            datosFormateados['Renovación'] = value;
+            break;
+          case 'producto':
+            datosFormateados['Producto'] = value;
+            break;
+          default:
+            datosFormateados[key.capitalize!] = value;
+        }
+      });
+      
+      return datosFormateados;
+    } catch (e) {
+      print('❌ Error al obtener datos para gráfica pie: $e');
+      return {};
+    }
+  }
+
+  /// Obtiene datos para la gráfica de línea
+  Map<String, double> getDatosLinea() {
+    try {
+      // Para la gráfica de línea usamos los mismos datos que las barras
+      return datosGrafica;
+    } catch (e) {
+      print('❌ Error al obtener datos para gráfica línea: $e');
+      return {};
+    }
+  }
+
+  /// Obtiene los colores para la gráfica de pastel
+  List<Color> getColoresPastel() {
+    return [
+      Colors.orange.shade600,
+      Colors.blue.shade600,
+      Colors.green.shade600,
+      Colors.purple.shade600,
+      Colors.red.shade600,
+      Colors.teal.shade600,
+      Colors.amber.shade700,
+      Colors.indigo.shade600,
+      Colors.pink.shade600,
+      Colors.cyan.shade600,
+    ];
+  }
+
+  /// Calcula el total para la gráfica de pastel
+  double getTotalPastel() {
+    final datos = getDatosPastel();
+    return datos.values.fold(0, (prev, curr) => prev + curr);
   }
 
   /// Lista filtrada de ingresos para mostrar
