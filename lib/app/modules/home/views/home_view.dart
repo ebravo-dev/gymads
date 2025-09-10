@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/responsive_utils.dart';
-import '../../../global_widgets/bottom_navigation.dart';
+import '../../../routes/app_pages.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/button_menu_widget.dart';
 
@@ -14,51 +14,65 @@ class HomeView extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     // Utilizamos las funciones de valores responsivos
-    final spacing = ResponsiveValues.getSpacing(context);
     final bool isTabletSize = MediaQuery.of(context).size.width > 600;
     final bool isSmallPhone = MediaQuery.of(context).size.width < 360;
     
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'ADS\nFITNESS',
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.titleColor,
-                  fontSize: ResponsiveValues.getFontSize(context, 
-                    mobile: 38, 
-                    smallPhone: 32, 
-                    tablet: 44
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.3),
+        systemOverlayStyle: context.theme.platform == TargetPlatform.iOS
+            ? const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+              )
+            : const SystemUiOverlayStyle(
+                systemNavigationBarColor: Colors.black,
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+              ),
+        centerTitle: true,
+        toolbarHeight: isTabletSize ? 170 : 150,
+        title: Text(
+          'GYMONE',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            color: const Color.fromARGB(255, 16, 213, 232),
+            fontSize: ResponsiveValues.getFontSize(context, 
+              mobile: 42, 
+              smallPhone: 36, 
+              tablet: 48
+            ),
+            letterSpacing: 3,
+          ),
+        ),
+        
+        // Botón de configuración solo con icono
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: IconButton(
+              onPressed: () => Get.toNamed(Routes.CONFIGURACION),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
                   ),
-                  letterSpacing: 5,
+                ),
+                child: const Icon(
+                  Icons.settings,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
             ),
-          ],
-        ),
-
-        systemOverlayStyle:
-            context.theme.platform == TargetPlatform.iOS
-                ? const SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.light,
-                )
-                : const SystemUiOverlayStyle(
-                  systemNavigationBarColor: Colors.black,
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.light,
-                ),
-
-        centerTitle: false,
-        backgroundColor: AppColors.backgroundColor,
-        elevation: 0,
-        toolbarHeight: isTabletSize ? 170 : 150,
+          ),
+        ],
       ),
       body: Container(
         color: AppColors.backgroundColor,
@@ -114,15 +128,37 @@ class HomeView extends GetView<HomeController> {
                         ],
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Bienvenido Admin',
+                            controller.getGreeting(),
                             style: TextStyle(
                               fontSize: ResponsiveValues.getFontSize(context,
-                                mobile: 22,
-                                smallPhone: 20,
-                                tablet: 26
+                                mobile: 18,
+                                smallPhone: 16,
+                                tablet: 20
+                              ),
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.8),
+                              shadows: const [
+                                Shadow(
+                                  offset: Offset(1, 1),
+                                  blurRadius: 3,
+                                  color: Colors.black26,
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.left,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Bienvenido Eder',
+                            style: TextStyle(
+                              fontSize: ResponsiveValues.getFontSize(context,
+                                mobile: 26,
+                                smallPhone: 24,
+                                tablet: 30
                               ),
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -134,19 +170,7 @@ class HomeView extends GetView<HomeController> {
                                 ),
                               ],
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSmallPhone ? 12 : 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Text('Abrir Administrativo'),
+                            textAlign: TextAlign.left,
                           ),
                         ],
                       ),
@@ -209,7 +233,7 @@ class HomeView extends GetView<HomeController> {
                           // Opción de Check-in con RFID
                           ButtonMenuWidget(
                             icon: Icons.contactless,
-                            label: 'RFID',
+                            label: 'Lector',
                             description: 'Acceso con tarjeta',
                             color: Colors.indigo.shade300,
                             onTap: controller.goToRfidCheckIn,
@@ -222,6 +246,15 @@ class HomeView extends GetView<HomeController> {
                             description: 'Mis productos',
                             color: Colors.green.shade300,
                             onTap: controller.goToInventario,
+                          ),
+                          
+                          // Opción de Punto de Venta
+                          ButtonMenuWidget(
+                            icon: Icons.point_of_sale,
+                            label: 'Vender',
+                            description: 'Ventas y facturación',
+                            color: Colors.blue.shade300,
+                            onTap: controller.goToPointOfSale,
                           ),
                           
                           // Opción de Registrar Pago
@@ -269,7 +302,6 @@ class HomeView extends GetView<HomeController> {
           ),
         ),
       ),
-      bottomNavigationBar: const BottomNavigation(),
     );
   }
 }

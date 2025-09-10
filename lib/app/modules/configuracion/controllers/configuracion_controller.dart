@@ -1,40 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../controllers/navigation_controller.dart';
-import '../../../routes/app_pages.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
 import '../../../data/config/rfid_config.dart';
 import '../../../data/services/rfid_reader_service.dart';
+import '../../../data/services/bluetooth_service.dart';
 import '../views/rfid_settings_view.dart';
-import '../views/wifi_setup_view.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class ConfiguracionController extends GetxController {
   // Variables observables para la configuración
   final RxBool isLoading = false.obs;
   
   // Variables para información de cuenta
-  final RxString userName = 'Staff Usuario'.obs;
-  final RxString userEmail = 'staff@gymads.com'.obs;
-  final RxString userRole = 'Staff'.obs;
+  final RxString userName = 'Eder Blanco'.obs;
+  final RxString userEmail = 'eder@gymads.com'.obs;
+  final RxString userRole = 'Admin'.obs;
   
-  // Variables para configuración del lector RFID (sin mostrar IP al usuario)
+  // Variables para configuración del lector RFID
   final RxBool rfidConnectionStatus = false.obs;
   final RxString connectionStatusMessage = 'Verificando conexión...'.obs;
+  final RxString esp32IpAddress = ''.obs;
   
-  // Variables para configuración WiFi
-  final RxBool wifiSetupMode = false.obs;
+  // Variables para Bluetooth
+  final RxBool bluetoothEnabled = false.obs;
+  final RxBool bluetoothConnected = false.obs;
+  final RxString bluetoothStatusMessage = 'Bluetooth desconectado'.obs;
+  final RxList<fbp.BluetoothDevice> availableDevices = <fbp.BluetoothDevice>[].obs;
   final RxBool isScanning = false.obs;
+  
+  // Variables para configuración WiFi via Bluetooth
   final RxList<Map<String, dynamic>> availableNetworks = <Map<String, dynamic>>[].obs;
   final RxString selectedNetwork = ''.obs;
+  final RxBool isConnectingWifi = false.obs;
   final TextEditingController wifiPasswordController = TextEditingController();
 
   @override
   void onInit() {
     super.onInit();
-    // Actualizar el índice de navegación cuando se inicialice la vista Configuración
-    NavigationController.to.updateIndexFromRoute(Routes.CONFIGURACION);
+    // Ya no necesitamos actualizar el índice de navegación porque eliminamos el bottom navigation
+    // NavigationController.to.updateIndexFromRoute(Routes.CONFIGURACION);
     
     // Cargar configuración inicial
     loadInitialConfig();
@@ -43,13 +48,14 @@ class ConfiguracionController extends GetxController {
   @override
   void onReady() {
     super.onReady();
-    // Verificar estado de conexión RFID
-    checkRfidConnection();
+    // Verificar estado de conexión RFID y Bluetooth
+    checkInitialConnections();
   }
 
   @override
   void onClose() {
     wifiPasswordController.dispose();
+    BluetoothService.disconnect();
     super.onClose();
   }
   
@@ -59,28 +65,34 @@ class ConfiguracionController extends GetxController {
     await RfidConfig.loadConfig();
     
     // TODO: Cargar información de usuario desde autenticación
-    // Por ahora usamos datos estáticos
-    userName.value = 'Staff Usuario';
-    userEmail.value = 'staff@gymads.com';
-    userRole.value = 'Staff';
+    userName.value = 'Eder Blanco';
+    userEmail.value = 'eder@gymads.com';
+    userRole.value = 'Admin';
     
-    // Verificar estado inicial de conexión
-    connectionStatusMessage.value = 'Buscando dispositivo ESP32...';
+    // Verificar estado inicial
+    connectionStatusMessage.value = 'Verificando configuración...';
   }
   
-  // Extraer IP de la URL completa (ahora público)
-  String extractIpFromUrl(String url) {
-    try {
-      if (url.contains('://') && url.contains('/api')) {
-        final parts = url.split('://');
-        if (parts.length > 1) {
-          final hostParts = parts[1].split('/');
-          return hostParts[0];
-        }
+  // Verificar conexiones iniciales
+  Future<void> checkInitialConnections() async {
+    await checkBluetoothStatus();
+    await checkRfidConnection();
+  }
+  
+  // Verificar estado de Bluetooth
+  Future<void> checkBluetoothStatus() async {
+    bluetoothEnabled.value = await BluetoothService.initialize();
+    
+    if (bluetoothEnabled.value) {
+      bluetoothStatusMessage.value = 'Bluetooth disponible';
+      if (BluetoothService.isConnected) {
+        bluetoothConnected.value = true;
+        bluetoothStatusMessage.value = 'Conectado a ESP32';
+      } else {
+        bluetoothStatusMessage.value = 'Bluetooth listo para conectar';
       }
-      return url;
-    } catch (e) {
-      return url;
+    } else {
+      bluetoothStatusMessage.value = 'Bluetooth no disponible';
     }
   }
   
@@ -90,363 +102,417 @@ class ConfiguracionController extends GetxController {
       isLoading.value = true;
       connectionStatusMessage.value = 'Verificando conexión con ESP32...';
       
-      // Usar el servicio real de RFID para verificar la conexión
-      final isConnected = await RfidReaderService.startReading();
-      rfidConnectionStatus.value = isConnected;
-      
-      if (isConnected) {
-        connectionStatusMessage.value = 'ESP32 conectado y funcionando';
-        wifiSetupMode.value = false; // Ya no está en modo setup
+      // Verificar si ya tenemos IP configurada
+      if (RfidConfig.isConfigured) {
+        final isConnected = await RfidReaderService.startReading();
+        rfidConnectionStatus.value = isConnected;
+        
+        if (isConnected) {
+          final baseUrl = RfidConfig.baseUrl;
+          if (baseUrl != null) {
+            esp32IpAddress.value = baseUrl.replaceAll('/api', '').replaceAll('http://', '');
+            connectionStatusMessage.value = 'ESP32 conectado y listo';
+          }
+        } else {
+          connectionStatusMessage.value = 'ESP32 no responde - Revisar conexión WiFi';
+        }
       } else {
-        connectionStatusMessage.value = 'ESP32 no conectado - Configura WiFi';
-        wifiSetupMode.value = true; // Necesita configuración
-        // Verificar si está en modo setup
-        await checkIfInSetupMode();
+        rfidConnectionStatus.value = false;
+        connectionStatusMessage.value = 'ESP32 no configurado - Usar Bluetooth para configurar';
       }
       
     } catch (e) {
       rfidConnectionStatus.value = false;
-      wifiSetupMode.value = true;
-      connectionStatusMessage.value = 'ESP32 no encontrado - Verifica configuración';
+      connectionStatusMessage.value = 'Error al verificar ESP32';
     } finally {
       isLoading.value = false;
     }
   }
   
-  // Verificar si el ESP32 está en modo setup
-  Future<void> checkIfInSetupMode() async {
-    try {
-      const String espSetupIp = 'http://192.168.4.1';
-      final response = await http.get(
-        Uri.parse('$espSetupIp/api/wifi/status'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 3));
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'setup_mode') {
-          wifiSetupMode.value = true;
-          connectionStatusMessage.value = 'ESP32 en modo configuración - Listo para WiFi';
-        }
-      }
-    } catch (e) {
-      // No está en modo setup o no podemos conectar
-    }
-  }
-  
-  // Probar conexión RFID con detección automática
-  Future<void> testRfidConnection() async {
-    isLoading.value = true;
-    
-    try {
-      // Cargar configuración (esto incluye detección automática)
-      await RfidConfig.loadConfig();
-      
-      // Verificar conexión
-      await checkRfidConnection();
-      
-      if (rfidConnectionStatus.value) {
-        Get.snackbar(
-          'Conexión exitosa',
-          'El lector RFID está funcionando correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-      } else {
-        Get.snackbar(
-          'Dispositivo no encontrado',
-          'El ESP32 puede estar en modo configuración WiFi. Usa "Configurar WiFi" si es necesario.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5),
-        );
-      }
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  // Detectar automáticamente la IP del Arduino cuando se conecte a WiFi
-  Future<void> detectArduinoIP() async {
-    try {
-      isLoading.value = true;
-      connectionStatusMessage.value = 'Detectando nueva configuración...';
-      
-      // Cuando el ESP32 se conecta a WiFi, obtiene una nueva IP
-      // Podemos intentar obtener esta IP del ESP32 mismo
-      const String espIp = 'http://192.168.4.1';
-      final response = await http.get(
-        Uri.parse('$espIp/api/wifi/status'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 5));
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'connected' && data['ip'] != null) {
-          String newIp = data['ip'];
-          String newUrl = 'http://$newIp/api';
-          
-          // Actualizar la configuración con la nueva IP
-          await RfidConfig.updateConfig(newUrl: newUrl);
-          
-          Get.snackbar(
-            'Configuración Actualizada',
-            'El ESP32 se ha conectado exitosamente a WiFi',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 3),
-          );
-          
-          // Verificar conexión con la nueva IP
-          await checkRfidConnection();
-        }
-      }
-    } catch (e) {
-      // No hacer nada si no se puede detectar, la IP se configurará manualmente
-      print('No se pudo detectar IP automáticamente: $e');
-      connectionStatusMessage.value = 'Configuración automática no disponible';
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  // Cerrar sesión
-  void logout() {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás seguro de que quieres cerrar sesión?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              // TODO: Implementar lógica de cierre de sesión
-              Get.snackbar(
-                'Sesión cerrada',
-                'Has cerrado sesión correctamente',
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.green,
-                colorText: Colors.white,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Cerrar sesión', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  // Abrir configuración de cuenta
-  void openAccountSettings() {
-    Get.dialog(
-      _buildAccountSettingsDialog(),
-      barrierDismissible: true,
-    );
-  }
-  
-  // Abrir configuración de RFID
-  void openRfidSettings() {
-    Get.to(() => const RfidSettingsView());
-  }
-  
-  // Abrir configuración WiFi
-  void openWiFiSetup() {
-    // Mostrar diálogo explicativo tipo Echo Dot
-    Get.dialog(
-      AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.wifi_protected_setup, color: Colors.blue[600]),
-            const SizedBox(width: 12),
-            const Expanded(child: Text('Configurar WiFi ESP32')),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Para configurar el WiFi del ESP32, necesitas seguir estos pasos:',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 16),
-            _buildSetupStep(1, 'Desconéctate de tu WiFi actual'),
-            _buildSetupStep(2, 'Conecta a la red "ESP_RFID_Setup"'),
-            _buildSetupStep(3, 'Contraseña: "gymads123"'),
-            _buildSetupStep(4, 'Regresa a la app para completar'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, color: Colors.blue[600], size: 20),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Igual que configurar un Echo Dot o dispositivo inteligente',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              Get.to(() => const WiFiSetupView());
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[600]),
-            child: const Text('Continuar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildSetupStep(int step, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: Colors.blue[600],
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                '$step',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  // Escanear redes WiFi disponibles
-  Future<void> scanWiFiNetworks() async {
-    try {
-      isScanning.value = true;
-      availableNetworks.clear();
-      
-      // Endpoint del ESP32 para escanear redes
-      const String espIp = 'http://192.168.4.1';
-      final response = await http.get(
-        Uri.parse('$espIp/api/wifi/scan'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 15));
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final status = data['status'] ?? 'unknown';
-        
-        if (status == 'success' || status == 'no_networks') {
-          List<dynamic> networks = data['networks'] ?? [];
-          
-          // Filtrar y formatear redes
-          List<Map<String, dynamic>> formattedNetworks = [];
-          for (var network in networks) {
-            if (network['ssid'] != null && network['ssid'].toString().isNotEmpty) {
-              formattedNetworks.add({
-                'ssid': network['ssid'].toString(),
-                'rssi': network['rssi'] ?? -100,
-                'secure': network['secure'] ?? false,
-              });
-            }
-          }
-          
-          // Ordenar por fuerza de señal
-          formattedNetworks.sort((a, b) => (b['rssi'] as int).compareTo(a['rssi'] as int));
-          
-          availableNetworks.value = formattedNetworks;
-          
-          if (availableNetworks.isNotEmpty) {
-            Get.snackbar(
-              'Escaneo completo',
-              'Se encontraron ${availableNetworks.length} redes WiFi',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
-            );
-          } else {
-            Get.snackbar(
-              'Sin redes',
-              'No se encontraron redes WiFi disponibles. Verifica que hay redes cerca.',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-            );
-          }
-        } else {
-          // Error reportado por el ESP32
-          final message = data['message'] ?? 'Error desconocido en el escaneo';
-          throw Exception(message);
-        }
-      } else {
-        throw Exception('Error de conexión: HTTP ${response.statusCode}');
-      }
-    } catch (e) {
-      String errorMessage = 'Error al escanear redes WiFi';
-      
-      // Personalizar mensaje según el tipo de error
-      if (e.toString().contains('SocketException') || e.toString().contains('Software caused connection abort')) {
-        errorMessage = 'No se pudo conectar al ESP32. Verifica que estés conectado a "ESP_RFID_Setup"';
-      } else if (e.toString().contains('TimeoutException')) {
-        errorMessage = 'Tiempo de espera agotado. El ESP32 puede estar ocupado, intenta de nuevo';
-      } else if (e.toString().contains('Connection refused')) {
-        errorMessage = 'Conexión rechazada. Verifica la IP del ESP32';
-      }
-      
+  // Buscar dispositivos ESP32 via Bluetooth
+  Future<void> scanForESP32Devices() async {
+    if (!bluetoothEnabled.value) {
       Get.snackbar(
-        'Error de escaneo',
-        errorMessage,
+        'Bluetooth',
+        'Bluetooth no está disponible',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        duration: const Duration(seconds: 5),
+      );
+      return;
+    }
+    
+    try {
+      isScanning.value = true;
+      bluetoothStatusMessage.value = 'Buscando dispositivos ESP32...';
+      
+      List<fbp.BluetoothDevice> devices = await BluetoothService.findESP32Devices();
+      availableDevices.value = devices;
+      
+      if (devices.isNotEmpty) {
+        bluetoothStatusMessage.value = 'Dispositivos ESP32 encontrados';
+        _showDeviceSelectionDialog(devices);
+      } else {
+        bluetoothStatusMessage.value = 'No se encontraron dispositivos ESP32';
+        Get.snackbar(
+          'Búsqueda Bluetooth',
+          'No se encontraron dispositivos ESP32.\nAsegúrate de que el ESP32 esté encendido.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+        );
+      }
+      
+    } catch (e) {
+      bluetoothStatusMessage.value = 'Error al buscar dispositivos';
+      Get.snackbar(
+        'Error Bluetooth',
+        'Error al buscar dispositivos: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
       );
     } finally {
       isScanning.value = false;
     }
+  }
+  
+  // Mostrar dialog para seleccionar dispositivo
+  void _showDeviceSelectionDialog(List<fbp.BluetoothDevice> devices) {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Dispositivos ESP32 encontrados'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: devices.length,
+            itemBuilder: (context, index) {
+              final device = devices[index];
+              String deviceName = device.platformName.isNotEmpty ? device.platformName : device.advName;
+              if (deviceName.isEmpty) deviceName = 'Dispositivo desconocido';
+              
+              return ListTile(
+                leading: const Icon(Icons.bluetooth),
+                title: Text(deviceName),
+                subtitle: Text(device.remoteId.toString()),
+                onTap: () {
+                  Get.back();
+                  connectToESP32Device(device);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Conectar a dispositivo ESP32
+  Future<void> connectToESP32Device(fbp.BluetoothDevice device) async {
+    try {
+      isLoading.value = true;
+      String deviceName = device.platformName.isNotEmpty ? device.platformName : device.advName;
+      if (deviceName.isEmpty) deviceName = 'ESP32';
+      
+      bluetoothStatusMessage.value = 'Conectando a $deviceName...';
+      
+      bool connected = await BluetoothService.connectToESP32(device);
+      
+      if (connected) {
+        bluetoothConnected.value = true;
+        bluetoothStatusMessage.value = 'Conectado a $deviceName';
+        
+        Get.snackbar(
+          'Bluetooth',
+          'Conectado exitosamente a $deviceName',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+        
+        // Verificar estado del ESP32
+        await checkESP32Status();
+        
+      } else {
+        bluetoothStatusMessage.value = 'Error al conectar con $deviceName';
+        Get.snackbar(
+          'Error Bluetooth',
+          'No se pudo conectar a $deviceName',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+      
+    } catch (e) {
+      bluetoothStatusMessage.value = 'Error de conexión';
+      Get.snackbar(
+        'Error',
+        'Error al conectar: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+  
+  // Verificar estado del ESP32 via Bluetooth
+  Future<void> checkESP32Status() async {
+    if (!bluetoothConnected.value) return;
+    
+    try {
+      var status = await BluetoothService.getESP32Status();
+      
+      if (status != null) {
+        bool wifiConnected = status['wifi_connected'] ?? false;
+        
+        if (wifiConnected) {
+          String ipAddress = status['ip_address'] ?? '';
+          if (ipAddress.isNotEmpty) {
+            esp32IpAddress.value = ipAddress;
+            await RfidConfig.configureFromBluetooth(ipAddress);
+            rfidConnectionStatus.value = true;
+            connectionStatusMessage.value = 'ESP32 configurado y listo';
+            
+            Get.snackbar(
+              'ESP32 Configurado',
+              'ESP32 conectado a WiFi con IP: $ipAddress',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
+            );
+          }
+        } else {
+          connectionStatusMessage.value = 'ESP32 conectado pero sin WiFi - Configurar red';
+          _showWiFiConfigurationDialog();
+        }
+      }
+      
+    } catch (e) {
+      connectionStatusMessage.value = 'Error al verificar estado del ESP32';
+    }
+  }
+  
+  // Mostrar dialog de configuración WiFi
+  void _showWiFiConfigurationDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Configurar WiFi'),
+        content: const Text(
+          'El ESP32 no está conectado a WiFi.\n¿Deseas configurar la conexión WiFi ahora?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              scanWiFiNetworks();
+            },
+            child: const Text('Configurar WiFi'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Escanear redes WiFi via Bluetooth
+  Future<void> scanWiFiNetworks() async {
+    if (!bluetoothConnected.value) {
+      Get.snackbar(
+        'Error',
+        'Primero conecta con el ESP32 via Bluetooth',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Mostrar diálogo de carga mejorado
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Indicador de carga con color personalizado
+              const SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.info),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Ícono WiFi
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.wifi_find,
+                  color: AppColors.info,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Mensaje de estado
+              Obx(() => Text(
+                connectionStatusMessage.value,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              )),
+              const SizedBox(height: 8),
+              // Mensaje adicional
+              const Text(
+                'Por favor espera...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    try {
+      isLoading.value = true;
+      connectionStatusMessage.value = 'Escaneando redes WiFi...';
+      
+      List<Map<String, dynamic>> networks = await BluetoothService.scanWiFiNetworks();
+      availableNetworks.value = networks;
+      
+      // Cerrar diálogo de carga
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+      
+      if (networks.isNotEmpty) {
+        connectionStatusMessage.value = 'Redes WiFi encontradas: ${networks.length}';
+        _showNetworkSelectionDialog(networks);
+      } else {
+        connectionStatusMessage.value = 'No se encontraron redes WiFi';
+        Get.snackbar(
+          'WiFi',
+          'No se encontraron redes WiFi disponibles.\n\nPosibles causas:\n• El ESP32 perdió conexión WiFi\n• No hay redes cerca\n• Error en el módulo WiFi',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+          mainButton: TextButton(
+            onPressed: () {
+              Get.back(); // Cerrar snackbar
+              restartESP32WiFi(); // Reiniciar WiFi
+            },
+            child: const Text(
+              'Reiniciar WiFi',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      }
+      
+    } catch (e) {
+      // Cerrar diálogo de carga si está abierto
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+      
+      connectionStatusMessage.value = 'Error al escanear WiFi';
+      Get.snackbar(
+        'Error WiFi',
+        'Error al escanear redes: $e\n\nIntenta:\n• Verificar que el ESP32 esté encendido\n• Reconectar Bluetooth\n• Reiniciar el ESP32',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 6),
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+  
+  // Mostrar dialog de selección de red WiFi
+  void _showNetworkSelectionDialog(List<Map<String, dynamic>> networks) {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Seleccionar Red WiFi'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: ListView.builder(
+            itemCount: networks.length,
+            itemBuilder: (context, index) {
+              final network = networks[index];
+              final String ssid = network['ssid'] ?? '';
+              final int rssi = network['rssi'] ?? -100;
+              final bool secure = network['secure'] ?? false;
+              
+              return ListTile(
+                leading: Icon(secure ? Icons.wifi_lock : Icons.wifi),
+                title: Text(ssid),
+                subtitle: Text('${secure ? 'Segura' : 'Abierta'} • Señal: ${_getSignalStrength(rssi)}'),
+                onTap: () {
+                  Get.back();
+                  selectNetwork(network);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Get.back();
+              scanWiFiNetworks(); // Volver a escanear
+            },
+            child: const Text('Actualizar'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Obtener fuerza de señal visual
+  String _getSignalStrength(int rssi) {
+    if (rssi > -50) return '●●●●';
+    if (rssi > -60) return '●●●○';
+    if (rssi > -70) return '●●○○';
+    if (rssi > -80) return '●○○○';
+    return '○○○○';
   }
   
   // Seleccionar red WiFi
@@ -454,11 +520,11 @@ class ConfiguracionController extends GetxController {
     selectedNetwork.value = network['ssid'];
     wifiPasswordController.clear();
     
-    // Mostrar dialog para ingresar contraseña
+    // Mostrar dialog para contraseña
     _showPasswordDialog(network);
   }
   
-  // Mostrar dialog para contraseña
+  // Mostrar dialog para contraseña WiFi
   void _showPasswordDialog(Map<String, dynamic> network) {
     final bool isSecure = network['secure'] ?? false;
     
@@ -467,11 +533,10 @@ class ConfiguracionController extends GetxController {
         title: Text('Conectar a ${network['ssid']}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (isSecure) ...[
               const Text('Esta red requiere contraseña:'),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextField(
                 controller: wifiPasswordController,
                 obscureText: true,
@@ -481,8 +546,8 @@ class ConfiguracionController extends GetxController {
                 ),
               ),
             ] else ...[
-              const Text('Esta es una red abierta. ¿Conectar sin contraseña?'),
-            ]
+              const Text('Esta red está abierta y no requiere contraseña.'),
+            ],
           ],
         ),
         actions: [
@@ -493,7 +558,7 @@ class ConfiguracionController extends GetxController {
           ElevatedButton(
             onPressed: () {
               Get.back();
-              connectToWiFi(network['ssid'], isSecure ? wifiPasswordController.text : '');
+              connectToWiFi(network['ssid'], wifiPasswordController.text);
             },
             child: const Text('Conectar'),
           ),
@@ -502,310 +567,167 @@ class ConfiguracionController extends GetxController {
     );
   }
   
-  // Conectar a red WiFi
+  // Conectar a WiFi via Bluetooth
   Future<void> connectToWiFi(String ssid, String password) async {
-    try {
-      isLoading.value = true;
-      
+    if (!bluetoothConnected.value) {
       Get.snackbar(
-        'Configurando WiFi',
-        'Enviando configuración al ESP32...',
+        'Error',
+        'Primero conecta con el ESP32 via Bluetooth',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.red,
         colorText: Colors.white,
-        duration: const Duration(seconds: 3),
       );
+      return;
+    }
+
+    // Mostrar diálogo de carga mejorado para la conexión
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Indicador de carga con color personalizado
+              const SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Ícono WiFi conectando
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.wifi,
+                  color: AppColors.accent,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Mensaje de estado
+              Obx(() => Text(
+                connectionStatusMessage.value,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              )),
+              const SizedBox(height: 8),
+              // Mensaje adicional
+              const Text(
+                'Esto puede tomar unos segundos...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+    
+    try {
+      isConnectingWifi.value = true;
+      connectionStatusMessage.value = 'Conectando ESP32 a WiFi...';
       
-      const String espIp = 'http://192.168.4.1';
-      final response = await http.post(
-        Uri.parse('$espIp/api/wifi/connect'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'ssid': ssid,
-          'password': password,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      bool connected = await BluetoothService.connectToWiFi(ssid, password);
       
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'connecting') {
+      if (connected) {
+        // Obtener la IP del ESP32
+        String? ipAddress = await BluetoothService.getESP32IP();
+        
+        if (ipAddress != null) {
+          esp32IpAddress.value = ipAddress;
+          await RfidConfig.configureFromBluetooth(ipAddress);
+          rfidConnectionStatus.value = true;
+          connectionStatusMessage.value = 'ESP32 configurado exitosamente';
+          
+          // Cerrar cualquier diálogo abierto
+          if (Get.isDialogOpen == true) {
+            Get.back();
+          }
+          
           Get.snackbar(
             'WiFi Configurado',
-            'El ESP32 se está conectando a $ssid. Esto puede tomar unos momentos.',
+            'ESP32 conectado a $ssid con IP: $ipAddress',
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.green,
             colorText: Colors.white,
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 4),
           );
-          
-          // Actualizar estado
-          wifiSetupMode.value = false;
-          connectionStatusMessage.value = 'ESP32 conectándose a WiFi...';
-          
-          // Esperar un poco más para que el ESP32 se conecte y reinicie
-          await Future.delayed(const Duration(seconds: 8));
-          
-          // Verificar conexión RFID tras la configuración
-          await checkRfidConnection();
-          
-          // Intentar detectar la nueva IP automáticamente
-          await detectArduinoIP();
-          
         } else {
-          throw Exception(data['message'] ?? 'Error al conectar');
+          connectionStatusMessage.value = 'WiFi conectado pero no se obtuvo IP';
+          
+          // Cerrar diálogo de carga aunque no se obtuvo IP
+          if (Get.isDialogOpen == true) {
+            Get.back();
+          }
         }
       } else {
-        throw Exception('Error de comunicación con ESP32 (${response.statusCode})');
-      }
-    } catch (e) {
-      Get.snackbar(
-        'Error de configuración',
-        'No se pudo configurar WiFi: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  // Cambiar red WiFi (forzar modo configuración)
-  Future<void> changeWiFiNetwork() async {
-    Get.dialog(
-      AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.wifi_find, color: Colors.orange[600]),
-            const SizedBox(width: 12),
-            const Expanded(child: Text('Cambiar Red WiFi')),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'El ESP32 se desconectará de la red actual y entrará en modo configuración.',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-            SizedBox(height: 16),
-            Text('Después deberás:'),
-            SizedBox(height: 8),
-            Text('1. Conectarte a "ESP_RFID_Setup"'),
-            Text('2. Usar contraseña: "gymads123"'),
-            Text('3. Seleccionar nueva red WiFi'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Get.back();
-              await _executeChangeWiFiNetwork();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: const Text('Cambiar Red', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  // Ejecutar cambio de red WiFi
-  Future<void> _executeChangeWiFiNetwork() async {
-    try {
-      isLoading.value = true;
-      connectionStatusMessage.value = 'Activando modo configuración...';
-      
-      // Intentar forzar modo configuración usando la IP actual del ESP32
-      String currentUrl = RfidConfig.baseUrl;
-      String currentIp = currentUrl.replaceAll(RegExp(r'http://|/api'), '');
-      
-      try {
-        final response = await http.post(
-          Uri.parse('http://$currentIp/api/wifi/config'),
-          headers: {'Content-Type': 'application/json'},
-        ).timeout(const Duration(seconds: 10));
-        
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          if (data['status'] == 'success') {
-            Get.snackbar(
-              'Modo configuración activado',
-              'Conecta a "${data['ap_ssid'] ?? 'ESP_RFID_Setup'}" para cambiar de red',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 5),
-            );
-            
-            // Actualizar estado
-            wifiSetupMode.value = true;
-            rfidConnectionStatus.value = false;
-            connectionStatusMessage.value = 'ESP32 en modo configuración';
-            return;
-          }
+        // Cerrar diálogo de carga en caso de error de conexión
+        if (Get.isDialogOpen == true) {
+          Get.back();
         }
-      } catch (e) {
-        print('Error al activar modo configuración: $e');
+        
+        connectionStatusMessage.value = 'Error al conectar WiFi';
+        Get.snackbar(
+          'Error WiFi',
+          'No se pudo conectar a la red $ssid.\nVerifica la contraseña.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
       
-      // Si no se pudo activar por API, mostrar instrucciones manuales
-      Get.snackbar(
-        'Modo configuración',
-        'Conecta a "ESP_RFID_Setup" (contraseña: gymads123) para cambiar de red',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 5),
-      );
-      
-      wifiSetupMode.value = true;
-      rfidConnectionStatus.value = false;
-      connectionStatusMessage.value = 'ESP32 en modo configuración';
-      
     } catch (e) {
+      // Cerrar diálogo de carga en caso de excepción
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+      
+      connectionStatusMessage.value = 'Error de configuración WiFi';
       Get.snackbar(
         'Error',
-        'No se pudo cambiar el modo de red: ${e.toString()}',
+        'Error al configurar WiFi: $e',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        duration: const Duration(seconds: 4),
       );
     } finally {
-      isLoading.value = false;
+      isConnectingWifi.value = false;
     }
   }
   
-  // Resetear configuración a valores de fábrica
-  Future<void> factoryResetConfiguration() async {
-    Get.dialog(
-      AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.factory, color: Colors.red[600]),
-            const SizedBox(width: 12),
-            const Expanded(child: Text('Reseteo de Fábrica')),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '⚠️ ATENCIÓN: Esta acción es irreversible',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-            ),
-            SizedBox(height: 12),
-            Text('Esto eliminará:'),
-            SizedBox(height: 8),
-            Text('• Configuración WiFi del ESP32'),
-            Text('• Credenciales guardadas localmente'),
-            Text('• Configuraciones de la aplicación'),
-            SizedBox(height: 12),
-            Text(
-              'El ESP32 volverá a los valores de fábrica y deberás configurar todo nuevamente.',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Get.back();
-              await _executeFactoryReset();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Resetear Todo', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+  // Probar conexión RFID
+  Future<void> testRfidConnection() async {
+    await checkRfidConnection();
   }
   
-  // Ejecutar reseteo de fábrica
-  Future<void> _executeFactoryReset() async {
-    try {
-      isLoading.value = true;
-      connectionStatusMessage.value = 'Ejecutando reseteo de fábrica...';
-      
-      // Primero intentar resetear el ESP32 usando la IP actual
-      String currentUrl = RfidConfig.baseUrl;
-      String currentIp = currentUrl.replaceAll(RegExp(r'http://|/api'), '');
-      
-      try {
-        final response = await http.post(
-          Uri.parse('http://$currentIp/api/wifi/reset'),
-          headers: {'Content-Type': 'application/json'},
-        ).timeout(const Duration(seconds: 10));
-        
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          if (data['status'] == 'success') {
-            Get.snackbar(
-              'ESP32 reseteado',
-              'Configuración del ESP32 eliminada exitosamente',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 3),
-            );
-          }
-        }
-      } catch (e) {
-        print('ESP32 no disponible para reset: $e');
-      }
-      
-      // Limpiar configuraciones locales
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      
-      // Actualizar estado de la aplicación
-      wifiSetupMode.value = true;
-      rfidConnectionStatus.value = false;
-      connectionStatusMessage.value = 'Configuración eliminada - ESP32 desconectado';
-      
-      Get.snackbar(
-        'Reseteo completo',
-        'Todas las configuraciones han sido eliminadas. Configura el ESP32 nuevamente.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 6),
-      );
-      
-    } catch (e) {
-      Get.snackbar(
-        'Error en reseteo',
-        'Ocurrió un error durante el reseteo: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  // Resetear configuración WiFi
+  // Resetear configuración WiFi via Bluetooth
   Future<void> resetWiFiConfiguration() async {
     Get.dialog(
       AlertDialog(
         title: const Text('Resetear WiFi'),
         content: const Text(
-          '¿Estás seguro de que quieres resetear la configuración WiFi del ESP32?\n\n'
-          'Esto borrará las credenciales guardadas y el ESP32 entrará en modo de configuración.',
+          '¿Estás seguro de que deseas resetear la configuración WiFi del ESP32?\n\n'
+          'Esto eliminará las credenciales WiFi guardadas y el ESP32 deberá ser reconfigurado.'
         ),
         actions: [
           TextButton(
@@ -813,12 +735,12 @@ class ConfiguracionController extends GetxController {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               Get.back();
-              await _executeWiFiReset();
+              _executeWiFiReset();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Resetear', style: TextStyle(color: Colors.white)),
+            child: const Text('Resetear'),
           ),
         ],
       ),
@@ -827,114 +749,271 @@ class ConfiguracionController extends GetxController {
   
   // Ejecutar reset de WiFi
   Future<void> _executeWiFiReset() async {
+    if (!bluetoothConnected.value) {
+      Get.snackbar(
+        'Error',
+        'Primero conecta con el ESP32 via Bluetooth',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    
     try {
       isLoading.value = true;
+      connectionStatusMessage.value = 'Reseteando configuración WiFi...';
       
-      // Intentar con la IP del modo AP
-      const String espIp = 'http://192.168.4.1';
-      final response = await http.post(
-        Uri.parse('$espIp/api/wifi/reset'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+      bool success = await BluetoothService.resetWiFiConfig();
       
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'success') {
-          Get.snackbar(
-            'Reset exitoso',
-            'La configuración WiFi ha sido reseteada. El ESP32 entrará en modo configuración.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 4),
-          );
-          
-          wifiSetupMode.value = true;
-          rfidConnectionStatus.value = false;
-        }
+      if (success) {
+        // Limpiar configuración local también
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('esp32_api_url');
+        
+        rfidConnectionStatus.value = false;
+        esp32IpAddress.value = '';
+        connectionStatusMessage.value = 'Configuración WiFi reseteada - Reconfigurar';
+        
+        Get.snackbar(
+          'Reset Exitoso',
+          'Configuración WiFi eliminada. Configura nuevamente la red.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+      } else {
+        connectionStatusMessage.value = 'Error al resetear configuración';
+        Get.snackbar(
+          'Error',
+          'No se pudo resetear la configuración WiFi',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
-    } catch (e) {
-      // Si no podemos conectar al ESP32, asumir que ya está en modo configuración
-      Get.snackbar(
-        'Modo Configuración',
-        'Conecta a la red ESP_RFID_Setup para configurar WiFi',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
       
-      wifiSetupMode.value = true;
-      rfidConnectionStatus.value = false;
+    } catch (e) {
+      connectionStatusMessage.value = 'Error al resetear WiFi';
+      Get.snackbar(
+        'Error',
+        'Error al resetear: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } finally {
       isLoading.value = false;
     }
   }
   
-  // Abrir configuración de aplicación (futuro)
-  void openAppSettings() {
+  // Desconectar Bluetooth
+  Future<void> disconnectBluetooth() async {
+    await BluetoothService.disconnect();
+    bluetoothConnected.value = false;
+    bluetoothStatusMessage.value = 'Bluetooth desconectado';
+    
     Get.snackbar(
-      'Próximamente',
-      'Esta función estará disponible en una futura actualización',
+      'Bluetooth',
+      'Desconectado del ESP32',
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.blue,
+      backgroundColor: Colors.orange,
       colorText: Colors.white,
     );
   }
   
-  // Dialog para configuración de cuenta
-  Widget _buildAccountSettingsDialog() {
-    return AlertDialog(
-      title: const Text('Información de Cuenta'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
+  // Cerrar sesión
+  void logout() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              // TODO: Implementar lógica de logout
+              Get.snackbar(
+                'Logout',
+                'Cerrando sesión...',
+                snackPosition: SnackPosition.BOTTOM,
+              );
+            },
+            child: const Text('Cerrar Sesión'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Abrir configuración de cuenta
+  void openAccountSettings() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Configuración de Cuenta'),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildAccountInfoRow(Icons.person, 'Usuario', userName.value),
-            const SizedBox(height: 12),
-            _buildAccountInfoRow(Icons.email, 'Email', userEmail.value),
-            const SizedBox(height: 12),
-            _buildAccountInfoRow(Icons.badge, 'Rol', userRole.value, Colors.blue[600]),
+            _buildAccountInfoRow(Icons.person, 'Usuario:', userName.value),
+            const SizedBox(height: 8),
+            _buildAccountInfoRow(Icons.email, 'Email:', userEmail.value),
+            const SizedBox(height: 8),
+            _buildAccountInfoRow(Icons.badge, 'Rol:', userRole.value, Colors.blue),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cerrar'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Get.back(),
-          child: const Text('Cerrar'),
-        ),
-      ],
     );
+  }
+  
+  // Abrir configuración de RFID
+  void openRfidSettings() {
+    Get.to(() => const RfidSettingsView());
   }
   
   // Widget helper para información de cuenta
   Widget _buildAccountInfoRow(IconData icon, String label, String value, [Color? valueColor]) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
-        const SizedBox(width: 12),
+        Icon(icon, size: 20),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(width: 8),
         Expanded(
-          flex: 2,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
-        Expanded(
-          flex: 3,
           child: Text(
             value,
-            style: TextStyle(
-              color: valueColor ?? Colors.grey[800],
-              fontWeight: valueColor != null ? FontWeight.w600 : FontWeight.normal,
-            ),
+            style: TextStyle(color: valueColor),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
     );
+  }
+  
+  // Abrir configuración de aplicación (futuro)
+  void openAppSettings() {
+    Get.snackbar(
+      'Configuración',
+      'Configuración de aplicación próximamente',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  // Reiniciar módulo WiFi del ESP32
+  Future<void> restartESP32WiFi() async {
+    if (!bluetoothConnected.value) {
+      Get.snackbar(
+        'Error',
+        'Primero conecta con el ESP32 via Bluetooth',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    
+    try {
+      isLoading.value = true;
+      connectionStatusMessage.value = 'Reiniciando módulo WiFi...';
+      
+      bool success = await BluetoothService.restartWiFiModule();
+      
+      if (success) {
+        connectionStatusMessage.value = 'Módulo WiFi reiniciado';
+        Get.snackbar(
+          'WiFi',
+          'Módulo WiFi reiniciado exitosamente.\nAhora puedes escanear redes nuevamente.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        
+        // Esperar un momento y luego escanear automáticamente
+        await Future.delayed(const Duration(seconds: 2));
+        scanWiFiNetworks();
+      } else {
+        connectionStatusMessage.value = 'Error al reiniciar WiFi';
+        Get.snackbar(
+          'Error',
+          'No se pudo reiniciar el módulo WiFi',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+      
+    } catch (e) {
+      connectionStatusMessage.value = 'Error al reiniciar WiFi';
+      Get.snackbar(
+        'Error',
+        'Error al reiniciar módulo WiFi: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Cambiar red WiFi - nuevo método que usa changeWiFiNetwork
+  Future<void> changeWiFiNetwork() async {
+    if (!bluetoothConnected.value) {
+      Get.snackbar(
+        'Error',
+        'Primero conecta con el ESP32 via Bluetooth',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      connectionStatusMessage.value = 'Desconectando WiFi actual...';
+      
+      bool success = await BluetoothService.changeWiFiNetwork();
+      
+      if (success) {
+        connectionStatusMessage.value = 'Listo para nueva configuración WiFi';
+        
+        // Esperar un momento antes de escanear
+        await Future.delayed(const Duration(seconds: 2));
+        
+        // Proceder con el escaneo de redes
+        await scanWiFiNetworks();
+      } else {
+        connectionStatusMessage.value = 'Error al cambiar WiFi';
+        Get.snackbar(
+          'Error',
+          'No se pudo desconectar el WiFi actual',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      connectionStatusMessage.value = 'Error al cambiar WiFi';
+      Get.snackbar(
+        'Error',
+        'Error al cambiar WiFi: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

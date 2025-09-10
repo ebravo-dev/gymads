@@ -191,6 +191,51 @@ class SupabaseApiProvider extends ApiProvider {
     }
   }
 
+  /// Método específico para obtener un usuario por su número
+  Future<Map<String, dynamic>> getUserByNumber(String userNumber) async {
+    try {
+      if (kDebugMode) {
+        print('Buscando usuario por número: $userNumber');
+      }
+      
+      final response = await SupabaseService.client
+          .from(table)
+          .select()
+          .eq('user_number', userNumber)  // Cambiar de 'userNumber' a 'user_number'
+          .limit(1);
+
+      if (kDebugMode) {
+        print('Respuesta de Supabase (getUserByNumber): $response');
+      }
+
+      if (response.isEmpty) {
+        if (kDebugMode) {
+          print('No se encontró usuario con número: $userNumber');
+        }
+        return {
+          'error': false,
+          'message': 'Usuario no encontrado',
+          'data': null
+        };
+      }
+
+      return {
+        'error': false,
+        'message': 'Usuario encontrado',
+        'data': response[0]
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error en getUserByNumber: $e');
+      }
+      return {
+        'error': true,
+        'message': e.toString(),
+        'data': null
+      };
+    }
+  }
+
   /// Método específico para obtener usuarios con información de membresía
   Future<Map<String, dynamic>> getUsersWithMembershipInfo() async {
     try {

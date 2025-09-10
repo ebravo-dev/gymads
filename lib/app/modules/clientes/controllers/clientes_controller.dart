@@ -3,12 +3,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/app/data/providers/membership_type_provider.dart';
+import 'package:gymads/app/data/providers/promotion_provider.dart';
 import 'package:gymads/app/data/models/membership_type_model.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/models/promotion_model.dart';
 import 'package:gymads/app/data/repositories/user_repository.dart';
 import 'package:gymads/app/data/services/promotion_service.dart';
 import 'package:gymads/app/data/services/ingreso_service.dart';
+import 'package:gymads/app/data/services/image_cache_service.dart';
 import 'package:gymads/app/modules/ingresos/controllers/ingresos_controller.dart';
 import 'package:gymads/app/global_widgets/qr_dialog.dart';
 
@@ -65,13 +67,33 @@ class ClientesController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    
+    // Registrar PromotionService si no está disponible
+    if (!Get.isRegistered<PromotionService>()) {
+      try {
+        final promotionProvider = Get.find<PromotionProvider>();
+        Get.put<PromotionService>(PromotionService(promotionProvider));
+      } catch (e) {
+        print('⚠️ PromotionService no disponible: $e');
+      }
+    }
+    
     fetchClientes();
     fetchMembershipTypes();
+    _initializeImageCache();
     
     // Escuchar cambios en el tipo de membresía para actualizar promociones
     selectedMembershipType.listen((_) {
       updateMembershipCost();
     });
+  }
+
+  void _initializeImageCache() async {
+    try {
+      await ImageCacheService.instance.initialize();
+    } catch (e) {
+      print('Error inicializando caché de imágenes: $e');
+    }
   }
 
   @override
@@ -89,6 +111,9 @@ class ClientesController extends GetxController {
     try {
       final users = await userRepository.getAllUsers();
       clientes.assignAll(users);
+      
+      // Precargar imágenes de los clientes con fotos
+      _preloadClientImages(users);
     } catch (e) {
       Get.snackbar(
         'Error',
@@ -99,6 +124,38 @@ class ClientesController extends GetxController {
       );
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void _preloadClientImages(List<UserModel> users) async {
+    try {
+      // Precargar imágenes en lotes para no sobrecargar el sistema
+      final usersWithPhotos = users.where((user) => user.photoUrl != null && user.photoUrl!.isNotEmpty).toList();
+      
+      for (int i = 0; i < usersWithPhotos.length; i += 5) {
+        final batch = usersWithPhotos.skip(i).take(5);
+        await Future.wait(
+          batch.map((user) => _preloadUserImage(user.id!)).toList(),
+          eagerError: false,
+        );
+        
+        // Pequeña pausa entre lotes para no bloquear la UI
+        await Future.delayed(Duration(milliseconds: 100));
+      }
+    } catch (e) {
+      print('Error precargando imágenes de clientes: $e');
+    }
+  }
+
+  Future<void> _preloadUserImage(String userId) async {
+    try {
+      // Buscar el usuario para obtener su photoUrl
+      final user = clientes.firstWhereOrNull((u) => u.id == userId);
+      if (user?.photoUrl != null && user!.photoUrl!.isNotEmpty) {
+        await ImageCacheService.instance.getUserImage(userId, user.photoUrl, isThumbnail: true);
+      }
+    } catch (e) {
+      print('Error precargando imagen del usuario $userId: $e');
     }
   }
   
@@ -159,92 +216,43 @@ class ClientesController extends GetxController {
   Future<void> fetchAvailablePromotions() async {
     try {
       print('🔍 DEBUG: Iniciando fetchAvailablePromotions...');
-      print('   - Tipo de membresía: ${selectedMembershipType.value}');
-      print('   - Costo membresía: ${membershipCost.value}');
-      print('   - Tarifa registro: ${registrationFee.value}');
-      print('   - Día actual: ${DateTime.now().weekday % 7} (${_getDayName(DateTime.now().weekday % 7)})');
+      
+      // Verificar si PromotionService está disponible
+      if (!Get.isRegistered<PromotionService>()) {
+        print('⚠️ PromotionService no está registrado, saltando promociones');
+        availablePromotions.clear();
+        selectedPromotion.value = null;
+        promotionDiscount.value = 0.0;
+        finalAmount.value = totalAmount.value;
+        return;
+      }
       
       final promotionService = Get.find<PromotionService>();
       
-      // Obtener TODAS las promociones válidas, no solo las mejores
+      // Obtener promociones válidas con manejo de errores
       final allValidPromotions = await promotionService.getCurrentValidPromotions();
       
-      print('🎯 DEBUG: Promociones válidas obtenidas del servicio: ${allValidPromotions.length}');
-      for (final promo in allValidPromotions) {
-        print('   - ${promo.name}: ${promo.appliesTo} | Día: ${promo.dayOfWeek} | Activa: ${promo.isCurrentlyValid}');
-      }
+      print('🎯 DEBUG: Promociones válidas obtenidas: ${allValidPromotions.length}');
       
-      // Filtrar promociones que apliquen al contexto actual
-      final List<PromotionModel> applicablePromotions = [];
-      
-      for (final promotion in allValidPromotions) {
-        bool isApplicable = false;
-        
-        print('📝 DEBUG: Evaluando promoción "${promotion.name}"...');
-        
-        // Verificar si aplica a registro (cuando hay tarifa de registro)
-        if (registrationFee.value > 0 && 
-           (promotion.appliesTo_('registration') || promotion.appliesTo_('both'))) {
-          isApplicable = true;
-          print('   ✅ Aplica a registro (tarifa: ${registrationFee.value})');
-        }
-        
-        // Verificar si aplica a membresía
-        if (promotion.appliesTo_('membership') || promotion.appliesTo_('both')) {
-          isApplicable = true;
-          print('   ✅ Aplica a membresía');
-        }
-        
-        // Verificar condiciones específicas (día de la semana, tipo de membresía, etc.)
-        if (isApplicable && promotion.isCurrentlyValid) {
-          print('   ✅ Promoción es válida y aplicable inicialmente');
-          
-          // Verificar día de la semana si está especificado
-          if (promotion.dayOfWeek != null) {
-            final today = DateTime.now();
-            final currentDayOfWeek = today.weekday % 7; // 0=domingo, 6=sábado
-            if (promotion.dayOfWeek != currentDayOfWeek) {
-              isApplicable = false;
-              print('   ❌ No aplica por día de semana (requiere: ${_getDayName(promotion.dayOfWeek!)}, hoy: ${_getDayName(currentDayOfWeek)})');
-            } else {
-              print('   ✅ Aplica por día de semana (${_getDayName(promotion.dayOfWeek!)})');
-            }
-          }
-          
-          // Verificar tipo de membresía si está especificado
-          if (promotion.membershipTypes.isNotEmpty &&
-              !promotion.appliesToMembership(selectedMembershipType.value)) {
-            isApplicable = false;
-            print('   ❌ No aplica por tipo de membresía (requiere: ${promotion.membershipTypes}, actual: ${selectedMembershipType.value})');
-          } else if (promotion.membershipTypes.isNotEmpty) {
-            print('   ✅ Aplica por tipo de membresía');
-          }
-          
-          if (isApplicable) {
-            applicablePromotions.add(promotion);
-            print('   🎉 Promoción agregada a la lista aplicable');
-          }
-        } else {
-          print('   ❌ Promoción no válida o no aplicable (isCurrentlyValid: ${promotion.isCurrentlyValid})');
-        }
-      }
+      // Filtrar promociones aplicables (versión simplificada)
+      final List<PromotionModel> applicablePromotions = allValidPromotions.where((promotion) {
+        return promotion.isCurrentlyValid && (
+          (registrationFee.value > 0 && (promotion.appliesTo_('registration') || promotion.appliesTo_('both'))) ||
+          (promotion.appliesTo_('membership') || promotion.appliesTo_('both'))
+        );
+      }).toList();
       
       availablePromotions.assignAll(applicablePromotions);
       
-      // Debug para verificar las promociones encontradas
-      print('🎯 DEBUG: Promociones disponibles FINALES: ${applicablePromotions.length}');
-      for (final promo in applicablePromotions) {
-        print('   - ${promo.name}: ${promo.appliesTo} | Día: ${promo.dayOfWeek} | Activa: ${promo.isCurrentlyValid}');
-      }
+      print('✅ DEBUG: Promociones aplicables: ${applicablePromotions.length}');
       
-      // Auto-seleccionar la mejor promoción si hay alguna disponible
+      // Auto-seleccionar la mejor promoción si existe
       if (applicablePromotions.isNotEmpty) {
         PromotionModel? bestPromotion;
         double bestDiscount = 0.0;
         
         for (final promotion in applicablePromotions) {
           final discount = _calculatePromotionDiscount(promotion);
-          print('💰 DEBUG: Descuento calculado para "${promotion.name}": \$${discount.toStringAsFixed(2)}');
           if (discount > bestDiscount) {
             bestDiscount = discount;
             bestPromotion = promotion;
@@ -255,21 +263,18 @@ class ClientesController extends GetxController {
           selectedPromotion.value = bestPromotion;
           promotionDiscount.value = bestDiscount;
           finalAmount.value = totalAmount.value - bestDiscount;
-          print('🏆 DEBUG: Mejor promoción seleccionada: "${bestPromotion.name}" con descuento \$${bestDiscount.toStringAsFixed(2)}');
         } else {
           selectedPromotion.value = null;
           promotionDiscount.value = 0.0;
           finalAmount.value = totalAmount.value;
-          print('❌ DEBUG: No hay promoción con descuento válido');
         }
       } else {
         selectedPromotion.value = null;
         promotionDiscount.value = 0.0;
         finalAmount.value = totalAmount.value;
-        print('❌ DEBUG: No hay promociones aplicables');
       }
       
-      // Actualizar la UI
+      // Actualizar UI
       update(['promotions']);
     } catch (e) {
       print('❌ ERROR al obtener promociones: $e');
@@ -280,12 +285,6 @@ class ClientesController extends GetxController {
     }
   }
   
-  String _getDayName(int dayOfWeek) {
-    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    return days[dayOfWeek];
-  }
-  
-
   // Método para filtrar clientes
   List<UserModel> get filteredClientes {
     if (searchQuery.isEmpty && selectedFilter.value == 'Todos') {
@@ -603,16 +602,7 @@ class ClientesController extends GetxController {
 
         Get.back(); // Cerrar el diálogo de renovación
 
-        // Mostrar el QR con el total pagado
-        Get.dialog(
-          QrDialog(
-            nombre: updatedClient.name,
-            telefono: updatedClient.phone,
-            userNumber: updatedClient.userNumber,
-            totalAmount: total,
-          ),
-        );
-
+        // Mostrar mensaje de éxito con el total pagado
         Get.snackbar(
           'Éxito',
           'Membresía renovada correctamente. Monto cobrado: \$${total.toStringAsFixed(2)}',

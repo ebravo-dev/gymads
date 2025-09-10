@@ -6,8 +6,8 @@ import '../../../data/repositories/user_repository.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/audio_service.dart';
+import '../../../data/services/image_cache_service.dart';
 import '../../../data/config/rfid_config.dart';
-import '../../configuracion/controllers/configuracion_controller.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;
@@ -43,6 +43,9 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   void onInit() {
     super.onInit();
     
+    // Inicializar servicio de caché de imágenes
+    _initializeImageCache();
+    
     // Inicializar el controlador de animación con configuración óptima para visibilidad
     animationController = AnimationController(
       vsync: this,
@@ -74,6 +77,16 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   // Verificar conexión del ESP32
   Future<void> checkRfidConnection() async {
     try {
+      connectionStatusMessage.value = 'Verificando configuración ESP32...';
+      
+      // Primero verificar si hay configuración
+      if (!RfidConfig.isConfigured) {
+        isRfidConnected.value = false;
+        connectionStatusMessage.value = 'ESP32 no configurado';
+        errorMessage.value = 'Se requiere configurar el ESP32 via Bluetooth primero.';
+        return;
+      }
+      
       connectionStatusMessage.value = 'Verificando conexión con ESP32...';
       
       // Usar el servicio real de RFID para verificar la conexión
@@ -84,8 +97,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         connectionStatusMessage.value = 'ESP32 conectado y funcionando';
         errorMessage.value = '';
       } else {
-        connectionStatusMessage.value = 'ESP32 no conectado';
-        errorMessage.value = 'No se puede conectar al lector RFID. Verifica la configuración.';
+        connectionStatusMessage.value = 'ESP32 no responde';
+        errorMessage.value = 'No se puede conectar al lector RFID. Verifica la configuración via Bluetooth.';
       }
       
     } catch (e) {
@@ -119,6 +132,20 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
 
   // Controlador para el campo de entrada RFID
   final TextEditingController rfidTextController = TextEditingController();
+  
+  // Inicializar servicio de caché de imágenes
+  Future<void> _initializeImageCache() async {
+    try {
+      await ImageCacheService.instance.initialize();
+      if (kDebugMode) {
+        print('✅ Servicio de caché de imágenes inicializado');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error inicializando caché de imágenes: $e');
+      }
+    }
+  }
   
   @override
   void onClose() {
@@ -154,12 +181,12 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         // Usuario no encontrado
         membershipStatus = RfidConfig.membershipNotFound;
         errorMessage.value = 'Tarjeta RFID no registrada';
-        AudioService.playErrorSound();
+        AudioService.playDeniedSound();
       } else if (!user.isActive || user.daysRemaining <= 0) {
         // Membresía expirada o inactiva
         membershipStatus = RfidConfig.membershipExpired;
         errorMessage.value = user.daysRemaining <= 0 ? 'Membresía vencida' : 'Membresía inactiva';
-        AudioService.playErrorSound();
+        AudioService.playDeniedSound();
       } else if (user.daysRemaining <= RfidConfig.expiringWarningDays) {
         // Membresía por vencer
         membershipStatus = RfidConfig.membershipExpiring;
@@ -170,15 +197,23 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Registrar el acceso
-        final updatedUser = user.addAccessRecord();
-        if (user.id != null) {
-          await userRepository.updateUser(user.id!, updatedUser);
-        }
-        
+        // Mostrar diálogo inmediatamente sin esperar la imagen
         successMessage.value = '¡Bienvenido(a)! Tu membresía vence pronto';
         AudioService.playWelcomeSound();
         isShowingDialog.value = true;
+        
+        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+          _preloadImageInBackground(user.id!, user.photoUrl!);
+        }
+        
+        // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null) {
+          _registerAccessInBackground(user);
+        }
+        
+        // Enviar estado de membresía al ESP32 para control de LEDs EN SEGUNDO PLANO
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
       } else {
         // Membresía activa
         membershipStatus = RfidConfig.membershipActive;
@@ -189,19 +224,24 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Registrar el acceso
-        final updatedUser = user.addAccessRecord();
-        if (user.id != null) {
-          await userRepository.updateUser(user.id!, updatedUser);
-        }
-        
+        // Mostrar diálogo inmediatamente sin esperar la imagen
         successMessage.value = '¡Bienvenido(a)!';
         AudioService.playWelcomeSound();
         isShowingDialog.value = true;
+        
+        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+          _preloadImageInBackground(user.id!, user.photoUrl!);
+        }
+        
+        // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
+        if (user.id != null) {
+          _registerAccessInBackground(user);
+        }
+        
+        // Enviar estado de membresía al ESP32 para control de LEDs EN SEGUNDO PLANO
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
       }
-      
-      // Enviar estado de membresía al ESP32 para control de LEDs
-      await RfidReaderService.sendMembershipStatus(rfidCode, membershipStatus);
       
       // Si el acceso fue exitoso, mostrar diálogo y cerrarlo después de 3 segundos
       if (membershipStatus == RfidConfig.membershipActive || membershipStatus == RfidConfig.membershipExpiring) {
@@ -212,6 +252,9 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         // Cerrar la pantalla de bienvenida después de 3 segundos
         await Future.delayed(const Duration(seconds: 3));
         isShowingDialog.value = false;
+      } else {
+        // Para casos de error (usuario no encontrado, membresía vencida), enviar estado de LEDs en segundo plano
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
       }
       
     } catch (e) {
@@ -224,9 +267,65 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
     }
   }
   
+  // Registrar acceso en segundo plano para no bloquear la UI
+  void _registerAccessInBackground(UserModel user) {
+    Future(() async {
+      try {
+        final updatedUser = user.addAccessRecord();
+        if (user.id != null) {
+          await userRepository.updateUser(user.id!, updatedUser);
+          if (kDebugMode) {
+            print('✅ Registro de acceso guardado en segundo plano para: ${user.name}');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error al registrar acceso en segundo plano: $e');
+        }
+      }
+    });
+  }
+
+  // Enviar estado de membresía al ESP32 para control de LEDs en segundo plano
+  void _sendMembershipStatusToESP32(String rfidCode, String status) {
+    Future(() async {
+      try {
+        await RfidReaderService.sendMembershipStatus(rfidCode, status);
+        if (kDebugMode) {
+          print('✅ Estado de membresía enviado al ESP32: $rfidCode -> $status');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error enviando estado al ESP32: $e');
+        }
+      }
+    });
+  }
+
+  // Precargar imagen en segundo plano para no bloquear la UI
+  void _preloadImageInBackground(String userId, String photoUrl) {
+    Future(() async {
+      try {
+        await ImageCacheService.instance.getUserImage(userId, photoUrl, isThumbnail: false);
+        if (kDebugMode) {
+          print('✅ Imagen precargada exitosamente en segundo plano para usuario: $userId');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error precargando imagen en segundo plano: $e');
+        }
+      }
+    });
+  }
+
   // Obtener la dirección IP actual del lector RFID
   String getReaderIpAddress() {
     final baseUrl = RfidConfig.baseUrl;
+    
+    if (baseUrl == null || baseUrl.isEmpty) {
+      return 'No configurado';
+    }
+    
     // Extraer solo la dirección IP del formato http://192.168.1.x/api
     if (baseUrl.contains('://') && baseUrl.contains('/api')) {
       final parts = baseUrl.split('://');
@@ -259,8 +358,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       formattedIp = '$formattedIp/api';
     }
     
-    // Actualizar la configuración
-    RfidConfig.updateConfig(newUrl: formattedIp);
+    // Actualizar la configuración usando el nuevo método
+    RfidConfig.forceUpdateIP(newIp); // Usar la IP sin formato para el método interno
     
     if (kDebugMode) {
       print('Dirección IP del lector RFID actualizada a: $formattedIp');
@@ -268,6 +367,13 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
     
     // Reiniciar el timer para usar la nueva IP
     _rfidCheckTimer?.cancel();
-    startRfidChecking();
+    
+    // Verificar conexión con la nueva IP
+    checkRfidConnection();
+    
+    // Reiniciar checking solo si está conectado
+    if (isRfidConnected.value) {
+      startRfidChecking();
+    }
   }
 }

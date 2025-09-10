@@ -28,6 +28,12 @@ dependencies:
   just_audio: ^0.9.39
   uuid: ^4.2.1
   shared_preferences: ^2.4.9
+  path_provider: ^2.1.2
+  path: ^1.8.3
+  flutter_blue_plus: ^1.32.12
+  network_info_plus: ^4.1.0
+  image: ^4.1.7
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

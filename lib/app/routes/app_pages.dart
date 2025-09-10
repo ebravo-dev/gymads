@@ -13,14 +13,14 @@ import '../modules/ingresos/views/ingresos_view.dart';
 import '../modules/inventario/bindings/inventario_binding.dart';
 import '../modules/inventario/views/inventario_view.dart';
 import '../modules/inventario/views/product_form_view.dart';
-import '../modules/checkin/bindings/checkin_binding.dart';
-import '../modules/checkin/views/checkin_view.dart';
 import '../modules/rfid_checkin/bindings/rfid_checkin_binding.dart';
 import '../modules/rfid_checkin/views/rfid_checkin_view.dart';
 import '../modules/membresias/bindings/membresias_binding.dart';
 import '../modules/membresias/views/membresias_view.dart';
 import '../modules/promociones/bindings/promociones_binding.dart';
 import '../modules/promociones/views/promociones_view.dart';
+import '../modules/point_of_sale/bindings/point_of_sale_binding.dart';
+import '../modules/point_of_sale/views/point_of_sale_view.dart';
 
 part 'app_routes.dart';
 
@@ -61,11 +61,6 @@ class AppPages {
       binding: IngresosBinding(),
     ),
     GetPage(
-      name: _Paths.CHECKIN,
-      page: () => const CheckinView(),
-      binding: CheckinBinding(),
-    ),
-    GetPage(
       name: _Paths.RFID_CHECKIN,
       page: () => const RfidCheckinView(),
       binding: RfidCheckinBinding(),
@@ -84,6 +79,11 @@ class AppPages {
       name: _Paths.CONFIGURACION,
       page: () => const ConfiguracionView(),
       binding: ConfiguracionBinding(),
+    ),
+    GetPage(
+      name: _Paths.POINT_OF_SALE,
+      page: () => const PointOfSaleView(),
+      binding: PointOfSaleBinding(),
     ),
   ];
 }

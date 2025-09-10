@@ -12,7 +12,7 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text(
-          'Configuración RFID',
+          'Configuración ESP32 RFID',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -31,8 +31,13 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header con estado de conexión
+            // Estado de conexión ESP32
             _buildConnectionStatus(),
+            
+            const SizedBox(height: 24),
+            
+            // Estado Bluetooth
+            _buildBluetoothStatus(),
             
             const SizedBox(height: 24),
             
@@ -53,6 +58,7 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
     return Obx(() {
       final isConnected = controller.rfidConnectionStatus.value;
       final statusMessage = controller.connectionStatusMessage.value;
+      final ipAddress = controller.esp32IpAddress.value;
       
       return Card(
         elevation: 4,
@@ -70,36 +76,359 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isConnected ? AppColors.success.withOpacity(0.2) : AppColors.warning.withOpacity(0.2),
                     shape: BoxShape.circle,
+                    color: isConnected 
+                      ? AppColors.success.withOpacity(0.1)
+                      : AppColors.warning.withOpacity(0.1),
                   ),
                   child: Icon(
-                    isConnected ? Icons.check_circle : Icons.settings_ethernet,
-                    size: 40,
+                    isConnected ? Icons.check_circle : Icons.warning,
                     color: isConnected ? AppColors.success : AppColors.warning,
+                    size: 32,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  isConnected ? 'ESP32 Conectado' : 'ESP32 Configuración',
+                  isConnected ? 'ESP32 Conectado' : 'ESP32 No Configurado',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
                     color: isConnected ? AppColors.success : AppColors.warning,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   statusMessage,
                   style: const TextStyle(
-                    fontSize: 14,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
                 ),
+                if (ipAddress.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      'IP: $ipAddress',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
+          ),
+        ),
+      );
+    });
+  }
+  
+  Widget _buildBluetoothStatus() {
+    return Obx(() {
+      final bluetoothEnabled = controller.bluetoothEnabled.value;
+      final bluetoothConnected = controller.bluetoothConnected.value;
+      final statusMessage = controller.bluetoothStatusMessage.value;
+      
+      return Card(
+        elevation: 4,
+        color: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: bluetoothEnabled 
+                        ? AppColors.info.withOpacity(0.1)
+                        : AppColors.textSecondary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      bluetoothConnected ? Icons.bluetooth_connected : Icons.bluetooth,
+                      color: bluetoothEnabled ? AppColors.info : AppColors.textSecondary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Estado Bluetooth',
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          statusMessage,
+                          style: TextStyle(
+                            color: bluetoothEnabled ? AppColors.textSecondary : AppColors.warning,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Botones Bluetooth
+              Row(
+                children: [
+                  if (!bluetoothConnected && bluetoothEnabled) ...[
+                    Expanded(
+                      child: Obx(() => ElevatedButton.icon(
+                        onPressed: controller.isScanning.value 
+                          ? null 
+                          : controller.scanForESP32Devices,
+                        icon: controller.isScanning.value
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.search),
+                        label: Text(
+                          controller.isScanning.value ? 'Buscando...' : 'Buscar ESP32',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.info,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      )),
+                    ),
+                  ] else if (bluetoothConnected) ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: controller.disconnectBluetooth,
+                        icon: const Icon(Icons.bluetooth_disabled),
+                        label: const Text('Desconectar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.warning,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.snackbar(
+                            'Bluetooth',
+                            'Habilita Bluetooth en configuración del sistema',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: AppColors.warning,
+                            colorText: Colors.white,
+                          );
+                        },
+                        icon: const Icon(Icons.bluetooth_disabled),
+                        label: const Text('Bluetooth Deshabilitado'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.textSecondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+  
+  Widget _buildWiFiConfiguration() {
+    return Obx(() {
+      final isConnected = controller.rfidConnectionStatus.value;
+      final bluetoothConnected = controller.bluetoothConnected.value;
+      
+      return Card(
+        elevation: 4,
+        color: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isConnected 
+                        ? AppColors.success.withOpacity(0.1)
+                        : AppColors.warning.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      isConnected ? Icons.wifi : Icons.wifi_off,
+                      color: isConnected ? AppColors.success : AppColors.warning,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Configuración WiFi',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Estado WiFi actual
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isConnected 
+                    ? AppColors.success.withOpacity(0.1)
+                    : AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isConnected 
+                      ? AppColors.success.withOpacity(0.3)
+                      : AppColors.warning.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isConnected ? Icons.check_circle : Icons.warning,
+                      color: isConnected ? AppColors.success : AppColors.warning,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        isConnected 
+                          ? 'ESP32 conectado a WiFi correctamente'
+                          : 'ESP32 no está conectado a WiFi',
+                        style: TextStyle(
+                          color: isConnected ? AppColors.success : AppColors.warning,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Botones de configuración WiFi
+              if (bluetoothConnected) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Obx(() => ElevatedButton.icon(
+                        onPressed: controller.isConnectingWifi.value 
+                          ? null 
+                          : (isConnected ? controller.changeWiFiNetwork : controller.scanWiFiNetworks),
+                        icon: controller.isConnectingWifi.value
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.wifi_find),
+                        label: Text(
+                          controller.isConnectingWifi.value 
+                            ? 'Configurando...' 
+                            : (isConnected ? 'Cambiar WiFi' : 'Configurar WiFi'),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      )),
+                    ),
+                    if (isConnected) ...[
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: controller.resetWiFiConfiguration,
+                        icon: const Icon(Icons.restore),
+                        label: const Text('Reset'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.info.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: AppColors.info),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Conecta via Bluetooth para configurar WiFi',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       );
@@ -109,7 +438,7 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        // Botón de probar conexión
+        // Botón de verificar conexión
         SizedBox(
           width: double.infinity,
           child: Obx(() => ElevatedButton.icon(
@@ -126,7 +455,7 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
             label: Text(
               controller.isLoading.value 
                 ? 'Verificando...' 
-                : 'Verificar Conexión',
+                : 'Verificar Conexión RFID',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(
@@ -141,40 +470,42 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
           )),
         ),
         
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         
-        // Información sobre configuración automática
+        // Información sobre nueva configuración
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.info.withOpacity(0.1),
+            color: AppColors.success.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.info.withOpacity(0.3)),
+            border: Border.all(color: AppColors.success.withOpacity(0.3)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.auto_awesome, color: AppColors.info, size: 24),
+              Icon(Icons.bluetooth, color: AppColors.success, size: 24),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     Text(
-                      'Configuración Automática',
+                      'Nueva Configuración Bluetooth',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.info,
-                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'La configuración del ESP32 se actualiza automáticamente cuando se conecta a WiFi. No necesitas configurar direcciones IP manualmente.',
+                      'El ESP32 ahora se configura via Bluetooth, '
+                      'eliminando problemas de IP dinámica. '
+                      'Conecta via Bluetooth y configura WiFi directamente.',
                       style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
                   ],
@@ -184,253 +515,6 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
           ),
         ),
       ],
-    );
-  }
-  
-  Widget _buildWiFiConfiguration() {
-    return Card(
-      elevation: 4,
-      color: AppColors.cardBackground,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.wifi,
-                    color: AppColors.info,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Configuración WiFi ESP32',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            // Estado WiFi actual
-            Obx(() => Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: controller.rfidConnectionStatus.value 
-                  ? AppColors.success.withOpacity(0.1)
-                  : AppColors.warning.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: controller.rfidConnectionStatus.value 
-                    ? AppColors.success.withOpacity(0.3)
-                    : AppColors.warning.withOpacity(0.3)
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    controller.rfidConnectionStatus.value ? Icons.wifi : Icons.wifi_off,
-                    color: controller.rfidConnectionStatus.value 
-                      ? AppColors.success 
-                      : AppColors.warning,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      controller.rfidConnectionStatus.value 
-                        ? 'ESP32 conectado a WiFi'
-                        : 'ESP32 puede estar en modo configuración',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: controller.rfidConnectionStatus.value 
-                          ? AppColors.success 
-                          : AppColors.warning,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )),
-            
-            const SizedBox(height: 16),
-            
-            // Botones de configuración WiFi - DINÁMICOS según estado
-            Obx(() {
-              final isConnected = controller.rfidConnectionStatus.value;
-              
-              if (!isConnected) {
-                // ESP32 NO CONECTADO - Solo mostrar botón de configuración
-                return Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: controller.openWiFiSetup,
-                        icon: const Icon(Icons.settings_ethernet),
-                        label: const Text(
-                          'Configurar WiFi del ESP32',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.warning,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 3,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.wifi_off,
-                            color: AppColors.warning,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'ESP32 no conectado. Configura la conexión WiFi para continuar.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              } else {
-                // ESP32 CONECTADO - Mostrar opciones de cambio y reset
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        // Cambiar Red WiFi
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: controller.changeWiFiNetwork,
-                            icon: const Icon(Icons.wifi_find),
-                            label: const Text(
-                              'Cambiar Red',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 2,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Reset de fábrica
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: controller.factoryResetConfiguration,
-                            icon: const Icon(Icons.factory, size: 18),
-                            label: const Text(
-                              'Reset Fábrica',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.error,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.success.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            color: AppColors.success,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'ESP32 Conectado',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.success,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  '• Cambiar Red: Conecta a otra red WiFi\n• Reset Fábrica: Elimina toda la configuración',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              }
-            }),
-          ],
-        ),
-      ),
     );
   }
 }

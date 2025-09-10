@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import '../../../controllers/navigation_controller.dart';
 import '../../../routes/app_pages.dart';
 
 class HomeController extends GetxController {
@@ -9,11 +8,16 @@ class HomeController extends GetxController {
   // Lista observable de mensajes de estado
   final RxList<String> statusMessages = <String>[].obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-    // Actualizar el índice de navegación cuando se inicialice la vista Home
-    NavigationController.to.updateIndexFromRoute(Routes.HOME);
+  // Función para obtener el saludo según la hora
+  String getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 6 && hour < 12) {
+      return 'Buenos días';
+    } else if (hour >= 12 && hour < 18) {
+      return 'Buenas tardes';
+    } else {
+      return 'Buenas noches';
+    }
   }
 
   // Funciones para manejar las opciones del menú
@@ -40,6 +44,11 @@ class HomeController extends GetxController {
   void goToInventario() {
     statusMessages.add('Navegando a Inventario...');
     Get.toNamed(Routes.INVENTARIO);
+  }
+
+  void goToPointOfSale() {
+    statusMessages.add('Navegando a Punto de Venta...');
+    Get.toNamed(Routes.POINT_OF_SALE);
   }
   
   void goToMembresias() {

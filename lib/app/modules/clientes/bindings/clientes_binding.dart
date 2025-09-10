@@ -12,16 +12,17 @@ import '../controllers/clientes_controller.dart';
 class ClientesBinding extends Bindings {
   @override
   void dependencies() {
-    // Inyectar el provider para Supabase
-    Get.lazyPut<SupabaseApiProvider>(
-      () => SupabaseApiProvider(
-        table: 'users', // Tabla 'users' en Supabase
-      ),
-    );
+    // Usar el provider global de users si existe, sino crear uno nuevo
+    if (!Get.isRegistered<SupabaseApiProvider>(tag: 'users_provider')) {
+      Get.lazyPut<SupabaseApiProvider>(
+        () => SupabaseApiProvider(table: 'users'),
+        tag: 'users_provider',
+      );
+    }
 
-    // Inyectar el repositorio de usuarios
+    // Inyectar el repositorio de usuarios usando el provider con tag
     Get.lazyPut<UserRepository>(
-      () => UserRepository(Get.find<SupabaseApiProvider>()),
+      () => UserRepository(Get.find<SupabaseApiProvider>(tag: 'users_provider')),
     );
 
     // Inyectar el provider de tipos de membresía
@@ -41,7 +42,7 @@ class ClientesBinding extends Bindings {
       () => PromotionService(Get.find<PromotionProvider>()),
     );
 
-    // Inyectar el provider de ingresos
+    // Inyectar el provider de ingresos  
     Get.lazyPut<IngresoProvider>(
       () => IngresoProvider(),
     );
@@ -53,13 +54,25 @@ class ClientesBinding extends Bindings {
       ),
     );
 
-    // Inyectar el controlador de clientes
+    // Inyectar el controlador de clientes CON manejo de errores
     Get.lazyPut<ClientesController>(
-      () => ClientesController(
-        userRepository: Get.find<UserRepository>(),
-        membershipProvider: Get.find<MembershipTypeProvider>(),
-        ingresoService: Get.find<IngresoService>(), // Agregado
-      ),
+      () {
+        try {
+          return ClientesController(
+            userRepository: Get.find<UserRepository>(),
+            membershipProvider: Get.find<MembershipTypeProvider>(),
+            ingresoService: Get.isRegistered<IngresoService>() ? Get.find<IngresoService>() : null,
+          );
+        } catch (e) {
+          print('❌ Error creando ClientesController: $e');
+          // Fallback mínimo
+          return ClientesController(
+            userRepository: Get.find<UserRepository>(),
+            membershipProvider: Get.find<MembershipTypeProvider>(),
+            ingresoService: null,
+          );
+        }
+      },
     );
   }
 }

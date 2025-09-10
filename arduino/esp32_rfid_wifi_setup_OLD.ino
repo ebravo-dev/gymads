@@ -10,6 +10,7 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include "BluetoothSerial.h"
 
 // Configuración de pines del lector RFID
 #define SS_PIN 5     // Pin SDA del MFRC522
@@ -20,20 +21,22 @@
 #define LED_VERDE 4       // LED Verde - Membresía activa
 #define LED_ROJO 22       // LED Rojo - Membresía vencida/no encontrada
 #define LED_AMARILLO 15   // LED Amarillo - Membresía por vencer
+#define LED_BLUETOOTH 12  // LED para indicar Bluetooth activo
 
 // Variables globales
 WebServer server(80);
 MFRC522 rfidReader(SS_PIN, RST_PIN);
 Preferences preferences;
+BluetoothSerial SerialBT;
 String lastUid = "NO_CARD";
 
-// Configuración de Access Point
-const char* ap_ssid = "ESP_RFID_Setup";
-const char* ap_password = "gymads123";
+// Configuración Bluetooth
+const String BT_DEVICE_NAME = "ESP32_RFID_GYMADS";
 
-// Estados de WiFi
-bool isAPMode = false;
+// Estados de WiFi y Bluetooth
 bool wifiConnected = false;
+bool bluetoothEnabled = false;
+bool bluetoothClientConnected = false;
 
 // Estados de membresía
 const String MEMBERSHIP_ACTIVE = "ACTIVE";
@@ -45,19 +48,21 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("GYMADS - RFID ESP32 CON WIFI SETUP");
+  Serial.println("GYMADS - RFID ESP32 CON BLUETOOTH SETUP");
   
   // Configurar LEDs
   pinMode(LED_WIFI, OUTPUT);
   pinMode(LED_VERDE, OUTPUT);
   pinMode(LED_ROJO, OUTPUT);
   pinMode(LED_AMARILLO, OUTPUT);
+  pinMode(LED_BLUETOOTH, OUTPUT);
   
   // Apagar todos los LEDs al inicio
   digitalWrite(LED_WIFI, LOW);
   digitalWrite(LED_VERDE, LOW);
   digitalWrite(LED_ROJO, LOW);
   digitalWrite(LED_AMARILLO, LOW);
+  digitalWrite(LED_BLUETOOTH, LOW);
   
   // Inicializar preferencias
   preferences.begin("wifi", false);
@@ -66,30 +71,37 @@ void setup() {
   SPI.begin();
   rfidReader.PCD_Init();
   
+  // Inicializar Bluetooth
+  initializeBluetooth();
+  
   // Intentar conectar a WiFi guardado
   if (connectToSavedWiFi()) {
     setupServerRoutes();
     server.begin();
-    Serial.println("Servidor iniciado en modo cliente WiFi");
+    Serial.println("Servidor HTTP iniciado");
     testLedSequence();
   } else {
-    setupAccessPoint();
+    Serial.println("No hay WiFi configurado. Bluetooth listo para configuración.");
+    blinkBluetoothLed();
   }
   
-  Serial.println("Listo para escanear");
+  Serial.println("Sistema listo - RFID activo");
 }
 
 void loop() {
-  // Manejar solicitudes del servidor
-  server.handleClient();
-  
-  // Manejar LED WiFi en modo AP
-  if (isAPMode) {
-    blinkWiFiLedSlow();
+  // Manejar solicitudes del servidor HTTP (si WiFi está conectado)
+  if (wifiConnected) {
+    server.handleClient();
   }
   
-  // Solo procesar RFID si estamos conectados a WiFi (no en modo AP)
-  if (wifiConnected && !isAPMode) {
+  // Manejar comunicación Bluetooth
+  handleBluetoothCommunication();
+  
+  // Manejar LEDs de estado
+  handleStatusLeds();
+  
+  // Solo procesar RFID si estamos conectados a WiFi
+  if (wifiConnected) {
     // Verificar si hay una tarjeta presente
     if (rfidReader.PICC_IsNewCardPresent() && rfidReader.PICC_ReadCardSerial()) {
       // Obtener UID de la tarjeta
@@ -116,6 +128,196 @@ void loop() {
     checkWiFiConnection();
     lastWiFiCheck = millis();
   }
+}
+
+// Inicializar Bluetooth
+void initializeBluetooth() {
+  SerialBT.begin(BT_DEVICE_NAME);
+  bluetoothEnabled = true;
+  digitalWrite(LED_BLUETOOTH, HIGH);
+  Serial.println("Bluetooth iniciado como: " + BT_DEVICE_NAME);
+  Serial.println("Bluetooth listo para emparejamiento");
+}
+
+// Manejar comunicación Bluetooth
+void handleBluetoothCommunication() {
+  if (SerialBT.available()) {
+    String receivedData = SerialBT.readString();
+    receivedData.trim();
+    
+    Serial.println("Datos recibidos por Bluetooth: " + receivedData);
+    
+    // Parsear comando JSON
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, receivedData);
+    
+    if (error) {
+      Serial.println("Error al parsear JSON");
+      sendBluetoothResponse("ERROR", "Invalid JSON format");
+      return;
+    }
+    
+    String command = doc["command"];
+    
+    if (command == "scan_wifi") {
+      handleBluetoothWiFiScan();
+    }
+    else if (command == "connect_wifi") {
+      handleBluetoothWiFiConnect(doc);
+    }
+    else if (command == "get_ip") {
+      sendCurrentIP();
+    }
+    else if (command == "get_status") {
+      sendBluetoothStatus();
+    }
+    else {
+      sendBluetoothResponse("ERROR", "Unknown command: " + command);
+    }
+  }
+  
+  // Verificar estado de conexión Bluetooth
+  bluetoothClientConnected = SerialBT.hasClient();
+}
+
+// Escanear redes WiFi vía Bluetooth
+void handleBluetoothWiFiScan() {
+  Serial.println("Escaneando redes WiFi por solicitud Bluetooth...");
+  
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  
+  int networks = WiFi.scanNetworks();
+  
+  DynamicJsonDocument doc(2048);
+  doc["status"] = "success";
+  doc["command"] = "scan_wifi";
+  doc["count"] = networks;
+  
+  JsonArray networksArray = doc.createNestedArray("networks");
+  
+  for (int i = 0; i < networks; i++) {
+    JsonObject network = networksArray.createNestedObject();
+    network["ssid"] = WiFi.SSID(i);
+    network["rssi"] = WiFi.RSSI(i);
+    network["secure"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+  }
+  
+  String response;
+  serializeJson(doc, response);
+  SerialBT.println(response);
+  
+  Serial.println("Enviadas " + String(networks) + " redes por Bluetooth");
+}
+
+// Conectar a WiFi vía Bluetooth
+void handleBluetoothWiFiConnect(DynamicJsonDocument& doc) {
+  String ssid = doc["ssid"];
+  String password = doc["password"];
+  
+  Serial.println("Conectando a WiFi: " + ssid);
+  
+  // Guardar credenciales
+  preferences.putString("ssid", ssid);
+  preferences.putString("password", password);
+  
+  // Intentar conectar
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid.c_str(), password.c_str());
+  
+  // Indicar que se está conectando
+  sendBluetoothResponse("connecting", "Connecting to WiFi...");
+  
+  // Esperar conexión con timeout
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+    digitalWrite(LED_WIFI, HIGH);
+    delay(250);
+    digitalWrite(LED_WIFI, LOW);
+    delay(250);
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WiFi conectado exitosamente!");
+    Serial.println("IP asignada: " + WiFi.localIP().toString());
+    
+    digitalWrite(LED_WIFI, HIGH);
+    wifiConnected = true;
+    
+    // Iniciar servidor HTTP
+    setupServerRoutes();
+    server.begin();
+    
+    // Enviar IP por Bluetooth
+    sendCurrentIP();
+    
+    Serial.println("Configuración completada - Sistema listo");
+  } else {
+    Serial.println("Error al conectar WiFi");
+    digitalWrite(LED_WIFI, LOW);
+    wifiConnected = false;
+    sendBluetoothResponse("error", "Failed to connect to WiFi");
+  }
+}
+
+// Enviar IP actual por Bluetooth
+void sendCurrentIP() {
+  DynamicJsonDocument doc(512);
+  doc["status"] = "success";
+  doc["command"] = "get_ip";
+  doc["wifi_connected"] = wifiConnected;
+  
+  if (wifiConnected) {
+    doc["ip_address"] = WiFi.localIP().toString();
+    doc["ssid"] = WiFi.SSID();
+    doc["rssi"] = WiFi.RSSI();
+    doc["mac_address"] = WiFi.macAddress();
+  } else {
+    doc["ip_address"] = "";
+    doc["error"] = "WiFi not connected";
+  }
+  
+  String response;
+  serializeJson(doc, response);
+  SerialBT.println(response);
+  
+  Serial.println("IP enviada por Bluetooth: " + WiFi.localIP().toString());
+}
+
+// Enviar estado por Bluetooth
+void sendBluetoothStatus() {
+  DynamicJsonDocument doc(512);
+  doc["status"] = "success";
+  doc["command"] = "get_status";
+  doc["device_id"] = "ESP32_RFID_GYMADS";
+  doc["wifi_connected"] = wifiConnected;
+  doc["bluetooth_enabled"] = bluetoothEnabled;
+  doc["bluetooth_client_connected"] = bluetoothClientConnected;
+  doc["uptime"] = millis();
+  doc["last_rfid_uid"] = lastUid;
+  
+  if (wifiConnected) {
+    doc["ip_address"] = WiFi.localIP().toString();
+    doc["ssid"] = WiFi.SSID();
+  }
+  
+  String response;
+  serializeJson(doc, response);
+  SerialBT.println(response);
+}
+
+// Enviar respuesta genérica por Bluetooth
+void sendBluetoothResponse(String status, String message) {
+  DynamicJsonDocument doc(256);
+  doc["status"] = status;
+  doc["message"] = message;
+  doc["timestamp"] = millis();
+  
+  String response;
+  serializeJson(doc, response);
+  SerialBT.println(response);
 }
 
 // Intentar conectar a WiFi guardado
@@ -146,9 +348,8 @@ bool connectToSavedWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nWiFi conectado!");
     Serial.println("IP: " + WiFi.localIP().toString());
-    digitalWrite(LED_WIFI, HIGH); // LED WiFi fijo cuando está conectado
+    digitalWrite(LED_WIFI, HIGH);
     wifiConnected = true;
-    isAPMode = false;
     return true;
   } else {
     Serial.println("\nNo se pudo conectar a WiFi");
@@ -158,44 +359,79 @@ bool connectToSavedWiFi() {
   }
 }
 
-// Configurar Access Point
-void setupAccessPoint() {
-  Serial.println("Iniciando modo Access Point");
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(ap_ssid, ap_password);
-  
-  Serial.println("Access Point iniciado");
-  Serial.println("SSID: " + String(ap_ssid));
-  Serial.println("Password: " + String(ap_password));
-  Serial.println("IP AP: " + WiFi.softAPIP().toString());
-  
-  isAPMode = true;
-  wifiConnected = false;
-  
-  // LED parpadeando lento para indicar modo AP
-  blinkWiFiLedSlow();
-  
-  setupServerRoutes();
-  server.begin();
-  Serial.println("Servidor iniciado en modo Access Point");
-}
-
-// Configurar rutas del servidor
+// Configurar rutas del servidor HTTP
 void setupServerRoutes() {
   // Rutas para modo normal (cliente WiFi)
   server.on("/api/uid", HTTP_GET, handleGetUid);
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/membership", HTTP_POST, handleMembershipStatus);
-  
-  // Rutas para configuración WiFi (modo AP)
-  server.on("/api/wifi/scan", HTTP_GET, handleWiFiScan);
-  server.on("/api/wifi/connect", HTTP_POST, handleWiFiConnect);
-  server.on("/api/wifi/status", HTTP_GET, handleWiFiStatus);
-  server.on("/api/wifi/reset", HTTP_POST, handleWiFiReset);
-  server.on("/api/wifi/config", HTTP_POST, handleEnterConfigMode);
+  server.on("/api/discover", HTTP_GET, handleDiscover);
   
   // Manejar CORS
   server.enableCORS(true);
+  
+  Serial.println("Rutas del servidor HTTP configuradas");
+}
+
+// Manejar LEDs de estado
+void handleStatusLeds() {
+  // LED Bluetooth - parpadea si está habilitado pero sin cliente
+  if (bluetoothEnabled && !bluetoothClientConnected && !wifiConnected) {
+    blinkBluetoothLed();
+  } else if (bluetoothClientConnected) {
+    digitalWrite(LED_BLUETOOTH, HIGH);
+  }
+  
+  // LED WiFi - sólido si está conectado
+  if (wifiConnected) {
+    digitalWrite(LED_WIFI, HIGH);
+  } else {
+    digitalWrite(LED_WIFI, LOW);
+  }
+}
+
+// LED Bluetooth parpadeando (modo configuración)
+void blinkBluetoothLed() {
+  static unsigned long lastBlink = 0;
+  static bool ledState = false;
+  
+  if (millis() - lastBlink > 1000) {
+    ledState = !ledState;
+    digitalWrite(LED_BLUETOOTH, ledState);
+    lastBlink = millis();
+  }
+}
+
+// Verificar estado de conexión WiFi
+void checkWiFiConnection() {
+  if (wifiConnected && WiFi.status() != WL_CONNECTED) {
+    Serial.println("Conexión WiFi perdida");
+    wifiConnected = false;
+    digitalWrite(LED_WIFI, LOW);
+    
+    // Intentar reconectar automáticamente
+    if (!connectToSavedWiFi()) {
+      Serial.println("No se pudo reconectar - Bluetooth disponible para reconfiguración");
+    }
+  }
+}
+
+// Reiniciar configuración WiFi
+void resetWiFiConfig() {
+  Serial.println("Reiniciando configuración WiFi");
+  
+  // Limpiar credenciales guardadas
+  preferences.remove("ssid");
+  preferences.remove("password");
+  
+  // Desconectar WiFi
+  if (wifiConnected) {
+    WiFi.disconnect(true);
+    wifiConnected = false;
+    digitalWrite(LED_WIFI, LOW);
+  }
+  
+  Serial.println("Configuración WiFi eliminada - Bluetooth listo para nueva configuración");
 }
 
 // Manejador para escanear redes WiFi
@@ -406,12 +642,42 @@ void handleStatus() {
   DynamicJsonDocument doc(256);
   doc["status"] = "OK";
   doc["wifi_connected"] = wifiConnected;
-  doc["ap_mode"] = isAPMode;
+  doc["bluetooth_enabled"] = bluetoothEnabled;
   doc["last_uid"] = lastUid;
   
   String response;
   serializeJson(doc, response);
   server.send(200, "application/json", response);
+}
+
+// Manejador para la ruta /api/discover - Identificación del dispositivo para discovery automático
+void handleDiscover() {
+  DynamicJsonDocument doc(512);
+  doc["device_id"] = "ESP32_RFID_GYMADS";
+  doc["device_type"] = "RFID_READER";
+  doc["version"] = "3.0.0";
+  doc["manufacturer"] = "GYMADS";
+  doc["wifi_connected"] = wifiConnected;
+  doc["bluetooth_enabled"] = bluetoothEnabled;
+  doc["status"] = "ONLINE";
+  doc["uptime"] = millis();
+  
+  if (wifiConnected) {
+    doc["ip_address"] = WiFi.localIP().toString();
+    doc["mac_address"] = WiFi.macAddress();
+    doc["ssid"] = WiFi.SSID();
+    doc["rssi"] = WiFi.RSSI();
+  }
+  
+  // Información adicional útil para la app
+  doc["last_rfid_uid"] = lastUid;
+  doc["timestamp"] = millis();
+  
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+  
+  Serial.println("Respondiendo a discovery request desde: " + server.client().remoteIP().toString());
 }
 
 // Manejador para recibir el estado de membresía y controlar LEDs
@@ -464,46 +730,30 @@ void controlStatusLeds(String status) {
   }
 }
 
-// Verificar estado de conexión WiFi
-void checkWiFiConnection() {
-  if (!isAPMode && WiFi.status() != WL_CONNECTED) {
-    Serial.println("Conexión WiFi perdida, reintentando...");
-    wifiConnected = false;
-    digitalWrite(LED_WIFI, LOW);
-    
-    if (!connectToSavedWiFi()) {
-      Serial.println("No se pudo reconectar, iniciando modo AP");
-      setupAccessPoint();
-    }
-  }
-}
-
-// Apagar todos los LEDs de estado (excepto WiFi)
+// Apagar todos los LEDs de estado (excepto WiFi y Bluetooth)
 void turnOffAllStatusLeds() {
   digitalWrite(LED_VERDE, LOW);
   digitalWrite(LED_ROJO, LOW);
   digitalWrite(LED_AMARILLO, LOW);
 }
 
-// LED WiFi parpadeando lento (modo AP)
-void blinkWiFiLedSlow() {
-  static unsigned long lastBlink = 0;
-  static bool ledState = false;
-  
-  if (millis() - lastBlink > 1000) {
-    ledState = !ledState;
-    digitalWrite(LED_WIFI, ledState);
-    lastBlink = millis();
-  }
-}
-
 // Secuencia de prueba de LEDs al inicializar
 void testLedSequence() {
-  // Indicar que está listo con el LED de WiFi
+  Serial.println("Ejecutando secuencia de prueba de LEDs");
+  
+  // Probar LED WiFi
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_WIFI, HIGH);
     delay(200);
     digitalWrite(LED_WIFI, LOW);
+    delay(200);
+  }
+  
+  // Probar LED Bluetooth
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(LED_BLUETOOTH, HIGH);
+    delay(200);
+    digitalWrite(LED_BLUETOOTH, LOW);
     delay(200);
   }
   
@@ -520,38 +770,17 @@ void testLedSequence() {
   delay(300);
   digitalWrite(LED_ROJO, LOW);
   
-  // Restaurar LED WiFi
+  // Restaurar LED WiFi si está conectado
   if (wifiConnected) {
     digitalWrite(LED_WIFI, HIGH);
   }
-}
-
-// Manejador para entrar en modo configuración WiFi
-void handleEnterConfigMode() {
-  Serial.println("Forzando entrada a modo configuración WiFi...");
   
-  // Desconectar WiFi actual si está conectado
-  if (wifiConnected) {
-    WiFi.disconnect(true);
-    wifiConnected = false;
+  // Restaurar LED Bluetooth
+  if (bluetoothEnabled) {
+    digitalWrite(LED_BLUETOOTH, HIGH);
   }
   
-  // Activar modo AP
-  isAPMode = true;
-  setupAccessPoint();
-  
-  // Responder que se ha entrado en modo configuración
-  DynamicJsonDocument doc(512);
-  doc["status"] = "success";
-  doc["message"] = "Modo configuración activado";
-  doc["ap_ssid"] = ap_ssid;
-  doc["ip"] = WiFi.softAPIP().toString();
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-  
-  Serial.println("Modo configuración activado. SSID: " + String(ap_ssid));
+  Serial.println("Secuencia de LEDs completada");
 }
 
 // Convierte el UID de la tarjeta a formato String
