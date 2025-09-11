@@ -10,6 +10,7 @@ import '../../../data/services/image_cache_service.dart';
 import '../../../data/services/access_log_service.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../core/utils/auth_utils.dart';
+import '../../shared/controllers/goodbye_controller.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;
@@ -216,16 +217,23 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         if (nextAccessType == 'entrada') {
           AudioService.playWelcomeSound();
           successMessage.value = '¡Bienvenido(a)! Tu membresía vence pronto';
+          
+          // Mostrar diálogo de bienvenida para entrada
+          isShowingDialog.value = true;
+          
+          // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
+          if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+            _preloadImageInBackground(user.id!, user.photoUrl!);
+          }
+          
+          // Cerrar la pantalla de bienvenida después de 3 segundos
+          Future.delayed(const Duration(seconds: 3), () {
+            isShowingDialog.value = false;
+          });
         } else {
-          // Sin sonido para salidas
+          // Sin sonido para salidas - mostrar pantalla de despedida
           successMessage.value = 'Hasta luego! Tu membresía vence pronto';
-        }
-        
-        isShowingDialog.value = true;
-        
-        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
-        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-          _preloadImageInBackground(user.id!, user.photoUrl!);
+          GoodbyeController.showGoodbye();
         }
         
         // Registrar el acceso en Supabase EN SEGUNDO PLANO
@@ -261,16 +269,23 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         if (nextAccessType == 'entrada') {
           AudioService.playWelcomeSound();
           successMessage.value = '¡Bienvenido(a)!';
+          
+          // Mostrar diálogo de bienvenida para entrada
+          isShowingDialog.value = true;
+          
+          // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
+          if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+            _preloadImageInBackground(user.id!, user.photoUrl!);
+          }
+          
+          // Cerrar la pantalla de bienvenida después de 3 segundos
+          Future.delayed(const Duration(seconds: 3), () {
+            isShowingDialog.value = false;
+          });
         } else {
-          // Sin sonido para salidas
+          // Sin sonido para salidas - mostrar pantalla de despedida
           successMessage.value = 'Hasta luego!';
-        }
-        
-        isShowingDialog.value = true;
-        
-        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
-        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-          _preloadImageInBackground(user.id!, user.photoUrl!);
+          GoodbyeController.showGoodbye();
         }
         
         // Registrar el acceso en Supabase EN SEGUNDO PLANO
@@ -287,15 +302,11 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         _sendMembershipStatusToESP32(rfidCode, membershipStatus, user.name, nextAccessType, 'rfid');
       }
       
-      // Si el acceso fue exitoso, mostrar diálogo y cerrarlo después de 3 segundos
+      // Si el acceso fue exitoso, manejar diálogo o pantalla de despedida
       if (membershipStatus == RfidConfig.membershipActive || membershipStatus == RfidConfig.membershipExpiring) {
         // Limpiar el campo de RFID después de un acceso exitoso
         rfidTextController.clear();
         rfidInput.value = '';
-        
-        // Cerrar la pantalla de bienvenida después de 3 segundos
-        await Future.delayed(const Duration(seconds: 3));
-        isShowingDialog.value = false;
       } else {
         // Para casos de error (usuario no encontrado, membresía vencida), enviar estado de LEDs en segundo plano
         _sendMembershipStatusToESP32(rfidCode, membershipStatus);

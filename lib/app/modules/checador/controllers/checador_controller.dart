@@ -8,6 +8,7 @@ import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/access_log_service.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../core/utils/auth_utils.dart';
+import '../../shared/controllers/goodbye_controller.dart';
 import 'package:flutter/foundation.dart';
 
 class ChecadorController extends GetxController {
@@ -197,14 +198,22 @@ class ChecadorController extends GetxController {
           if (kDebugMode) {
             print('🔊 Reproduciendo sonido de bienvenida para entrada');
           }
+          
+          // Mostrar el diálogo de bienvenida para entradas
+          isShowingDialog.value = true;
+          
+          // Cerrar el diálogo después de 4 segundos
+          Future.delayed(const Duration(seconds: 4), () {
+            isShowingDialog.value = false;
+          });
         } else {
           if (kDebugMode) {
-            print('🔇 Sin sonido para salida - hasta luego');
+            print('🔇 Sin sonido para salida - mostrando pantalla de despedida');
           }
+          
+          // Mostrar pantalla de despedida para salidas
+          GoodbyeController.showGoodbye();
         }
-
-        // Mostrar el diálogo INMEDIATAMENTE
-        isShowingDialog.value = true;
 
         // Registrar el acceso en Supabase en segundo plano
         if (user.id != null) {
@@ -226,10 +235,6 @@ class ChecadorController extends GetxController {
 
         // Enviar estado al ESP32 para control de LEDs EN SEGUNDO PLANO
         _sendMembershipStatusToESP32(userNumber, membershipStatus, user.name, nextAccessType, 'qr');
-
-        // Cerrar el diálogo después de 4 segundos
-        await Future.delayed(const Duration(seconds: 4));
-        isShowingDialog.value = false;
         
         // Limpiar mensaje de error al completar exitosamente
         errorMessage.value = '';
