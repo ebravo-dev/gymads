@@ -92,7 +92,13 @@ class RfidReaderService {
   }
   
   // Método para enviar el estado de membresía al ESP32
-  static Future<bool> sendMembershipStatus(String uid, String status) async {
+  static Future<bool> sendMembershipStatus(
+    String uid, 
+    String status, {
+    String? userName,
+    String? accessType,
+    String? verificationType = 'qr',
+  }) async {
     try {
       // Verificar si hay configuración disponible
       if (!RfidConfig.isConfigured) {
@@ -111,16 +117,23 @@ class RfidReaderService {
       }
       
       if (kDebugMode) {
-        print('Enviando estado de membresía al ESP32: UID=$uid, Status=$status');
+        print('Enviando estado de membresía al ESP32: UID=$uid, Status=$status, AccessType=$accessType');
       }
+
+      final body = {
+        'uid': uid,
+        'status': status,
+        'verification_type': verificationType,
+      };
+      
+      // Agregar información adicional si está disponible
+      if (userName != null) body['user_name'] = userName;
+      if (accessType != null) body['access_type'] = accessType;
 
       final response = await http.post(
         Uri.parse('$baseUrl/membership'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'uid': uid,
-          'status': status,
-        }),
+        body: jsonEncode(body),
       ).timeout(const Duration(seconds: 5));
       
       if (response.statusCode == 200) {

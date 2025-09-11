@@ -7,7 +7,9 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/audio_service.dart';
 import '../../../data/services/image_cache_service.dart';
+import '../../../data/services/access_log_service.dart';
 import '../../../data/config/rfid_config.dart';
+import '../../../core/utils/auth_utils.dart';
 
 class RfidCheckinController extends GetxController with GetSingleTickerProviderStateMixin {
   final UserRepository userRepository;
@@ -182,24 +184,43 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         membershipStatus = RfidConfig.membershipNotFound;
         errorMessage.value = 'Tarjeta RFID no registrada';
         AudioService.playDeniedSound();
+        
+        // Enviar estado al ESP32 para LEDs rojos
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus, 'Usuario Desconocido', 'denied', 'rfid');
       } else if (!user.isActive || user.daysRemaining <= 0) {
         // Membresía expirada o inactiva
         membershipStatus = RfidConfig.membershipExpired;
         errorMessage.value = user.daysRemaining <= 0 ? 'Membresía vencida' : 'Membresía inactiva';
         AudioService.playDeniedSound();
+        
+        // Enviar estado al ESP32 para LEDs rojos
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus, user.name, 'denied', 'rfid');
       } else if (user.daysRemaining <= RfidConfig.expiringWarningDays) {
         // Membresía por vencer
         membershipStatus = RfidConfig.membershipExpiring;
         
+        // Determinar si es entrada o salida
+        final nextAccessType = await AccessLogService.determineAccessType(user.id!);
+        
+        if (kDebugMode) {
+          print('🚪 Tipo de acceso RFID determinado: $nextAccessType para ${user.name}');
+        }
+        
         // Actualizar datos para mostrar
         userName.value = user.name;
         daysLeft.value = user.daysRemaining;
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Mostrar diálogo inmediatamente sin esperar la imagen
-        successMessage.value = '¡Bienvenido(a)! Tu membresía vence pronto';
-        AudioService.playWelcomeSound();
+        // Reproducir sonido solo para ENTRADAS
+        if (nextAccessType == 'entrada') {
+          AudioService.playWelcomeSound();
+          successMessage.value = '¡Bienvenido(a)! Tu membresía vence pronto';
+        } else {
+          // Sin sonido para salidas
+          successMessage.value = 'Hasta luego! Tu membresía vence pronto';
+        }
+        
         isShowingDialog.value = true;
         
         // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
@@ -207,26 +228,44 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
           _preloadImageInBackground(user.id!, user.photoUrl!);
         }
         
-        // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
+        // Registrar el acceso en Supabase EN SEGUNDO PLANO
+        if (user.id != null) {
+          _registerAccessInSupabase(user, nextAccessType, 'rfid');
+        }
+        
+        // Registrar también en el modelo del usuario (para compatibilidad)
         if (user.id != null) {
           _registerAccessInBackground(user);
         }
         
         // Enviar estado de membresía al ESP32 para control de LEDs EN SEGUNDO PLANO
-        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus, user.name, nextAccessType, 'rfid');
       } else {
         // Membresía activa
         membershipStatus = RfidConfig.membershipActive;
         
+        // Determinar si es entrada o salida
+        final nextAccessType = await AccessLogService.determineAccessType(user.id!);
+        
+        if (kDebugMode) {
+          print('🚪 Tipo de acceso RFID determinado: $nextAccessType para ${user.name}');
+        }
+        
         // Actualizar datos para mostrar
         userName.value = user.name;
         daysLeft.value = user.daysRemaining;
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
         
-        // Mostrar diálogo inmediatamente sin esperar la imagen
-        successMessage.value = '¡Bienvenido(a)!';
-        AudioService.playWelcomeSound();
+        // Reproducir sonido solo para ENTRADAS
+        if (nextAccessType == 'entrada') {
+          AudioService.playWelcomeSound();
+          successMessage.value = '¡Bienvenido(a)!';
+        } else {
+          // Sin sonido para salidas
+          successMessage.value = 'Hasta luego!';
+        }
+        
         isShowingDialog.value = true;
         
         // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
@@ -234,13 +273,18 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
           _preloadImageInBackground(user.id!, user.photoUrl!);
         }
         
-        // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
+        // Registrar el acceso en Supabase EN SEGUNDO PLANO
+        if (user.id != null) {
+          _registerAccessInSupabase(user, nextAccessType, 'rfid');
+        }
+        
+        // Registrar también en el modelo del usuario (para compatibilidad)
         if (user.id != null) {
           _registerAccessInBackground(user);
         }
         
         // Enviar estado de membresía al ESP32 para control de LEDs EN SEGUNDO PLANO
-        _sendMembershipStatusToESP32(rfidCode, membershipStatus);
+        _sendMembershipStatusToESP32(rfidCode, membershipStatus, user.name, nextAccessType, 'rfid');
       }
       
       // Si el acceso fue exitoso, mostrar diálogo y cerrarlo después de 3 segundos
@@ -287,16 +331,30 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
   }
 
   // Enviar estado de membresía al ESP32 para control de LEDs en segundo plano
-  void _sendMembershipStatusToESP32(String rfidCode, String status) {
+  void _sendMembershipStatusToESP32(
+    String rfidCode, 
+    String status, [
+    String? userName,
+    String? accessType,
+    String? verificationType,
+  ]) {
     Future(() async {
       try {
-        await RfidReaderService.sendMembershipStatus(rfidCode, status);
+        await RfidReaderService.sendMembershipStatus(
+          rfidCode, 
+          status,
+          userName: userName,
+          accessType: accessType,
+          verificationType: verificationType,
+        );
         if (kDebugMode) {
-          print('✅ Estado de membresía enviado al ESP32: $rfidCode -> $status');
+          print('✅ [RFID] Estado de membresía enviado al ESP32: $rfidCode -> $status');
+          if (accessType != null) print('   🚪 Access Type: $accessType');
+          if (verificationType != null) print('   🔍 Verification: $verificationType');
         }
       } catch (e) {
         if (kDebugMode) {
-          print('❌ Error enviando estado al ESP32: $e');
+          print('❌ [RFID] Error enviando estado al ESP32: $e');
         }
       }
     });
@@ -375,5 +433,56 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
     if (isRfidConnected.value) {
       startRfidChecking();
     }
+  }
+
+  // Registrar acceso en Supabase con tabla access_logs
+  void _registerAccessInSupabase(UserModel user, String accessType, String method) {
+    Future(() async {
+      try {
+        if (user.id == null) {
+          if (kDebugMode) {
+            print('❌ [RFID] No se puede registrar acceso: ID de usuario nulo');
+          }
+          return;
+        }
+
+        if (kDebugMode) {
+          print('🔄 [RFID] Iniciando registro de acceso en Supabase...');
+          print('   👤 Usuario: ${user.name} (${user.userNumber})');
+          print('   🚪 Tipo: $accessType');
+          print('   📱 Método: $method');
+        }
+
+        final staffUser = AuthUtils.getStaffIdentifier();
+        
+        if (kDebugMode) {
+          print('   👨‍💼 Staff: $staffUser');
+          print('   🆔 User ID: ${user.id}');
+        }
+        
+        final success = await AccessLogService.registerAccess(
+          userId: user.id!,
+          userName: user.name,
+          userNumber: user.userNumber,
+          accessType: accessType,
+          method: method,
+          staffUser: staffUser,
+        );
+
+        if (success) {
+          if (kDebugMode) {
+            print('✅ [RFID] Acceso registrado exitosamente en Supabase: ${user.name} - $accessType via $method');
+          }
+        } else {
+          if (kDebugMode) {
+            print('❌ [RFID] Error: No se pudo registrar el acceso en Supabase');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ [RFID] Excepción al registrar acceso en Supabase: $e');
+        }
+      }
+    });
   }
 }
