@@ -61,6 +61,11 @@ class HomeController extends GetxController {
     Get.toNamed(Routes.PROMOCIONES);
   }
 
+  void goToAccessLogs() {
+    statusMessages.add('Navegando a Entradas y Salidas...');
+    Get.toNamed(Routes.ACCESS_LOGS);
+  }
+
   /// Limpia los mensajes de estado
   void clearMessages() {
     statusMessages.clear();

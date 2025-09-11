@@ -23,16 +23,49 @@ class AccessLogModel {
 
   factory AccessLogModel.fromJson(Map<String, dynamic> json) {
     return AccessLogModel(
-      id: json['id'] ?? '',
-      userId: json['user_id'] ?? '',
-      userName: json['user_name'] ?? '',
-      userNumber: json['user_number'] ?? '',
-      accessType: json['access_type'] ?? 'entrada',
-      method: json['method'] ?? 'qr',
-      staffUser: json['staff_user'] ?? '',
-      accessTime: DateTime.parse(json['access_time'] ?? DateTime.now().toIso8601String()),
-      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      userName: json['user_name']?.toString() ?? '',
+      userNumber: json['user_number']?.toString() ?? '',
+      accessType: json['access_type']?.toString() ?? 'entrada',
+      method: json['method']?.toString() ?? 'qr',
+      staffUser: json['staff_user']?.toString() ?? '',
+      accessTime: _parseDateTime(json['access_time']),
+      createdAt: _parseDateTime(json['created_at']),
     );
+  }
+
+  /// Parsea de forma segura un DateTime desde un valor dinámico
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) {
+      return DateTime.now();
+    }
+    
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        print('⚠️ Error parseando fecha: $value - $e');
+        return DateTime.now();
+      }
+    }
+    
+    if (value is DateTime) {
+      return value;
+    }
+    
+    // Si es un timestamp en milisegundos
+    if (value is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      } catch (e) {
+        print('⚠️ Error parseando timestamp: $value - $e');
+        return DateTime.now();
+      }
+    }
+    
+    print('⚠️ Tipo de fecha no reconocido: ${value.runtimeType} - $value');
+    return DateTime.now();
   }
 
   Map<String, dynamic> toJson() {

@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../modules/access_logs/bindings/access_logs_binding.dart';
+import '../modules/access_logs/views/access_logs_view.dart';
 import '../modules/checador/bindings/checador_binding.dart';
 import '../modules/checador/views/checador_view.dart';
 import '../modules/clientes/bindings/clientes_binding.dart';
@@ -84,6 +86,11 @@ class AppPages {
       name: _Paths.POINT_OF_SALE,
       page: () => const PointOfSaleView(),
       binding: PointOfSaleBinding(),
+    ),
+    GetPage(
+      name: _Paths.ACCESS_LOGS,
+      page: () => const AccessLogsView(),
+      binding: AccessLogsBinding(),
     ),
   ];
 }

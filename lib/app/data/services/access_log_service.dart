@@ -224,4 +224,215 @@ class AccessLogService {
       return false;
     }
   }
+
+  /// Obtiene todos los logs de acceso ordenados por fecha más reciente
+  static Future<List<AccessLogModel>?> getAllAccessLogs({int? limit}) async {
+    try {
+      if (kDebugMode) {
+        print('📊 Obteniendo todos los logs de acceso desde Supabase...');
+      }
+
+      var query = _supabase
+          .from('access_logs')
+          .select()
+          .order('access_time', ascending: false);
+
+      if (limit != null) {
+        query = query.limit(limit);
+      }
+
+      final response = await query;
+
+      if (kDebugMode) {
+        print('✅ ${response.length} logs obtenidos desde Supabase');
+      }
+
+      // Parsear de forma segura cada log
+      final logs = <AccessLogModel>[];
+      for (final logData in response) {
+        try {
+          final log = AccessLogModel.fromJson(logData);
+          logs.add(log);
+        } catch (e) {
+          if (kDebugMode) {
+            print('❌ Error parseando log individual: $e');
+            print('   Datos problemáticos: $logData');
+          }
+          // Continuar con los otros logs aunque uno falle
+        }
+      }
+
+      if (kDebugMode) {
+        print('✅ ${logs.length} logs parseados exitosamente');
+      }
+
+      return logs;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error al obtener logs de acceso: $e');
+        print('❌ Tipo de error: ${e.runtimeType}');
+        if (e is PostgrestException) {
+          print('❌ PostgrestException - Message: ${e.message}');
+          print('❌ PostgrestException - Details: ${e.details}');
+        }
+      }
+      return null;
+    }
+  }
+
+  /// Obtiene los usuarios que están actualmente dentro del gimnasio
+  static Future<List<AccessLogModel>?> getUsersCurrentlyInside() async {
+    try {
+      if (kDebugMode) {
+        print('👥 Obteniendo usuarios actualmente dentro del gimnasio...');
+      }
+
+      // Primero intentar usar la vista SQL
+      try {
+        final response = await _supabase
+            .from('users_currently_inside')
+            .select();
+
+        if (kDebugMode) {
+          print('✅ ${response.length} usuarios obtenidos desde vista SQL');
+        }
+
+        // Convertir la respuesta de la vista a AccessLogModel
+        final users = <AccessLogModel>[];
+        for (final userData in response) {
+          try {
+            final user = AccessLogModel.fromJson({
+              'id': userData['user_id']?.toString() ?? '',
+              'user_id': userData['user_id']?.toString() ?? '',
+              'user_name': userData['user_name']?.toString() ?? '',
+              'user_number': userData['user_number']?.toString() ?? '',
+              'access_type': 'entrada',
+              'method': userData['entry_method']?.toString() ?? 'qr',
+              'staff_user': 'sistema',
+              'access_time': userData['entry_time'],
+              'created_at': userData['entry_time'],
+            });
+            users.add(user);
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error parseando usuario dentro: $e');
+              print('   Datos problemáticos: $userData');
+            }
+          }
+        }
+
+        return users;
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️ Vista SQL no disponible, usando método alternativo: $e');
+        }
+        
+        // Método alternativo: usar función SQL directa
+        return await _getUsersInsideAlternative();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error al obtener usuarios dentro: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Método alternativo para obtener usuarios dentro usando lógica de aplicación
+  static Future<List<AccessLogModel>?> _getUsersInsideAlternative() async {
+    try {
+      if (kDebugMode) {
+        print('🔄 Usando método alternativo para usuarios dentro...');
+      }
+
+      // Obtener todos los logs y calcular manualmente
+      final allLogs = await getAllAccessLogs();
+      if (allLogs == null) return [];
+
+      final Map<String, AccessLogModel> lastAccessByUser = {};
+      
+      // Encontrar el último acceso de cada usuario
+      for (final log in allLogs) {
+        if (!lastAccessByUser.containsKey(log.userId) ||
+            log.accessTime.isAfter(lastAccessByUser[log.userId]!.accessTime)) {
+          lastAccessByUser[log.userId] = log;
+        }
+      }
+
+      // Filtrar solo los que su último acceso fue una entrada
+      final usersInside = lastAccessByUser.values
+          .where((log) => log.accessType == 'entrada')
+          .toList();
+
+      if (kDebugMode) {
+        print('✅ ${usersInside.length} usuarios dentro calculados manualmente');
+      }
+
+      return usersInside;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error en método alternativo: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Obtiene logs de acceso para un usuario específico
+  static Future<List<AccessLogModel>?> getUserAccessLogs(String userId, {int? limit}) async {
+    try {
+      if (kDebugMode) {
+        print('📋 Obteniendo logs de acceso para usuario: $userId');
+      }
+
+      var query = _supabase
+          .from('access_logs')
+          .select()
+          .eq('user_id', userId)
+          .order('access_time', ascending: false);
+
+      if (limit != null) {
+        query = query.limit(limit);
+      }
+
+      final response = await query;
+
+      if (kDebugMode) {
+        print('✅ ${response.length} logs obtenidos para el usuario');
+      }
+
+      return response.map<AccessLogModel>((log) => AccessLogModel.fromJson(log)).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error al obtener logs del usuario: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Obtiene logs de acceso filtrados por fecha
+  static Future<List<AccessLogModel>?> getAccessLogsByDate(DateTime startDate, DateTime endDate) async {
+    try {
+      if (kDebugMode) {
+        print('📅 Obteniendo logs entre ${startDate.toIso8601String()} y ${endDate.toIso8601String()}');
+      }
+
+      final response = await _supabase
+          .from('access_logs')
+          .select()
+          .gte('access_time', startDate.toIso8601String())
+          .lte('access_time', endDate.toIso8601String())
+          .order('access_time', ascending: false);
+
+      if (kDebugMode) {
+        print('✅ ${response.length} logs obtenidos en el rango de fechas');
+      }
+
+      return response.map<AccessLogModel>((log) => AccessLogModel.fromJson(log)).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error al obtener logs por fecha: $e');
+      }
+      return null;
+    }
+  }
 }
