@@ -5,7 +5,10 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/audio_service.dart';
 import '../../../data/services/image_cache_service.dart';
 import '../../../data/services/rfid_reader_service.dart';
+import '../../../data/services/access_log_service.dart';
 import '../../../data/config/rfid_config.dart';
+import '../../../core/utils/auth_utils.dart';
+import '../../shared/controllers/goodbye_controller.dart';
 import 'package:flutter/foundation.dart';
 
 class ChecadorController extends GetxController {
@@ -20,6 +23,10 @@ class ChecadorController extends GetxController {
   final membershipType = ''.obs;
   final isLoading = false.obs;
   final errorMessage = ''.obs;
+  
+  // Nuevas variables para entradas y salidas
+  final accessType = ''.obs; // 'entrada' o 'salida'
+  final isUserInside = false.obs; // Para saber si el usuario está adentro
 
   // Estados de membresía para control de LEDs (igual que en RFID)
   static const String membershipActive = "ACTIVE";
@@ -82,7 +89,13 @@ class ChecadorController extends GetxController {
           AudioService.playDeniedSound();
           
           // Enviar estado al ESP32 para LEDs rojos EN SEGUNDO PLANO
-          _sendMembershipStatusToESP32(userNumber, membershipNotFound);
+          _sendMembershipStatusToESP32(
+            userNumber, 
+            membershipNotFound,
+            'Usuario Desconocido',
+            'denied',
+            'qr'
+          );
           
           // Mantener el mensaje de error visible por 3 segundos
           await Future.delayed(const Duration(seconds: 3));
@@ -106,7 +119,13 @@ class ChecadorController extends GetxController {
           AudioService.playDeniedSound();
           
           // Enviar estado al ESP32 para LEDs rojos EN SEGUNDO PLANO
-          _sendMembershipStatusToESP32(userNumber, membershipExpired);
+          _sendMembershipStatusToESP32(
+            userNumber, 
+            membershipExpired,
+            user.name,
+            'denied',
+            'qr'
+          );
           
           // Mantener el mensaje de error visible por 3 segundos
           await Future.delayed(const Duration(seconds: 3));
@@ -124,7 +143,13 @@ class ChecadorController extends GetxController {
           AudioService.playDeniedSound();
           
           // Enviar estado al ESP32 para LEDs rojos EN SEGUNDO PLANO
-          _sendMembershipStatusToESP32(userNumber, membershipExpired);
+          _sendMembershipStatusToESP32(
+            userNumber, 
+            membershipExpired,
+            user.name,
+            'denied',
+            'qr'
+          );
           
           // Mantener el mensaje de error visible por 3 segundos
           await Future.delayed(const Duration(seconds: 3));
@@ -160,13 +185,42 @@ class ChecadorController extends GetxController {
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
 
-        // Reproducir sonido de bienvenida
-        AudioService.playWelcomeSound();
+        // Determinar tipo de acceso (entrada o salida) basado en el último registro
+        final nextAccessType = await AccessLogService.determineAccessType(user.id!);
+        accessType.value = nextAccessType;
+        
+        // Verificar si el usuario está actualmente adentro
+        isUserInside.value = await AccessLogService.isUserInside(user.id!);
 
-        // Mostrar el diálogo INMEDIATAMENTE
-        isShowingDialog.value = true;
+        // Reproducir sonido solo para ENTRADAS, no para salidas
+        if (nextAccessType == 'entrada') {
+          AudioService.playWelcomeSound();
+          if (kDebugMode) {
+            print('🔊 Reproduciendo sonido de bienvenida para entrada');
+          }
+          
+          // Mostrar el diálogo de bienvenida para entradas
+          isShowingDialog.value = true;
+          
+          // Cerrar el diálogo después de 4 segundos
+          Future.delayed(const Duration(seconds: 4), () {
+            isShowingDialog.value = false;
+          });
+        } else {
+          if (kDebugMode) {
+            print('🔇 Sin sonido para salida - mostrando pantalla de despedida');
+          }
+          
+          // Mostrar pantalla de despedida para salidas
+          GoodbyeController.showGoodbye();
+        }
 
-        // Registrar el acceso en segundo plano DESPUÉS de mostrar el diálogo
+        // Registrar el acceso en Supabase en segundo plano
+        if (user.id != null) {
+          _registerAccessInSupabase(user, nextAccessType, 'qr');
+        }
+
+        // Registrar también en el modelo del usuario (para compatibilidad)
         if (user.id != null) {
           _registerAccessInBackground(user);
         }
@@ -180,11 +234,7 @@ class ChecadorController extends GetxController {
         }
 
         // Enviar estado al ESP32 para control de LEDs EN SEGUNDO PLANO
-        _sendMembershipStatusToESP32(userNumber, membershipStatus);
-
-        // Cerrar el diálogo después de 4 segundos
-        await Future.delayed(const Duration(seconds: 4));
-        isShowingDialog.value = false;
+        _sendMembershipStatusToESP32(userNumber, membershipStatus, user.name, nextAccessType, 'qr');
         
         // Limpiar mensaje de error al completar exitosamente
         errorMessage.value = '';
@@ -224,14 +274,77 @@ class ChecadorController extends GetxController {
     });
   }
 
+  // Registrar acceso en Supabase con tabla access_logs
+  void _registerAccessInSupabase(UserModel user, String accessType, String method) {
+    Future(() async {
+      try {
+        if (user.id == null) {
+          if (kDebugMode) {
+            print('❌ No se puede registrar acceso: ID de usuario nulo');
+          }
+          return;
+        }
+
+        if (kDebugMode) {
+          print('🔄 Iniciando registro de acceso en Supabase...');
+          print('   👤 Usuario: ${user.name} (${user.userNumber})');
+          print('   🚪 Tipo: $accessType');
+          print('   📱 Método: $method');
+        }
+
+        final staffUser = AuthUtils.getStaffIdentifier();
+        
+        if (kDebugMode) {
+          print('   👨‍💼 Staff: $staffUser');
+          print('   🆔 User ID: ${user.id}');
+        }
+        
+        final success = await AccessLogService.registerAccess(
+          userId: user.id!,
+          userName: user.name,
+          userNumber: user.userNumber,
+          accessType: accessType,
+          method: method,
+          staffUser: staffUser,
+        );
+
+        if (success) {
+          if (kDebugMode) {
+            print('✅ Acceso registrado exitosamente en Supabase: ${user.name} - $accessType via $method');
+          }
+        } else {
+          if (kDebugMode) {
+            print('❌ Error: No se pudo registrar el acceso en Supabase');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Excepción al registrar acceso en Supabase: $e');
+        }
+      }
+    });
+  }
+
   // Enviar estado de membresía al ESP32 para control de LEDs
-  void _sendMembershipStatusToESP32(String userNumber, String status) {
+  void _sendMembershipStatusToESP32(
+    String userNumber, 
+    String status, [
+    String? userName,
+    String? accessType,
+    String? verificationType,
+  ]) {
     Future(() async {
       try {
         if (RfidConfig.isConfigured) {
-          await RfidReaderService.sendMembershipStatus(userNumber, status);
+          await RfidReaderService.sendMembershipStatus(
+            userNumber, 
+            status,
+            userName: userName,
+            accessType: accessType,
+            verificationType: verificationType,
+          );
           if (kDebugMode) {
-            print('✅ Estado de membresía enviado al ESP32: $userNumber -> $status');
+            print('✅ Estado de membresía enviado al ESP32: $userNumber -> $status ($accessType)');
           }
         } else {
           if (kDebugMode) {

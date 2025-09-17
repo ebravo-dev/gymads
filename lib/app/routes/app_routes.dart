@@ -14,6 +14,7 @@ abstract class Routes {
   static const PROMOCIONES = _Paths.PROMOCIONES;
   static const CONFIGURACION = _Paths.CONFIGURACION;
   static const POINT_OF_SALE = _Paths.POINT_OF_SALE;
+  static const ACCESS_LOGS = _Paths.ACCESS_LOGS;
 }
 
 abstract class _Paths {
@@ -29,4 +30,5 @@ abstract class _Paths {
   static const PROMOCIONES = '/promociones';
   static const CONFIGURACION = '/configuracion';
   static const POINT_OF_SALE = '/point-of-sale';
+  static const ACCESS_LOGS = '/access-logs';
 }

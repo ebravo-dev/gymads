@@ -292,6 +292,15 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.orange.shade300,
                             onTap: controller.goToPromociones,
                           ),
+                          
+                          // Opción de Entradas y Salidas
+                          ButtonMenuWidget(
+                            icon: Icons.assessment,
+                            label: 'Entradas/Salidas',
+                            description: 'Historial de accesos',
+                            color: Colors.teal.shade300,
+                            onTap: controller.goToAccessLogs,
+                          ),
                         ],
                       ),
                     ),
