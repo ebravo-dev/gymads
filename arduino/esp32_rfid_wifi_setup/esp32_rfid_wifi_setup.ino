@@ -2,7 +2,7 @@
  * LECTOR RFID CON CONFIGURACIÓN BLUETOOTH LE Y SISTEMA DE LEDs PARA GYMADS
  * Dispositivo: ESP32
  * Función: Leer tarjetas RFID, configurar WiFi via Bluetooth LE y mostrar estado de membresía con LEDs
- * Versión: 3.1 - Configuración por Bluetooth LE (BLE)
+ * Versión: 3.3 - Auto-reconexión WiFi simplificada (solo reset, sin cambiar WiFi)
  */
 
 #include <SPI.h>
@@ -54,6 +54,15 @@ bool bluetoothClientConnected = false;
 bool usingStaticIP = false;
 bool changeWiFiInProgress = false; // Deshabilitar reconexión automática durante cambio de WiFi
 
+// Variables para auto-reconexión WiFi
+unsigned long lastConnectionAttempt = 0;
+const unsigned long CONNECTION_RETRY_INTERVAL = 60000; // 60 segundos entre intentos (más largo)
+const unsigned long MAX_CONNECTION_ATTEMPTS = 2; // Solo 2 intentos antes de reset
+unsigned int connectionAttempts = 0;
+bool autoReconnectEnabled = true;
+bool bluetoothOperationInProgress = false; // Nueva variable para pausar auto-reconexión
+bool isAutoReconnecting = false; // Estado actual de auto-reconexión
+
 // Valores de IP estática
 IPAddress staticIP;
 IPAddress gateway;
@@ -70,11 +79,30 @@ const String MEMBERSHIP_NOT_FOUND = "NOT_FOUND";
 // =================== DECLARACIONES DE FUNCIONES ===================
 void processBluetoothCommand(String command);
 void sendBLEData(String data);
+void sendBLEDataFragmented(String data);
 void handleBLEWiFiScan();
 void handleBLEWiFiConnect(DynamicJsonDocument& doc);
 void sendCurrentIPBLE();
 void sendBLEStatus();
 void sendBLEResponse(String status, String message);
+void handleAutoReconnection();
+void initializeBluetooth();
+void handleBluetoothConnections();
+bool connectToSavedWiFi();
+void checkWiFiConnection();
+void resetWiFiConfig();
+void setupServerRoutes();
+void handleGetUid();
+void handleStatus();
+void handleDiscover();
+void handleMembershipStatus();
+void controlStatusLeds(String status);
+void handleStatusLeds();
+void blinkBluetoothLed();
+void turnOffAllStatusLeds();
+void testLedSequence();
+String getCardUID();
+void handleSetStaticIP(DynamicJsonDocument& doc);
 
 // =================== CLASES CALLBACK BLUETOOTH LE ===================
 
@@ -202,6 +230,9 @@ void loop() {
     checkWiFiConnection();
     lastWiFiCheck = millis();
   }
+  
+  // Manejar auto-reconexión WiFi si está desconectado
+  handleAutoReconnection();
 }
 
 // =================== FUNCIONES BLUETOOTH LE ===================
@@ -295,9 +326,6 @@ void processBluetoothCommand(String command) {
   else if (cmd == "connect_wifi") {
     handleBLEWiFiConnect(doc);
   }
-  else if (cmd == "change_wifi") {
-    handleBLEWiFiChange(doc);
-  }
   else if (cmd == "get_ip") {
     sendCurrentIPBLE();
   }
@@ -310,9 +338,6 @@ void processBluetoothCommand(String command) {
   }
   else if (cmd == "set_static_ip") {
     handleSetStaticIP(doc);
-  }
-  else if (cmd == "restart_wifi") {
-    handleRestartWiFi();
   }
   else {
     sendBLEResponse("ERROR", "Unknown command: " + cmd);
@@ -359,50 +384,6 @@ void handleSetStaticIP(DynamicJsonDocument& doc) {
   }
   
   preferences.end();
-}
-
-// Reiniciar módulo WiFi para resolver problemas de escaneo
-void handleRestartWiFi() {
-  Serial.println("Reiniciando módulo WiFi...");
-  
-  // Desconectar WiFi actual si está conectado
-  if (wifiConnected) {
-    WiFi.disconnect(true);
-    wifiConnected = false;
-    digitalWrite(LED_WIFI, LOW);
-    server.stop();
-  }
-  
-  // Reiniciar módulo WiFi
-  WiFi.mode(WIFI_OFF);
-  delay(1000);
-  WiFi.mode(WIFI_STA);
-  delay(1000);
-  
-  // Resetear variables de estado
-  usingStaticIP = false;
-  changeWiFiInProgress = false; // Restaurar reconexión automática
-  
-  Serial.println("Módulo WiFi reiniciado");
-  sendBLEResponse("success", "WiFi module restarted");
-  
-  // Intentar reconectar automáticamente si hay configuración guardada
-  preferences.begin("wifi-config", true);
-  String ssid = preferences.getString("ssid", "");
-  preferences.end();
-  
-  if (ssid.length() > 0) {
-    Serial.println("Intentando reconectar a la red guardada...");
-    if (connectToSavedWiFi()) {
-      setupServerRoutes();
-      server.begin();
-      sendBLEResponse("info", "Reconnected to saved WiFi");
-    } else {
-      sendBLEResponse("info", "Could not reconnect. Ready for new configuration");
-    }
-  } else {
-    sendBLEResponse("info", "No saved WiFi configuration. Ready for setup");
-  }
 }
 
 // Enviar datos por BLE
@@ -487,12 +468,15 @@ void sendBLEDataFragmented(String data) {
 // Escanear redes WiFi vía BLE
 void handleBLEWiFiScan() {
   Serial.println("Escaneando redes WiFi por solicitud BLE...");
-  Serial.println("=== DEBUG: Iniciando handleBLEWiFiScan v3.2 ===");
+  Serial.println("=== DEBUG: Iniciando handleBLEWiFiScan v3.3 ===");
+  
+  // Pausar auto-reconexión durante la operación
+  bluetoothOperationInProgress = true;
   
   // Asegurar que WiFi esté en modo correcto y desconectado
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(true);
-  delay(500); // Dar más tiempo para que se establezca el modo
+  delay(1000); // Más tiempo para estabilizar
   
   Serial.println("DEBUG: WiFi configurado en modo STA, iniciando escaneo...");
   int networks = WiFi.scanNetworks();
@@ -574,7 +558,10 @@ void handleBLEWiFiScan() {
   sendBLEData(response);
   
   Serial.println("Enviadas " + String(networksToSend) + " de " + String(networks) + " redes por BLE");
-  Serial.println("=== DEBUG: handleBLEWiFiScan v3.2 completado ===");
+  Serial.println("=== DEBUG: handleBLEWiFiScan v3.3 completado ===");
+  
+  // Reactivar auto-reconexión después del escaneo
+  bluetoothOperationInProgress = false;
 }
 
 // Conectar a WiFi vía BLE
@@ -583,6 +570,9 @@ void handleBLEWiFiConnect(DynamicJsonDocument& doc) {
   String password = doc["password"];
   
   Serial.println("Conectando a WiFi: " + ssid);
+  
+  // Pausar auto-reconexión durante la conexión
+  bluetoothOperationInProgress = true;
   
   // Abrir preferencias
   preferences.begin("wifi-config", false);
@@ -661,8 +651,19 @@ void handleBLEWiFiConnect(DynamicJsonDocument& doc) {
     digitalWrite(LED_WIFI, HIGH);
     wifiConnected = true;
     
+    // Reset contadores de reconexión para nueva conexión
+    connectionAttempts = 0;
+    autoReconnectEnabled = true;
+    lastConnectionAttempt = 0;
+    
     // Restaurar reconexión automática ya que la conexión fue exitosa
     changeWiFiInProgress = false;
+    
+    // Guardar como última conexión exitosa
+    preferences.begin("wifi-config", false);
+    preferences.putString("last_successful_ssid", ssid);
+    preferences.putULong("last_connection_time", millis());
+    preferences.end();
     
     // Iniciar servidor HTTP
     setupServerRoutes();
@@ -682,26 +683,9 @@ void handleBLEWiFiConnect(DynamicJsonDocument& doc) {
     
     sendBLEResponse("error", "Failed to connect to WiFi");
   }
-}
-
-// Cambiar WiFi - desconectar sin auto-reconexión
-void handleBLEWiFiChange(DynamicJsonDocument& doc) {
-  Serial.println("Iniciando cambio de WiFi...");
   
-  // Activar flag para evitar reconexión automática
-  changeWiFiInProgress = true;
-  
-  // Desconectar WiFi actual sin auto-reconexión
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_OFF);
-  delay(1000);
-  
-  // Reiniciar modo WiFi
-  WiFi.mode(WIFI_STA);
-  delay(1000);
-  
-  // Responder que está listo para nueva configuración
-  sendBLEResponse("success", "Ready for new WiFi configuration");
+  // Reactivar auto-reconexión después de la operación de conexión
+  bluetoothOperationInProgress = false;
 }
 
 // Enviar IP actual por BLE
@@ -744,7 +728,7 @@ void sendCurrentIPBLE() {
 
 // Enviar estado por BLE
 void sendBLEStatus() {
-  DynamicJsonDocument doc(512);
+  DynamicJsonDocument doc(768);
   doc["status"] = "success";
   doc["command"] = "get_status";
   doc["device_id"] = "ESP32_RFID_GYMADS";
@@ -754,6 +738,21 @@ void sendBLEStatus() {
   doc["uptime"] = millis();
   doc["last_rfid_uid"] = lastUid;
   doc["using_static_ip"] = usingStaticIP;
+  doc["connection_attempts"] = connectionAttempts;
+  doc["auto_reconnect_enabled"] = autoReconnectEnabled;
+  doc["bluetooth_operation_in_progress"] = bluetoothOperationInProgress;
+  doc["is_auto_reconnecting"] = isAutoReconnecting;
+  
+  // Información de la última conexión exitosa
+  preferences.begin("wifi-config", false);
+  String lastSuccessfulSSID = preferences.getString("last_successful_ssid", "");
+  unsigned long lastConnectionTime = preferences.getULong("last_connection_time", 0);
+  preferences.end();
+  
+  if (lastSuccessfulSSID.length() > 0) {
+    doc["last_successful_ssid"] = lastSuccessfulSSID;
+    doc["last_connection_time"] = lastConnectionTime;
+  }
   
   if (wifiConnected) {
     doc["ip_address"] = WiFi.localIP().toString();
@@ -850,11 +849,22 @@ bool connectToSavedWiFi() {
     Serial.println("IP: " + WiFi.localIP().toString());
     digitalWrite(LED_WIFI, HIGH);
     wifiConnected = true;
+    connectionAttempts = 0; // Reset contador de intentos al conectar exitosamente
+    autoReconnectEnabled = true; // Habilitar auto-reconexión
+    
+    // Guardar como última conexión exitosa
+    preferences.begin("wifi-config", false);
+    preferences.putString("last_successful_ssid", ssid);
+    preferences.putULong("last_connection_time", millis());
+    preferences.end();
+    
     return true;
   } else {
     Serial.println("\nNo se pudo conectar a WiFi");
     digitalWrite(LED_WIFI, LOW);
     wifiConnected = false;
+    connectionAttempts++; // Incrementar contador de intentos fallidos
+    Serial.println("Intento de conexión fallido #" + String(connectionAttempts));
     return false;
   }
 }
@@ -872,21 +882,79 @@ void checkWiFiConnection() {
     // Detener el servidor HTTP
     server.stop();
     
-    // Solo intentar reconectar si no estamos en proceso de cambio de WiFi
-    if (!changeWiFiInProgress) {
-      Serial.println("Intentando reconectar WiFi...");
-      if (!connectToSavedWiFi()) {
-        Serial.println("No se pudo reconectar - Bluetooth disponible para reconfiguración");
-        
-        // Asegurar que el modo WiFi esté correcto para futuras configuraciones
-        WiFi.mode(WIFI_STA);
-        WiFi.disconnect(true);
-        
-        // LED Bluetooth parpadeando para indicar que está listo para configuración
-        digitalWrite(LED_BLUETOOTH, LOW);
-      }
-    } else {
+    // Solo intentar reconectar si no estamos en proceso de cambio de WiFi y auto-reconexión está habilitada
+    if (!changeWiFiInProgress && autoReconnectEnabled) {
+      Serial.println("Pérdida de conexión detectada - programando reconexión automática");
+      lastConnectionAttempt = millis(); // Programar intento inmediato
+    } else if (changeWiFiInProgress) {
       Serial.println("Cambio de WiFi en progreso - Reconexión automática deshabilitada");
+    } else {
+      Serial.println("Auto-reconexión deshabilitada después de múltiples intentos fallidos");
+    }
+  }
+}
+
+// Manejar auto-reconexión WiFi
+void handleAutoReconnection() {
+  // Solo intentar reconectar si no estamos conectados, auto-reconexión está habilitada,
+  // no estamos en proceso de cambio de WiFi, no hay operaciones Bluetooth en progreso
+  // y ha pasado el tiempo suficiente
+  if (!wifiConnected && autoReconnectEnabled && !changeWiFiInProgress && !bluetoothOperationInProgress) {
+    
+    // Verificar primero si hay credenciales WiFi guardadas antes de intentar reconectar
+    preferences.begin("wifi-config", false);
+    String savedSSID = preferences.getString("ssid", "");
+    preferences.end();
+    
+    if (savedSSID.length() == 0) {
+      // No hay credenciales, deshabilitar auto-reconexión para evitar intentos innecesarios
+      autoReconnectEnabled = false;
+      Serial.println("Auto-reconexión deshabilitada: No hay credenciales WiFi guardadas");
+      return;
+    }
+    
+    unsigned long currentTime = millis();
+    
+    // Verificar si es tiempo de intentar reconectar
+    if (currentTime - lastConnectionAttempt >= CONNECTION_RETRY_INTERVAL) {
+      lastConnectionAttempt = currentTime;
+      
+      Serial.println("Intento de auto-reconexión #" + String(connectionAttempts + 1) + "/" + String(MAX_CONNECTION_ATTEMPTS));
+      
+      // Marcar que está en proceso de auto-reconexión
+      isAutoReconnecting = true;
+      
+      if (connectToSavedWiFi()) {
+        Serial.println("Auto-reconexión exitosa!");
+        // setupServerRoutes() se llamará automáticamente cuando wifiConnected se vuelva true
+        setupServerRoutes();
+        isAutoReconnecting = false; // Ya terminó el proceso exitosamente
+      } else {
+        Serial.println("Auto-reconexión fallida");
+        
+        // Si hemos agotado los intentos, deshabilitar auto-reconexión y resetear configuración
+        if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+          Serial.println("Máximo de intentos de reconexión alcanzado. Reseteando configuración WiFi...");
+          autoReconnectEnabled = false;
+          isAutoReconnecting = false; // Ya terminó el proceso
+          
+          // Resetear configuración WiFi y volver al modo configuración
+          resetWiFiConfig();
+          
+          // Asegurar que Bluetooth esté disponible para reconfiguración
+          if (!bluetoothEnabled) {
+            initializeBluetooth();
+          }
+          
+          // LED Bluetooth parpadeando para indicar modo configuración
+          digitalWrite(LED_BLUETOOTH, LOW);
+          digitalWrite(LED_WIFI, LOW);
+          
+          Serial.println("Modo configuración activado - Use Bluetooth para configurar WiFi");
+        } else {
+          isAutoReconnecting = false; // Terminó este intento, pero puede seguir intentando
+        }
+      }
     }
   }
 }
@@ -908,7 +976,16 @@ void resetWiFiConfig() {
   preferences.remove("gateway");
   preferences.remove("subnet");
   
+  // Limpiar información de última conexión
+  preferences.remove("last_successful_ssid");
+  preferences.remove("last_connection_time");
+  
   preferences.end();
+  
+  // Reset contadores de reconexión
+  connectionAttempts = 0;
+  autoReconnectEnabled = true;
+  lastConnectionAttempt = 0;
   
   // Desconectar WiFi
   if (wifiConnected) {

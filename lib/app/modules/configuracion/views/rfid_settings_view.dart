@@ -59,6 +59,8 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
       final isConnected = controller.rfidConnectionStatus.value;
       final statusMessage = controller.connectionStatusMessage.value;
       final ipAddress = controller.esp32IpAddress.value;
+      final reconnectionAttempts = controller.reconnectionAttempts.value;
+      final isAutoReconnecting = controller.isAutoReconnecting.value;
       
       return Card(
         elevation: 4,
@@ -121,6 +123,59 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
+                    ),
+                  ),
+                ],
+                
+                // Información de auto-reconexión
+                if (!isConnected && (reconnectionAttempts > 0 || isAutoReconnecting)) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isAutoReconnecting 
+                        ? AppColors.info.withOpacity(0.1)
+                        : AppColors.warning.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isAutoReconnecting 
+                          ? AppColors.info.withOpacity(0.3)
+                          : AppColors.warning.withOpacity(0.3)
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isAutoReconnecting ? Icons.sync : Icons.sync_problem,
+                          color: isAutoReconnecting ? AppColors.info : AppColors.warning,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isAutoReconnecting 
+                                  ? 'Auto-reconectando...'
+                                  : 'Auto-reconexión',
+                                style: TextStyle(
+                                  color: isAutoReconnecting ? AppColors.info : AppColors.warning,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                'Intentos: $reconnectionAttempts/2',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -360,10 +415,10 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
                   children: [
                     Expanded(
                       child: Obx(() => ElevatedButton.icon(
-                        onPressed: controller.isConnectingWifi.value 
+                        onPressed: (controller.isConnectingWifi.value || controller.isAutoReconnecting.value)
                           ? null 
-                          : (isConnected ? controller.changeWiFiNetwork : controller.scanWiFiNetworks),
-                        icon: controller.isConnectingWifi.value
+                          : controller.scanWiFiNetworks,
+                        icon: (controller.isConnectingWifi.value || controller.isAutoReconnecting.value)
                           ? const SizedBox(
                               width: 16,
                               height: 16,
@@ -371,9 +426,11 @@ class RfidSettingsView extends GetView<ConfiguracionController> {
                             )
                           : const Icon(Icons.wifi_find),
                         label: Text(
-                          controller.isConnectingWifi.value 
-                            ? 'Configurando...' 
-                            : (isConnected ? 'Cambiar WiFi' : 'Configurar WiFi'),
+                          controller.isAutoReconnecting.value
+                            ? 'Auto-reconectando...'
+                            : controller.isConnectingWifi.value 
+                              ? 'Configurando...' 
+                              : 'Configurar WiFi',
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,

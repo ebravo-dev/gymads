@@ -22,6 +22,11 @@ class ConfiguracionController extends GetxController {
   final RxString connectionStatusMessage = 'Verificando conexión...'.obs;
   final RxString esp32IpAddress = ''.obs;
   
+  // Variables para estado de auto-reconexión
+  final RxBool isAutoReconnecting = false.obs;
+  final RxInt reconnectionAttempts = 0.obs;
+  final RxBool autoReconnectEnabled = true.obs;
+  
   // Variables para Bluetooth
   final RxBool bluetoothEnabled = false.obs;
   final RxBool bluetoothConnected = false.obs;
@@ -276,6 +281,11 @@ class ConfiguracionController extends GetxController {
       if (status != null) {
         bool wifiConnected = status['wifi_connected'] ?? false;
         
+        // Actualizar estado de auto-reconexión
+        reconnectionAttempts.value = status['connection_attempts'] ?? 0;
+        autoReconnectEnabled.value = status['auto_reconnect_enabled'] ?? true;
+        isAutoReconnecting.value = status['is_auto_reconnecting'] ?? false;
+        
         if (wifiConnected) {
           String ipAddress = status['ip_address'] ?? '';
           if (ipAddress.isNotEmpty) {
@@ -293,8 +303,19 @@ class ConfiguracionController extends GetxController {
             );
           }
         } else {
-          connectionStatusMessage.value = 'ESP32 conectado pero sin WiFi - Configurar red';
-          _showWiFiConfigurationDialog();
+          // Mostrar estado de reconexión si está activa
+          if (reconnectionAttempts.value > 0 && autoReconnectEnabled.value) {
+            connectionStatusMessage.value = 'Auto-reconectando... (${reconnectionAttempts.value}/2)';
+          } else if (!autoReconnectEnabled.value && reconnectionAttempts.value >= 2) {
+            connectionStatusMessage.value = 'Falló auto-reconexión - Configurar red';
+          } else {
+            connectionStatusMessage.value = 'ESP32 conectado pero sin WiFi - Configurar red';
+          }
+          
+          // Solo mostrar dialog si no está en proceso de auto-reconexión
+          if (!isAutoReconnecting.value && autoReconnectEnabled.value) {
+            _showWiFiConfigurationDialog();
+          }
         }
       }
       
@@ -336,6 +357,18 @@ class ConfiguracionController extends GetxController {
         'Primero conecta con el ESP32 via Bluetooth',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Verificar si el ESP32 está en proceso de auto-reconexión
+    if (isAutoReconnecting.value) {
+      Get.snackbar(
+        'ESP32 ocupado',
+        'El ESP32 está en proceso de auto-reconexión. Espera un momento.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
         colorText: Colors.white,
       );
       return;
@@ -431,10 +464,10 @@ class ConfiguracionController extends GetxController {
           mainButton: TextButton(
             onPressed: () {
               Get.back(); // Cerrar snackbar
-              restartESP32WiFi(); // Reiniciar WiFi
+              scanWiFiNetworks(); // Intentar escanear nuevamente
             },
             child: const Text(
-              'Reiniciar WiFi',
+              'Reintentar',
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -906,114 +939,5 @@ class ConfiguracionController extends GetxController {
       'Configuración de aplicación próximamente',
       snackPosition: SnackPosition.BOTTOM,
     );
-  }
-  
-  // Reiniciar módulo WiFi del ESP32
-  Future<void> restartESP32WiFi() async {
-    if (!bluetoothConnected.value) {
-      Get.snackbar(
-        'Error',
-        'Primero conecta con el ESP32 via Bluetooth',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
-    
-    try {
-      isLoading.value = true;
-      connectionStatusMessage.value = 'Reiniciando módulo WiFi...';
-      
-      bool success = await BluetoothService.restartWiFiModule();
-      
-      if (success) {
-        connectionStatusMessage.value = 'Módulo WiFi reiniciado';
-        Get.snackbar(
-          'WiFi',
-          'Módulo WiFi reiniciado exitosamente.\nAhora puedes escanear redes nuevamente.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
-        );
-        
-        // Esperar un momento y luego escanear automáticamente
-        await Future.delayed(const Duration(seconds: 2));
-        scanWiFiNetworks();
-      } else {
-        connectionStatusMessage.value = 'Error al reiniciar WiFi';
-        Get.snackbar(
-          'Error',
-          'No se pudo reiniciar el módulo WiFi',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
-      
-    } catch (e) {
-      connectionStatusMessage.value = 'Error al reiniciar WiFi';
-      Get.snackbar(
-        'Error',
-        'Error al reiniciar módulo WiFi: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // Cambiar red WiFi - nuevo método que usa changeWiFiNetwork
-  Future<void> changeWiFiNetwork() async {
-    if (!bluetoothConnected.value) {
-      Get.snackbar(
-        'Error',
-        'Primero conecta con el ESP32 via Bluetooth',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-      connectionStatusMessage.value = 'Desconectando WiFi actual...';
-      
-      bool success = await BluetoothService.changeWiFiNetwork();
-      
-      if (success) {
-        connectionStatusMessage.value = 'Listo para nueva configuración WiFi';
-        
-        // Esperar un momento antes de escanear
-        await Future.delayed(const Duration(seconds: 2));
-        
-        // Proceder con el escaneo de redes
-        await scanWiFiNetworks();
-      } else {
-        connectionStatusMessage.value = 'Error al cambiar WiFi';
-        Get.snackbar(
-          'Error',
-          'No se pudo desconectar el WiFi actual',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
-    } catch (e) {
-      connectionStatusMessage.value = 'Error al cambiar WiFi';
-      Get.snackbar(
-        'Error',
-        'Error al cambiar WiFi: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      isLoading.value = false;
-    }
   }
 }

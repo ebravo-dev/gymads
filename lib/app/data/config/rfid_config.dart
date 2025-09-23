@@ -10,7 +10,6 @@ class RfidConfig {
   static const String _urlKey = 'esp32_api_url';
   static const String _staticIpKey = 'esp32_static_ip';
   static const String _networkPrefixKey = 'network_prefix';
-  static const String _ipDetectionKey = 'auto_ip_detection';
   
   // Variable estática para mantener la URL actual en memoria
   static String? _currentUrl;

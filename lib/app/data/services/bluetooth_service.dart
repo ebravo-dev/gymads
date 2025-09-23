@@ -13,6 +13,7 @@ class BluetoothService {
   static fbp.BluetoothCharacteristic? _writeCharacteristic;
   static StreamSubscription<List<int>>? _readSubscription;
   static final StreamController<String> _responseController = StreamController<String>.broadcast();
+  static Completer<Map<String, dynamic>?>? _responseCompleter;
   
   // Variables para manejo de mensajes fragmentados
   static String _fragmentBuffer = '';
@@ -325,6 +326,15 @@ class BluetoothService {
       // Intentar decodificar como JSON
       Map<String, dynamic> data = jsonDecode(receivedData);
       
+      // Si hay un completer esperando, resolver inmediatamente
+      if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+        _responseCompleter!.complete(data);
+        if (kDebugMode) {
+          print('Respuesta JSON completa enviada al completer');
+        }
+        return;
+      }
+      
       // Verificar si es un mensaje fragmentado
       if (data.containsKey('type')) {
         String type = data['type'];
@@ -374,6 +384,9 @@ class BluetoothService {
       }
       
       // Si no es fragmentado, procesar normalmente
+      if (kDebugMode) {
+        print('Agregando datos al stream controller: ${receivedData.length} chars');
+      }
       _responseController.add(receivedData);
       
     } catch (e) {
@@ -420,7 +433,26 @@ class BluetoothService {
     
     // Procesar el mensaje completo
     if (_fragmentBuffer.isNotEmpty) {
-      _responseController.add(_fragmentBuffer);
+      try {
+        // Intentar decodificar como JSON
+        Map<String, dynamic> data = jsonDecode(_fragmentBuffer);
+        
+        // Si hay un completer esperando, resolver inmediatamente
+        if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
+          _responseCompleter!.complete(data);
+          if (kDebugMode) {
+            print('Respuesta JSON fragmentada completa enviada al completer');
+          }
+        } else {
+          // Fallback al stream controller
+          _responseController.add(_fragmentBuffer);
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error al decodificar JSON fragmentado: $e');
+        }
+        _responseController.add(_fragmentBuffer);
+      }
     }
   }
   
@@ -517,79 +549,38 @@ class BluetoothService {
         }
         return null;
       }
+
+      if (kDebugMode) {
+        print('Iniciando espera de respuesta con timeout de ${timeout}s...');
+      }
+
+      // Crear un completer para esta respuesta
+      _responseCompleter = Completer<Map<String, dynamic>?>();
       
-      String buffer = '';
-      DateTime startTime = DateTime.now();
-      
-      // Usar el stream controller para recibir datos
-      await for (String receivedData in _responseController.stream.timeout(
-        Duration(seconds: timeout),
-        onTimeout: (sink) {
+      // Configurar timeout
+      Timer(Duration(seconds: timeout), () {
+        if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
           if (kDebugMode) {
             print('Timeout esperando respuesta del ESP32 (${timeout}s)');
           }
-          sink.close();
-        },
-      )) {
-        buffer += receivedData;
-        
-        if (kDebugMode) {
-          int elapsed = DateTime.now().difference(startTime).inSeconds;
-          print('Datos en buffer (${elapsed}s): ${buffer.length} chars');
+          _responseCompleter!.complete(null);
         }
-        
-        // Buscar JSON completo
-        int startIndex = buffer.indexOf('{');
-        if (startIndex != -1) {
-          int braceCount = 0;
-          int endIndex = -1;
-          
-          for (int i = startIndex; i < buffer.length; i++) {
-            if (buffer[i] == '{') braceCount++;
-            if (buffer[i] == '}') braceCount--;
-            
-            if (braceCount == 0) {
-              endIndex = i;
-              break;
-            }
-          }
-          
-          if (endIndex != -1) {
-            String jsonStr = buffer.substring(startIndex, endIndex + 1);
-            try {
-              Map<String, dynamic> response = jsonDecode(jsonStr);
-              
-              if (kDebugMode) {
-                print('JSON completo recibido: ${jsonStr.substring(0, min(100, jsonStr.length))}...');
-              }
-              
-              return response;
-            } catch (e) {
-              if (kDebugMode) {
-                print('Error al decodificar JSON: $e');
-                print('JSON problemático: ${jsonStr.substring(0, min(200, jsonStr.length))}...');
-              }
-              
-              // Limpiar el JSON problemático del buffer y continuar
-              buffer = buffer.substring(endIndex + 1);
-            }
-          }
-        }
-        
-        // Prevenir que el buffer crezca demasiado
-        if (buffer.length > 5000) {
-          if (kDebugMode) {
-            print('Buffer muy grande, limpiando...');
-          }
-          buffer = buffer.substring(buffer.length - 1000);
-        }
+      });
+      
+      // Esperar el resultado
+      Map<String, dynamic>? result = await _responseCompleter!.future;
+      _responseCompleter = null;
+      
+      if (result != null && kDebugMode) {
+        print('Respuesta procesada exitosamente: ${result['command'] ?? 'unknown command'}');
       }
       
-      return null;
+      return result;
     } catch (e) {
       if (kDebugMode) {
         print('Error al esperar respuesta: $e');
       }
+      _responseCompleter = null;
       return null;
     }
   }
@@ -722,40 +713,6 @@ class BluetoothService {
     }
   }
   
-  /// Cambiar red WiFi - desconecta la actual sin auto-reconexión
-  static Future<bool> changeWiFiNetwork() async {
-    try {
-      if (kDebugMode) {
-        print('Iniciando cambio de red WiFi...');
-      }
-      
-      var response = await sendCommand({
-        'command': 'change_wifi'
-      });
-      
-      if (response != null && response['status'] == 'success') {
-        if (kDebugMode) {
-          print('ESP32 listo para nueva configuración WiFi');
-        }
-        
-        // Limpiar IP actual ya que se desconectó
-        _currentESP32IP = null;
-        
-        return true;
-      }
-      
-      if (kDebugMode) {
-        print('Error en respuesta del ESP32 para cambio de WiFi: $response');
-      }
-      return false;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error al cambiar WiFi: $e');
-      }
-      return false;
-    }
-  }
-  
   /// Obtener IP actual del ESP32
   static Future<String?> getESP32IP() async {
     try {
@@ -816,27 +773,6 @@ class BluetoothService {
       }
       return null;
     }
-  }
-  
-  /// Reiniciar módulo WiFi del ESP32
-  static Future<bool> restartWiFiModule() async {
-    if (kDebugMode) {
-      print('Reiniciando módulo WiFi del ESP32...');
-    }
-    
-    var response = await sendCommand({'command': 'restart_wifi'}, timeout: 15);
-    
-    if (response != null && response['status'] == 'success') {
-      if (kDebugMode) {
-        print('Módulo WiFi reiniciado exitosamente');
-      }
-      return true;
-    }
-    
-    if (kDebugMode) {
-      print('Error al reiniciar módulo WiFi');
-    }
-    return false;
   }
   
   /// Obtener estado completo del ESP32
