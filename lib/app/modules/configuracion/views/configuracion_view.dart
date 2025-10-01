@@ -140,8 +140,8 @@ class ConfiguracionView extends GetView<ConfiguracionController> {
           title: 'Lector RFID',
           subtitle: controller.rfidConnectionStatus.value 
             ? 'Conectado y funcionando'
-            : 'Configurar conexión del lector',
-          onTap: () => controller.openRfidSettings(),
+            : 'IP Fija: 192.168.1.100',
+          onTap: () => controller.testRfidConnection(),
           trailing: _buildStatusIndicator(controller.rfidConnectionStatus.value),
         ),
         

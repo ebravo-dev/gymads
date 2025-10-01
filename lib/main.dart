@@ -33,14 +33,23 @@ void main() async {
     await SupabaseService.testDatabaseConnection();
     print('Conexión a la base de datos verificada');
     
+    // Cargar configuración de RFID primero
+    print('⚙️ Intentando cargar configuración RFID...');
+    await RfidConfig.loadConfig();
+    print('🌐 URL RFID configurada: ${RfidConfig.baseUrl}');
+    
     // Intentar conectar con el lector RFID al inicio
+    print('🔄 Intentando conectar al ESP32...');
     bool rfidConnected = await RfidReaderService.startReading();
     if (rfidConnected) {
-      print('Lector RFID inicializado correctamente');
+      print('✅ Lector RFID conectado correctamente');
+      print('📡 IP del ESP32: ${RfidConfig.getCurrentIP() ?? RfidConfig.DEFAULT_ESP32_IP}');
     } else {
-      print('Advertencia: No se pudo conectar con el lector RFID');
-      print('La aplicación funcionará en modo de simulación para lectura RFID');
-      print('URL RFID configurada: ${RfidConfig.baseUrl}');
+      print('⚠️  Advertencia: No se pudo conectar con el lector RFID');
+      print('🔧 Verificar que el ESP32 esté encendido en IP: ${RfidConfig.DEFAULT_ESP32_IP}');
+      print('🔧 Verificar que ambos dispositivos estén en la misma red WiFi');
+      print('🔧 Verificar que el firewall no esté bloqueando la conexión');
+      print('📱 La aplicación funcionará en modo de simulación para lectura RFID');
     }
   } catch (e) {
     print('Error en inicialización: $e');

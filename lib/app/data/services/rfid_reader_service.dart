@@ -10,7 +10,7 @@ class RfidReaderService {
       // Verificar si hay configuración disponible
       if (!RfidConfig.isConfigured) {
         if (kDebugMode) {
-          print('ESP32 no configurado - se requiere configuración via Bluetooth');
+          print('ESP32 no configurado - usando IP estática predeterminada');
         }
         return null;
       }
@@ -29,7 +29,7 @@ class RfidReaderService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/uid'),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 8));
       
       if (response.statusCode == 200) {
         final responseText = response.body.trim();
@@ -51,41 +51,52 @@ class RfidReaderService {
     } catch (e) {
       if (kDebugMode) {
         print('Error al verificar tarjeta: $e');
-        print('Asegúrate de que el ESP32 esté encendido y configurado via Bluetooth');
+        print('Verifique que el ESP32 esté encendido en la IP: ${RfidConfig.DEFAULT_ESP32_IP}');
       }
       return null;
     }
   }
   
-  // Método para iniciar la lectura (ya no necesario con el nuevo enfoque, pero mantenido para compatibilidad)
+  // Método para iniciar la lectura (verificación de conectividad del ESP32)
   static Future<bool> startReading() async {
     try {
-      // Verificar si hay configuración disponible
-      if (!RfidConfig.isConfigured) {
-        if (kDebugMode) {
-          print('ESP32 no configurado - se requiere configuración via Bluetooth');
-        }
-        return false;
-      }
+      // Cargar configuración primero
+      await RfidConfig.loadConfig();
       
       final baseUrl = RfidConfig.baseUrl;
       if (baseUrl == null) {
         if (kDebugMode) {
-          print('No hay URL configurada para el ESP32');
+          print('No hay URL configurada para el ESP32, usando IP por defecto: ${RfidConfig.DEFAULT_ESP32_IP}');
         }
         return false;
       }
       
-      // Simplemente verificamos si podemos conectarnos al ESP32
+      if (kDebugMode) {
+        print('Intentando conectar con ESP32 en: $baseUrl/status');
+      }
+      
+      // Verificamos si podemos conectarnos al ESP32
       final response = await http.get(
         Uri.parse('$baseUrl/status'),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 10));
       
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('ESP32 conectado exitosamente');
+          print('Respuesta del ESP32: ${response.body}');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('ESP32 respondió con código: ${response.statusCode}');
+        }
+        return false;
+      }
     } catch (e) {
       if (kDebugMode) {
         print('Error al comunicarse con el lector RFID: $e');
-        print('Asegúrate de que el ESP32 esté configurado via Bluetooth');
+        print('Verificar que el ESP32 esté encendido en la IP: ${RfidConfig.DEFAULT_ESP32_IP}');
+        print('Red WiFi: Asegúrese de que ambos dispositivos estén en la misma red');
       }
       return false;
     }
@@ -134,7 +145,7 @@ class RfidReaderService {
         Uri.parse('$baseUrl/membership'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         if (kDebugMode) {
