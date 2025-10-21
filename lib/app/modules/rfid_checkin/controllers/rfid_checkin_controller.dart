@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/rfid_reader_service.dart';
@@ -47,6 +48,9 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
     
     // Inicializar servicio de caché de imágenes
     _initializeImageCache();
+    
+    // Precargar imágenes de usuarios activos
+    _precacheActiveUserImages();
     
     // Inicializar el controlador de animación con configuración óptima para visibilidad
     animationController = AnimationController(
@@ -148,6 +152,64 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       }
     }
   }
+
+  // Precargar imágenes de usuarios activos en segundo plano
+  Future<void> _precacheActiveUserImages() async {
+    try {
+      if (kDebugMode) {
+        print('🔄 Iniciando precarga de imágenes de usuarios activos (RFID)...');
+      }
+
+      // Obtener usuarios activos
+      final activeUsers = await userRepository.getAllUsers();
+      
+      if (activeUsers.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ No hay usuarios para precargar');
+        }
+        return;
+      }
+
+      // Filtrar solo usuarios activos con foto
+      final usersToCache = activeUsers.where((user) {
+        return user.isActive && 
+               user.photoUrl != null && 
+               user.photoUrl!.isNotEmpty;
+      }).toList();
+
+      if (kDebugMode) {
+        print('📥 Precargando ${usersToCache.length} imágenes de usuarios activos...');
+      }
+
+      // Precargar imágenes en lotes pequeños
+      int cached = 0;
+      for (final user in usersToCache) {
+        try {
+          await CachedNetworkImage.evictFromCache(user.photoUrl!);
+          await precacheImage(
+            CachedNetworkImageProvider(user.photoUrl!),
+            Get.context!,
+          );
+          cached++;
+          
+          // Pausa breve entre cada imagen
+          await Future.delayed(const Duration(milliseconds: 50));
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Error precargando imagen de ${user.name}: $e');
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print('✅ Precargadas $cached/${usersToCache.length} imágenes de usuarios (RFID)');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error en precarga de imágenes: $e');
+      }
+    }
+  }
   
   @override
   void onClose() {
@@ -219,11 +281,6 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         // Mostrar diálogo de bienvenida
         isShowingDialog.value = true;
         
-        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
-        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-          _preloadImageInBackground(user.id!, user.photoUrl!);
-        }
-        
         // Cerrar la pantalla de bienvenida después de 3 segundos
         Future.delayed(const Duration(seconds: 3), () {
           isShowingDialog.value = false;
@@ -264,12 +321,7 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         
         // Mostrar diálogo de bienvenida
         isShowingDialog.value = true;
-        
-        // Precargar imagen en segundo plano DESPUÉS de mostrar el diálogo
-        if (user.id != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-          _preloadImageInBackground(user.id!, user.photoUrl!);
-        }
-        
+                
         // Cerrar la pantalla de bienvenida después de 3 segundos
         Future.delayed(const Duration(seconds: 3), () {
           isShowingDialog.value = false;
@@ -353,22 +405,6 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
       } catch (e) {
         if (kDebugMode) {
           print('❌ [RFID] Error enviando estado al ESP32: $e');
-        }
-      }
-    });
-  }
-
-  // Precargar imagen en segundo plano para no bloquear la UI
-  void _preloadImageInBackground(String userId, String photoUrl) {
-    Future(() async {
-      try {
-        await ImageCacheService.instance.getUserImage(userId, photoUrl, isThumbnail: false);
-        if (kDebugMode) {
-          print('✅ Imagen precargada exitosamente en segundo plano para usuario: $userId');
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('❌ Error precargando imagen en segundo plano: $e');
         }
       }
     });

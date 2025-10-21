@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:gymads/core/theme/app_colors.dart';
+import '../../../core/widgets/cached_user_image.dart';
 
 class WelcomeScreenWidget extends StatefulWidget {
   final String userName;
@@ -193,23 +194,12 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                                     ],
                                   ),
                                   child: widget.userPhotoUrl.isNotEmpty
-                                      ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(photoSize/2 * value),
-                                          child: Image.network(
-                                            widget.userPhotoUrl,
-                                            width: photoSize * value,
-                                            height: photoSize * value,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (ctx, error, _) => CircleAvatar(
-                                              radius: photoSize/2 * value,
-                                              backgroundColor: AppColors.primary,
-                                              child: Icon(
-                                                Icons.person, 
-                                                size: photoSize/3 * value,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
+                                      ? CachedUserImage(
+                                          imageUrl: widget.userPhotoUrl,
+                                          userName: widget.userName,
+                                          size: photoSize * value,
+                                          isCircular: true,
+                                          fit: BoxFit.cover,
                                         )
                                       : CircleAvatar(
                                           radius: photoSize/2 * value,

@@ -9,6 +9,8 @@ import '../../../data/services/access_log_service.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../core/utils/auth_utils.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 
 class ChecadorController extends GetxController {
   final UserRepository userRepository;
@@ -37,6 +39,7 @@ class ChecadorController extends GetxController {
   void onInit() {
     super.onInit();
     _initializeImageCache();
+    _precacheActiveUserImages(); // Precargar imágenes al abrir la vista
   }
   
   // Inicializar servicio de caché de imágenes
@@ -49,6 +52,64 @@ class ChecadorController extends GetxController {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error inicializando caché de imágenes: $e');
+      }
+    }
+  }
+
+  // Precargar imágenes de usuarios activos en segundo plano
+  Future<void> _precacheActiveUserImages() async {
+    try {
+      if (kDebugMode) {
+        print('🔄 Iniciando precarga de imágenes de usuarios activos...');
+      }
+
+      // Obtener usuarios activos (con membresía vigente)
+      final activeUsers = await userRepository.getAllUsers();
+      
+      if (activeUsers.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ No hay usuarios para precargar');
+        }
+        return;
+      }
+
+      // Filtrar solo usuarios activos con foto
+      final usersToCache = activeUsers.where((user) {
+        return user.isActive && 
+               user.photoUrl != null && 
+               user.photoUrl!.isNotEmpty;
+      }).toList();
+
+      if (kDebugMode) {
+        print('📥 Precargando ${usersToCache.length} imágenes de usuarios activos...');
+      }
+
+      // Precargar imágenes en lotes pequeños para no saturar
+      int cached = 0;
+      for (final user in usersToCache) {
+        try {
+          await CachedNetworkImage.evictFromCache(user.photoUrl!);
+          await precacheImage(
+            CachedNetworkImageProvider(user.photoUrl!),
+            Get.context!,
+          );
+          cached++;
+          
+          // Pausa breve entre cada imagen para no bloquear UI
+          await Future.delayed(const Duration(milliseconds: 50));
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Error precargando imagen de ${user.name}: $e');
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print('✅ Precargadas $cached/${usersToCache.length} imágenes de usuarios');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error en precarga de imágenes: $e');
       }
     }
   }
