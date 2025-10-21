@@ -12,10 +12,8 @@ class AccessLogsController extends GetxController {
   
   // Estadísticas
   final totalEntries = 0.obs;
-  final totalExits = 0.obs;
   final totalQrAccesses = 0.obs;
   final totalRfidAccesses = 0.obs;
-  final usersCurrentlyInside = 0.obs;
 
   @override
   void onInit() {
@@ -86,29 +84,8 @@ class AccessLogsController extends GetxController {
     final logs = accessLogs;
     
     totalEntries.value = logs.where((log) => log.accessType == 'entrada').length;
-    totalExits.value = logs.where((log) => log.accessType == 'salida').length;
     totalQrAccesses.value = logs.where((log) => log.method == 'qr').length;
     totalRfidAccesses.value = logs.where((log) => log.method == 'rfid').length;
-    
-    // Calcular usuarios actualmente dentro
-    calculateUsersInside();
-  }
-
-  /// Calcular usuarios actualmente dentro del gimnasio
-  Future<void> calculateUsersInside() async {
-    try {
-      final users = await AccessLogService.getUsersCurrentlyInside();
-      usersCurrentlyInside.value = users?.length ?? 0;
-      
-      if (kDebugMode) {
-        print('👥 Usuarios actualmente dentro: ${usersCurrentlyInside.value}');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error calculando usuarios dentro: $e');
-      }
-      usersCurrentlyInside.value = 0;
-    }
   }
 
   /// Refrescar datos
@@ -120,11 +97,9 @@ class AccessLogsController extends GetxController {
   Map<String, String> getFormattedStats() {
     return {
       'totalEntries': totalEntries.value.toString(),
-      'totalExits': totalExits.value.toString(),
       'totalQr': totalQrAccesses.value.toString(),
       'totalRfid': totalRfidAccesses.value.toString(),
-      'usersInside': usersCurrentlyInside.value.toString(),
-      'totalLogs': accessLogs.length.toString(),
+      'total': accessLogs.length.toString(),
     };
   }
 }

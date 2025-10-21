@@ -8,7 +8,6 @@ import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/access_log_service.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../core/utils/auth_utils.dart';
-import '../../shared/controllers/goodbye_controller.dart';
 import 'package:flutter/foundation.dart';
 
 class ChecadorController extends GetxController {
@@ -24,9 +23,8 @@ class ChecadorController extends GetxController {
   final isLoading = false.obs;
   final errorMessage = ''.obs;
   
-  // Nuevas variables para entradas y salidas
-  final accessType = ''.obs; // 'entrada' o 'salida'
-  final isUserInside = false.obs; // Para saber si el usuario está adentro
+  // Variables para entradas
+  final accessType = ''.obs; // Siempre 'entrada'
 
   // Estados de membresía para control de LEDs (igual que en RFID)
   static const String membershipActive = "ACTIVE";
@@ -185,35 +183,27 @@ class ChecadorController extends GetxController {
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
 
-        // Determinar tipo de acceso (entrada o salida) basado en el último registro
-        final nextAccessType = await AccessLogService.determineAccessType(user.id!);
+        // Siempre es entrada (sin salidas)
+        const nextAccessType = 'entrada';
         accessType.value = nextAccessType;
         
-        // Verificar si el usuario está actualmente adentro
-        isUserInside.value = await AccessLogService.isUserInside(user.id!);
-
-        // Reproducir sonido solo para ENTRADAS, no para salidas
-        if (nextAccessType == 'entrada') {
-          AudioService.playWelcomeSound();
-          if (kDebugMode) {
-            print('🔊 Reproduciendo sonido de bienvenida para entrada');
-          }
-          
-          // Mostrar el diálogo de bienvenida para entradas
-          isShowingDialog.value = true;
-          
-          // Cerrar el diálogo después de 4 segundos
-          Future.delayed(const Duration(seconds: 4), () {
-            isShowingDialog.value = false;
-          });
-        } else {
-          if (kDebugMode) {
-            print('🔇 Sin sonido para salida - mostrando pantalla de despedida');
-          }
-          
-          // Mostrar pantalla de despedida para salidas
-          GoodbyeController.showGoodbye();
+        if (kDebugMode) {
+          print('🚪 Registrando entrada QR para ${user.name}');
         }
+
+        // Reproducir sonido y mostrar bienvenida
+        AudioService.playWelcomeSound();
+        if (kDebugMode) {
+          print('🔊 Reproduciendo sonido de bienvenida');
+        }
+        
+        // Mostrar el diálogo de bienvenida
+        isShowingDialog.value = true;
+        
+        // Cerrar el diálogo después de 4 segundos
+        Future.delayed(const Duration(seconds: 4), () {
+          isShowingDialog.value = false;
+        });
 
         // Registrar el acceso en Supabase en segundo plano
         if (user.id != null) {
