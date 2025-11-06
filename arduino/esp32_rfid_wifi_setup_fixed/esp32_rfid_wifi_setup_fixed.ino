@@ -2,14 +2,19 @@
  * GYMADS - ESP32 RFID Reader con WiFi
  * LECTOR RFID CON CONEXIÓN WIFI AUTOMÁTICA PARA GYMADS
  * 
- * Versión 4.0.1 - Solo WiFi (Sin Bluetooth)
+ * Versión 4.0.2 - Solo WiFi (Sin Bluetooth)
  * Dispositivo: ESP32
  * 
  * Función: Leer tarjetas RFID y enviar datos via HTTP
  * Sistema simplificado para lectura de tarjetas RFID con conectividad WiFi
- * Versión: 4.0.1 - WiFi automático sin Bluetooth + IP estática mejorada
+ * Versión: 4.0.2 - WiFi automático sin Bluetooth + IP estática mejorada + Anti-rebote RFID
  * 
  * Credenciales WiFi hardcodeadas para máxima simplicidad
+ * 
+ * MEJORAS v4.0.2:
+ * - Intervalo de tiempo entre lecturas de la misma tarjeta (3 segundos)
+ * - Evita lecturas duplicadas cuando se deja la tarjeta mucho tiempo
+ * - Sistema de anti-rebote (debounce) para escaneos RFID
  */
 
 #include <SPI.h>
@@ -23,6 +28,13 @@
 const char* WIFI_SSID = "Totalplay-2.4G-2368";
 const char* WIFI_PASSWORD = "N5q6aS55GGjDsYt7";
 
+// =================== CONFIGURACIÓN DE ESCANEO RFID ===================
+// Intervalo mínimo entre lecturas de la misma tarjeta (en milisegundos)
+// Aumenta este valor si necesitas más tiempo entre lecturas
+// Por defecto: 3000 ms (3 segundos)
+const unsigned long CARD_READ_INTERVAL_MS = 3000;
+
+// =================== CONFIGURACIÓN DE IP ESTÁTICA ===================
 // Configuración de IP estática
 bool useStaticIP = true;  // Establecer a false para usar DHCP
 IPAddress staticIP(192, 168, 100, 101);  // IP estática que quieres asignar al ESP32
@@ -62,6 +74,10 @@ bool staticIPConfigured = false; // Indica si se aplicó correctamente la IP est
 unsigned long ledStateTimeout = 0;
 const unsigned long LED_TIMEOUT = 3000;  // LEDs de estado se apagan después de 3 segundos
 
+// Variables para control de escaneo RFID (evitar lecturas duplicadas)
+unsigned long lastCardReadTime = 0;
+String lastScannedCard = "";
+
 // Variables para reintento de conexión WiFi
 const unsigned long WIFI_CHECK_INTERVAL = 10000; // 10 segundos
 const int MAX_CONNECTION_RETRIES = 3; // Número máximo de reintentos antes de recurrir a DHCP
@@ -87,8 +103,8 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("=== GYMADS - RFID ESP32 v4.0.1 ===");
-  Serial.println("Versión con soporte mejorado para IP estática");
+  Serial.println("=== GYMADS - RFID ESP32 v4.0.2 ===");
+  Serial.println("Versión con soporte mejorado para IP estática y anti-rebote RFID");
 
   // Configurar LEDs
   pinMode(LED_WIFI, OUTPUT);
@@ -142,13 +158,31 @@ void loop() {
     // Verificar si hay una nueva tarjeta presente
     if (rfidReader.PICC_IsNewCardPresent() && rfidReader.PICC_ReadCardSerial()) {
       String cardUid = getCardUID();
+      unsigned long currentTime = millis();
 
-      if (cardUid != lastUid) {
+      // Verificar si ha pasado suficiente tiempo desde la última lectura
+      // O si es una tarjeta diferente
+      bool canRead = false;
+      
+      if (cardUid != lastScannedCard) {
+        // Es una tarjeta diferente, siempre permitir lectura
+        canRead = true;
+        lastScannedCard = cardUid;
+        lastCardReadTime = currentTime;
+      } else if (currentTime - lastCardReadTime >= CARD_READ_INTERVAL_MS) {
+        // Es la misma tarjeta pero ha pasado el intervalo mínimo
+        canRead = true;
+        lastCardReadTime = currentTime;
+      }
+
+      // Solo actualizar lastUid si se permite la lectura
+      if (canRead && cardUid != lastUid) {
         lastUid = cardUid;
         Serial.println("Tarjeta detectada: " + cardUid);
-
-        // Mantener la tarjeta disponible hasta que la aplicación la lea
-        // No la reseteamos inmediatamente
+        Serial.println("Tiempo desde última lectura: " + String(currentTime - lastCardReadTime) + " ms");
+      } else if (!canRead) {
+        // Opcional: mensaje de debug para saber que se bloqueó una lectura duplicada
+        // Serial.println("Lectura bloqueada - intervalo muy corto");
       }
 
       delay(100); // Pequeño delay para evitar lecturas múltiples
@@ -362,7 +396,7 @@ void handleDiscover() {
   DynamicJsonDocument doc(512);
   doc["device_id"] = "ESP32_RFID_GYMADS";
   doc["device_type"] = "RFID_READER";
-  doc["version"] = "4.0.1";
+  doc["version"] = "4.0.2";
   doc["manufacturer"] = "GYMADS";
   doc["wifi_connected"] = wifiConnected;
   doc["status"] = "ONLINE";
