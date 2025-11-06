@@ -14,7 +14,7 @@ class AccessLogsView extends GetView<AccessLogsController> {
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Entradas y Salidas',
+          'Entradas',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -61,13 +61,8 @@ class AccessLogsView extends GetView<AccessLogsController> {
                   AppColors.success,
                 ),
                 _buildStatCard(
-                  '❌ Salidas',
-                  stats['totalExits'] ?? '0',
-                  AppColors.error,
-                ),
-                _buildStatCard(
-                  '👥 Dentro',
-                  stats['usersInside'] ?? '0',
+                  '📊 Total',
+                  stats['total'] ?? '0',
                   AppColors.accent,
                 ),
               ],

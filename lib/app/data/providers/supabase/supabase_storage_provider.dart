@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../config/supabase_config.dart';
 import '../../services/supabase_service.dart';
+import '../../../core/services/image_compression_service.dart';
 
 /// Proveedor para operaciones de almacenamiento de archivos en Supabase
 /// 
@@ -56,13 +57,58 @@ class SupabaseStorageProvider {
     }
   }
   
-  /// Sube una foto de usuario a Supabase
+  /// Sube una foto de usuario a Supabase con compresión automática
   /// 
-  /// @param photoFile Archivo de imagen a subir
+  /// @param photoFile Archivo de imagen a subir (será comprimido automáticamente)
   /// @param userId ID del usuario para identificar la foto
   /// @return URL pública de la foto o null si hubo error
   Future<String?> uploadUserPhoto(File photoFile, String userId) async {
-    return uploadFile(photoFile, 'users', fileName: '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    try {
+      if (kDebugMode && SupabaseConfig.debugMode) {
+        print('🖼️  Comprimiendo y optimizando imagen para usuario $userId...');
+      }
+
+      // Comprimir y optimizar la imagen antes de subir
+      final optimizedFile = await ImageCompressionService.compressAndOptimize(
+        imageFile: photoFile,
+        maxSize: 800, // Tamaño máximo para perfiles
+        quality: 85,  // Calidad óptima
+      );
+
+      if (kDebugMode && SupabaseConfig.debugMode) {
+        final originalSize = await photoFile.length();
+        final optimizedSize = await optimizedFile.length();
+        final reduction = ((1 - optimizedSize / originalSize) * 100).toStringAsFixed(1);
+        print('📊 Reducción de tamaño: $reduction%');
+        print('   Original: ${(originalSize / 1024).toStringAsFixed(2)} KB');
+        print('   Optimizada: ${(optimizedSize / 1024).toStringAsFixed(2)} KB');
+      }
+
+      // Subir la imagen optimizada
+      final result = await uploadFile(
+        optimizedFile,
+        'users',
+        fileName: '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+
+      // Limpiar el archivo temporal optimizado
+      try {
+        if (await optimizedFile.exists()) {
+          await optimizedFile.delete();
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️  No se pudo eliminar archivo temporal: $e');
+        }
+      }
+
+      return result;
+    } catch (e) {
+      if (kDebugMode && SupabaseConfig.debugMode) {
+        print('❌ Error al procesar y subir foto de usuario: $e');
+      }
+      return null;
+    }
   }
 
   /// Elimina un archivo del bucket de Supabase

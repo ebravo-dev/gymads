@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/core/theme/app_colors.dart';
+import 'package:gymads/app/core/widgets/cached_user_image.dart';
 import 'package:intl/intl.dart';
 
 class ClienteCard extends StatelessWidget {
@@ -156,7 +157,7 @@ class ClienteCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Avatar del cliente
+                      // Avatar del cliente con caché optimizado
                       Hero(
                         tag: 'avatar_${cliente.id}',
                         child: Container(
@@ -167,24 +168,10 @@ class ClienteCard extends StatelessWidget {
                               width: 2,
                             ),
                           ),
-                          child: CircleAvatar(
-                            radius: 30, // Reducido para acomodar el borde
-                            backgroundColor: primaryColor.withOpacity(0.1),
-                            backgroundImage: cliente.photoUrl != null && cliente.photoUrl!.isNotEmpty
-                                ? NetworkImage(cliente.photoUrl!)
-                                : null,
-                            child: cliente.photoUrl == null || cliente.photoUrl!.isEmpty
-                                ? Text(
-                                    cliente.name.isNotEmpty
-                                        ? cliente.name[0].toUpperCase()
-                                        : '?',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: primaryColor,
-                                    ),
-                                  )
-                                : null,
+                          child: UserThumbnail(
+                            imageUrl: cliente.photoUrl,
+                            userName: cliente.name,
+                            size: 60,
                           ),
                         ),
                       ),

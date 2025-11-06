@@ -8,8 +8,9 @@ import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/access_log_service.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../core/utils/auth_utils.dart';
-import '../../shared/controllers/goodbye_controller.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 
 class ChecadorController extends GetxController {
   final UserRepository userRepository;
@@ -24,9 +25,8 @@ class ChecadorController extends GetxController {
   final isLoading = false.obs;
   final errorMessage = ''.obs;
   
-  // Nuevas variables para entradas y salidas
-  final accessType = ''.obs; // 'entrada' o 'salida'
-  final isUserInside = false.obs; // Para saber si el usuario está adentro
+  // Variables para entradas
+  final accessType = ''.obs; // Siempre 'entrada'
 
   // Estados de membresía para control de LEDs (igual que en RFID)
   static const String membershipActive = "ACTIVE";
@@ -39,6 +39,7 @@ class ChecadorController extends GetxController {
   void onInit() {
     super.onInit();
     _initializeImageCache();
+    _precacheActiveUserImages(); // Precargar imágenes al abrir la vista
   }
   
   // Inicializar servicio de caché de imágenes
@@ -51,6 +52,64 @@ class ChecadorController extends GetxController {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error inicializando caché de imágenes: $e');
+      }
+    }
+  }
+
+  // Precargar imágenes de usuarios activos en segundo plano
+  Future<void> _precacheActiveUserImages() async {
+    try {
+      if (kDebugMode) {
+        print('🔄 Iniciando precarga de imágenes de usuarios activos...');
+      }
+
+      // Obtener usuarios activos (con membresía vigente)
+      final activeUsers = await userRepository.getAllUsers();
+      
+      if (activeUsers.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ No hay usuarios para precargar');
+        }
+        return;
+      }
+
+      // Filtrar solo usuarios activos con foto
+      final usersToCache = activeUsers.where((user) {
+        return user.isActive && 
+               user.photoUrl != null && 
+               user.photoUrl!.isNotEmpty;
+      }).toList();
+
+      if (kDebugMode) {
+        print('📥 Precargando ${usersToCache.length} imágenes de usuarios activos...');
+      }
+
+      // Precargar imágenes en lotes pequeños para no saturar
+      int cached = 0;
+      for (final user in usersToCache) {
+        try {
+          await CachedNetworkImage.evictFromCache(user.photoUrl!);
+          await precacheImage(
+            CachedNetworkImageProvider(user.photoUrl!),
+            Get.context!,
+          );
+          cached++;
+          
+          // Pausa breve entre cada imagen para no bloquear UI
+          await Future.delayed(const Duration(milliseconds: 50));
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Error precargando imagen de ${user.name}: $e');
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print('✅ Precargadas $cached/${usersToCache.length} imágenes de usuarios');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error en precarga de imágenes: $e');
       }
     }
   }
@@ -185,35 +244,27 @@ class ChecadorController extends GetxController {
         userPhotoUrl.value = user.photoUrl ?? '';
         membershipType.value = user.membershipType;
 
-        // Determinar tipo de acceso (entrada o salida) basado en el último registro
-        final nextAccessType = await AccessLogService.determineAccessType(user.id!);
+        // Siempre es entrada (sin salidas)
+        const nextAccessType = 'entrada';
         accessType.value = nextAccessType;
         
-        // Verificar si el usuario está actualmente adentro
-        isUserInside.value = await AccessLogService.isUserInside(user.id!);
-
-        // Reproducir sonido solo para ENTRADAS, no para salidas
-        if (nextAccessType == 'entrada') {
-          AudioService.playWelcomeSound();
-          if (kDebugMode) {
-            print('🔊 Reproduciendo sonido de bienvenida para entrada');
-          }
-          
-          // Mostrar el diálogo de bienvenida para entradas
-          isShowingDialog.value = true;
-          
-          // Cerrar el diálogo después de 4 segundos
-          Future.delayed(const Duration(seconds: 4), () {
-            isShowingDialog.value = false;
-          });
-        } else {
-          if (kDebugMode) {
-            print('🔇 Sin sonido para salida - mostrando pantalla de despedida');
-          }
-          
-          // Mostrar pantalla de despedida para salidas
-          GoodbyeController.showGoodbye();
+        if (kDebugMode) {
+          print('🚪 Registrando entrada QR para ${user.name}');
         }
+
+        // Reproducir sonido y mostrar bienvenida
+        AudioService.playWelcomeSound();
+        if (kDebugMode) {
+          print('🔊 Reproduciendo sonido de bienvenida');
+        }
+        
+        // Mostrar el diálogo de bienvenida
+        isShowingDialog.value = true;
+        
+        // Cerrar el diálogo después de 4 segundos
+        Future.delayed(const Duration(seconds: 4), () {
+          isShowingDialog.value = false;
+        });
 
         // Registrar el acceso en Supabase en segundo plano
         if (user.id != null) {

@@ -1,15 +1,20 @@
 /*
  * GYMADS - ESP32 RFID Reader con WiFi
- * LECTOR RFID CON CONEXI?N WIFI AUTOM?TICA PARA GYMADS
+ * LECTOR RFID CON CONEXIÓN WIFI AUTOMÁTICA PARA GYMADS
  * 
- * Versi?n 4.0 - Solo WiFi (Sin Bluetooth)
+ * Versión 4.0.2 - Solo WiFi (Sin Bluetooth)
  * Dispositivo: ESP32
  * 
- * Funci?n: Leer tarjetas RFID y enviar datos via HTTP
+ * Función: Leer tarjetas RFID y enviar datos via HTTP
  * Sistema simplificado para lectura de tarjetas RFID con conectividad WiFi
- * Versi?n: 4.0 - WiFi autom?tico sin Bluetooth
+ * Versión: 4.0.2 - WiFi automático sin Bluetooth + IP estática mejorada + Anti-rebote RFID
  * 
- * Credenciales WiFi hardcodeadas para m?xima simplicidad
+ * Credenciales WiFi hardcodeadas para máxima simplicidad
+ * 
+ * MEJORAS v4.0.2:
+ * - Intervalo de tiempo entre lecturas de la misma tarjeta (3 segundos)
+ * - Evita lecturas duplicadas cuando se deja la tarjeta mucho tiempo
+ * - Sistema de anti-rebote (debounce) para escaneos RFID
  */
 
 #include <SPI.h>
@@ -18,30 +23,37 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 
-// =================== CONFIGURACI?N WIFI ===================
+// =================== CONFIGURACIÓN WIFI ===================
 // TODO: Cambiar estas credenciales por las de tu red WiFi
-const char* WIFI_SSID = "TD Campus_C";
-const char* WIFI_PASSWORD = "1Gestudio";
+const char* WIFI_SSID = "Totalplay-2.4G-2368";
+const char* WIFI_PASSWORD = "N5q6aS55GGjDsYt7";
 
-// Configuraci?n de IP est?tica
+// =================== CONFIGURACIÓN DE ESCANEO RFID ===================
+// Intervalo mínimo entre lecturas de la misma tarjeta (en milisegundos)
+// Aumenta este valor si necesitas más tiempo entre lecturas
+// Por defecto: 3000 ms (3 segundos)
+const unsigned long CARD_READ_INTERVAL_MS = 3000;
+
+// =================== CONFIGURACIÓN DE IP ESTÁTICA ===================
+// Configuración de IP estática
 bool useStaticIP = true;  // Establecer a false para usar DHCP
-IPAddress staticIP(192, 168, 1, 100);  // IP est?tica que quieres asignar al ESP32
-IPAddress gateway(192, 168, 1, 1);     // IP del router (puerta de enlace)
-IPAddress subnet(255, 255, 255, 0);    // M?scara de subred
+IPAddress staticIP(192, 168, 100, 101);  // IP estática que quieres asignar al ESP32
+IPAddress gateway(192, 168, 100, 1);     // IP del router (puerta de enlace)
+IPAddress subnet(255, 255, 255, 0);    // Máscara de subred
 IPAddress dns(8, 8, 8, 8);             // Servidor DNS (Google)
 
 // =================== PINES DEL HARDWARE ===================
 // Pines del lector RFID
 #define RFID_SS_PIN   5
-#define RFID_RST_PIN  21
+#define RFID_RST_PIN  21   // Confirma que este pin es correcto para tu hardware
 
 // Pines de LEDs indicadores
-#define LED_WIFI      2   // LED integrado del ESP32
-#define LED_VERDE     4   // Membres?a activa
-#define LED_AMARILLO  15  // Membres?a por vencer
-#define LED_ROJO      22  // Membres?a vencida/no encontrada
+#define LED_WIFI      2    // LED integrado del ESP32
+#define LED_VERDE     4    // Membresía activa
+#define LED_AMARILLO  15   // Membresía por vencer
+#define LED_ROJO      22   // Membresía vencida/no encontrada
 
-// =================== ESTADOS DE MEMBRES?A ===================
+// =================== ESTADOS DE MEMBRESÍA ===================
 #define MEMBERSHIP_ACTIVE      "active"
 #define MEMBERSHIP_EXPIRING    "expiring"
 #define MEMBERSHIP_EXPIRED     "expired"
@@ -56,14 +68,24 @@ WebServer server(80);
 bool wifiConnected = false;
 String lastUid = "NO_CARD";
 String networkType = "none";  // Tipo de red: "static", "dhcp", "none"
+bool staticIPConfigured = false; // Indica si se aplicó correctamente la IP estática
 
 // Variables para control de tiempos de LEDs
 unsigned long ledStateTimeout = 0;
-const unsigned long LED_TIMEOUT = 3000;  // LEDs de estado se apagan despu?s de 3 segundos
+const unsigned long LED_TIMEOUT = 3000;  // LEDs de estado se apagan después de 3 segundos
+
+// Variables para control de escaneo RFID (evitar lecturas duplicadas)
+unsigned long lastCardReadTime = 0;
+String lastScannedCard = "";
+
+// Variables para reintento de conexión WiFi
+const unsigned long WIFI_CHECK_INTERVAL = 10000; // 10 segundos
+const int MAX_CONNECTION_RETRIES = 3; // Número máximo de reintentos antes de recurrir a DHCP
+int connectionRetries = 0;
 
 // =================== DECLARACIONES DE FUNCIONES ===================
 void connectToWiFi();
-void setupStaticIP();
+bool setupStaticIP();
 void setupServerRoutes();
 void handleGetUid();
 void handleStatus();
@@ -75,12 +97,14 @@ void turnOffAllStatusLeds();
 void testLedSequence();
 String getCardUID();
 String getNetworkInfo();
+bool isStaticIPConfigured();
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("=== GYMADS - RFID ESP32 v4.0 ===");
+  Serial.println("=== GYMADS - RFID ESP32 v4.0.2 ===");
+  Serial.println("Versión con soporte mejorado para IP estática y anti-rebote RFID");
 
   // Configurar LEDs
   pinMode(LED_WIFI, OUTPUT);
@@ -102,15 +126,15 @@ void setup() {
   // Conectar a WiFi
   connectToWiFi();
 
-  // Configurar servidor HTTP si est? conectado
+  // Configurar servidor HTTP si está conectado
   if (wifiConnected) {
     setupServerRoutes();
     server.begin();
     Serial.println("Servidor HTTP iniciado en puerto 80");
-    Serial.print("Direcci?n IP: ");
+    Serial.print("Dirección IP: ");
     Serial.println(WiFi.localIP());
     
-    // Mostrar informaci?n de red
+    // Mostrar información de red
     Serial.println(getNetworkInfo());
   }
 
@@ -121,7 +145,7 @@ void setup() {
 }
 
 void loop() {
-  // Manejar solicitudes del servidor HTTP (si WiFi est? conectado)
+  // Manejar solicitudes del servidor HTTP (si WiFi está conectado)
   if (wifiConnected) {
     server.handleClient();
   }
@@ -134,27 +158,50 @@ void loop() {
     // Verificar si hay una nueva tarjeta presente
     if (rfidReader.PICC_IsNewCardPresent() && rfidReader.PICC_ReadCardSerial()) {
       String cardUid = getCardUID();
+      unsigned long currentTime = millis();
 
-      if (cardUid != lastUid) {
-        lastUid = cardUid;
-        Serial.println("Tarjeta detectada: " + cardUid);
-
-        // Mantener la tarjeta disponible hasta que la aplicaci?n la lea
-        // No la reseteamos inmediatamente
+      // Verificar si ha pasado suficiente tiempo desde la última lectura
+      // O si es una tarjeta diferente
+      bool canRead = false;
+      
+      if (cardUid != lastScannedCard) {
+        // Es una tarjeta diferente, siempre permitir lectura
+        canRead = true;
+        lastScannedCard = cardUid;
+        lastCardReadTime = currentTime;
+      } else if (currentTime - lastCardReadTime >= CARD_READ_INTERVAL_MS) {
+        // Es la misma tarjeta pero ha pasado el intervalo mínimo
+        canRead = true;
+        lastCardReadTime = currentTime;
       }
 
-      delay(100); // Peque?o delay para evitar lecturas m?ltiples
+      // Solo actualizar lastUid si se permite la lectura
+      if (canRead && cardUid != lastUid) {
+        lastUid = cardUid;
+        Serial.println("Tarjeta detectada: " + cardUid);
+        Serial.println("Tiempo desde última lectura: " + String(currentTime - lastCardReadTime) + " ms");
+      } else if (!canRead) {
+        // Opcional: mensaje de debug para saber que se bloqueó una lectura duplicada
+        // Serial.println("Lectura bloqueada - intervalo muy corto");
+      }
+
+      delay(100); // Pequeño delay para evitar lecturas múltiples
     }
   }
 
-  // Verificar estado de conexi?n WiFi peri?dicamente
+  // Verificar estado de conexión WiFi periódicamente
   static unsigned long lastWiFiCheck = 0;
-  if (millis() - lastWiFiCheck > 10000) { // Cada 10 segundos
+  if (millis() - lastWiFiCheck > WIFI_CHECK_INTERVAL) { // Cada 10 segundos
     if (WiFi.status() != WL_CONNECTED && wifiConnected) {
-      Serial.println("Conexi?n WiFi perdida, reintentando...");
+      Serial.println("Conexión WiFi perdida, reintentando...");
       wifiConnected = false;
       digitalWrite(LED_WIFI, LOW);
       connectToWiFi();
+    } else if (WiFi.status() == WL_CONNECTED && !wifiConnected) {
+      // Caso donde el estado interno no coincide con el real
+      wifiConnected = true;
+      digitalWrite(LED_WIFI, HIGH);
+      Serial.println("Estado de conexión WiFi actualizado");
     }
     lastWiFiCheck = millis();
   }
@@ -162,28 +209,58 @@ void loop() {
 
 // =================== FUNCIONES WIFI ===================
 
-// Configuraci?n de IP est?tica
-void setupStaticIP() {
+// Configuración de IP estática
+bool setupStaticIP() {
+  Serial.println("Configurando IP estática: " + staticIP.toString());
+  
+  // Primer intento directo
   if (!WiFi.config(staticIP, gateway, subnet, dns)) {
-    Serial.println("Error: Configuraci?n de IP est?tica fall?");
-  } else {
-    Serial.println("IP est?tica configurada correctamente");
-    networkType = "static";
+    Serial.println("Error: La configuración de IP estática falló en el primer intento");
+    
+    // Segundo intento con desconexión previa
+    WiFi.disconnect(true);
+    delay(1000);
+    if (!WiFi.config(staticIP, gateway, subnet, dns)) {
+      Serial.println("Error: La configuración de IP estática falló en el segundo intento");
+      return false;
+    }
   }
+  
+  Serial.println("IP estática configurada correctamente");
+  networkType = "static";
+  staticIPConfigured = true;
+  return true;
 }
 
-// Obtener informaci?n de red
+// Verificar si la IP estática se aplicó correctamente
+bool isStaticIPConfigured() {
+  if (WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+  
+  // Compara la IP actual con la IP estática solicitada
+  IPAddress currentIP = WiFi.localIP();
+  return currentIP == staticIP;
+}
+
+// Obtener información de red
 String getNetworkInfo() {
-  String info = "--- Informaci?n de Red ---\n";
+  String info = "--- Información de Red ---\n";
   info += "Estado: " + String(wifiConnected ? "Conectado" : "Desconectado") + "\n";
   info += "Tipo de IP: " + networkType + "\n";
-  info += "Direcci?n IP: " + WiFi.localIP().toString() + "\n";
-  info += "M?scara de subred: " + WiFi.subnetMask().toString() + "\n";
+  info += "Dirección IP: " + WiFi.localIP().toString() + "\n";
+  info += "Máscara de subred: " + WiFi.subnetMask().toString() + "\n";
   info += "Puerta de enlace: " + WiFi.gatewayIP().toString() + "\n";
   info += "Servidor DNS: " + WiFi.dnsIP().toString() + "\n";
-  info += "Direcci?n MAC: " + WiFi.macAddress() + "\n";
+  info += "Dirección MAC: " + WiFi.macAddress() + "\n";
   info += "SSID: " + WiFi.SSID() + "\n";
-  info += "Fuerza de se?al: " + String(WiFi.RSSI()) + " dBm\n";
+  info += "Fuerza de señal: " + String(WiFi.RSSI()) + " dBm\n";
+  
+  if (useStaticIP) {
+    info += "IP estática: " + staticIP.toString() + "\n";
+    info += "Configuración de IP estática: " + String(staticIPConfigured ? "Exitosa" : "Fallida") + "\n";
+  }
+  
   return info;
 }
 
@@ -193,18 +270,31 @@ void connectToWiFi() {
   Serial.print("SSID: ");
   Serial.println(WIFI_SSID);
 
+  // Reiniciar contadores si este es un nuevo intento de conexión
+  if (!wifiConnected) {
+    connectionRetries = 0;
+  }
+
+  // Configurar modo WiFi
   WiFi.mode(WIFI_STA);
   
-  // Configurar IP est?tica si est? habilitada
+  // Configurar IP estática si está habilitada
+  bool staticIPSetupSuccess = false;
   if (useStaticIP) {
-    setupStaticIP();
+    staticIPSetupSuccess = setupStaticIP();
+    if (!staticIPSetupSuccess && connectionRetries >= MAX_CONNECTION_RETRIES) {
+      Serial.println("ADVERTENCIA: Después de varios intentos, usando DHCP en lugar de IP estática");
+      useStaticIP = false;
+      networkType = "dhcp";
+    }
   } else {
     networkType = "dhcp";
   }
   
+  // Iniciar conexión
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  // LED parpadeando durante conexi?n
+  // LED parpadeando durante conexión
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 30) {
     delay(500);
@@ -221,15 +311,31 @@ void connectToWiFi() {
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
     
-    // Verificar si se est? usando la IP est?tica o DHCP
-    if (WiFi.localIP() == staticIP) {
-      Serial.println("Usando IP est?tica");
+    // Verificar si se está usando la IP estática o DHCP
+    if (isStaticIPConfigured()) {
+      Serial.println("Usando IP estática configurada correctamente");
       networkType = "static";
+      staticIPConfigured = true;
     } else if (useStaticIP) {
-      Serial.println("Advertencia: Se intent? usar IP est?tica pero se obtuvo una IP din?mica");
+      Serial.println("ADVERTENCIA: Se intentó usar IP estática pero se obtuvo una IP dinámica");
+      Serial.println("IP solicitada: " + staticIP.toString() + " | IP obtenida: " + WiFi.localIP().toString());
       networkType = "dhcp";
+      staticIPConfigured = false;
+      
+      // Incrementar contador de reintentos
+      connectionRetries++;
+      
+      if (connectionRetries < MAX_CONNECTION_RETRIES) {
+        Serial.println("Reintentando con IP estática... (Intento " + String(connectionRetries) + " de " + String(MAX_CONNECTION_RETRIES) + ")");
+        WiFi.disconnect(true);
+        delay(1000);
+        connectToWiFi(); // Recursivo
+        return;
+      } else {
+        Serial.println("Se alcanzó el máximo de reintentos. Usando IP dinámica.");
+      }
     } else {
-      Serial.println("Usando DHCP");
+      Serial.println("Usando DHCP (configurado)");
       networkType = "dhcp";
     }
   } else {
@@ -238,7 +344,7 @@ void connectToWiFi() {
     digitalWrite(LED_WIFI, LOW);
     Serial.println();
     Serial.println("Error: No se pudo conectar a WiFi");
-    Serial.println("Verifique las credenciales WiFi en el c?digo");
+    Serial.println("Verifique las credenciales WiFi en el código");
   }
 }
 
@@ -246,13 +352,13 @@ void connectToWiFi() {
 
 // Configurar rutas del servidor HTTP
 void setupServerRoutes() {
-  // Rutas para comunicaci?n con la aplicaci?n Flutter
+  // Rutas para comunicación con la aplicación Flutter
   server.on("/api/uid", HTTP_GET, handleGetUid);
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/membership", HTTP_POST, handleMembershipStatus);
   server.on("/api/discover", HTTP_GET, handleDiscover);
 
-  // Habilitar CORS para permitir solicitudes desde la aplicaci?n
+  // Habilitar CORS para permitir solicitudes desde la aplicación
   server.enableCORS(true);
 
   Serial.println("Rutas del servidor HTTP configuradas");
@@ -262,7 +368,7 @@ void setupServerRoutes() {
 void handleGetUid() {
   server.send(200, "text/plain", lastUid);
 
-  // Despu?s de enviar el UID, lo reseteamos
+  // Después de enviar el UID, lo reseteamos
   if (lastUid != "NO_CARD") {
     lastUid = "NO_CARD";
   }
@@ -276,23 +382,28 @@ void handleStatus() {
   doc["last_uid"] = lastUid;
   doc["ip_address"] = WiFi.localIP().toString();
   doc["network_type"] = networkType;
+  doc["static_ip_enabled"] = useStaticIP;
+  doc["static_ip_configured"] = staticIPConfigured;
+  doc["expected_ip"] = staticIP.toString();
 
   String response;
   serializeJson(doc, response);
   server.send(200, "application/json", response);
 }
 
-// Manejador para la ruta /api/discover - Identificaci?n del dispositivo
+// Manejador para la ruta /api/discover - Identificación del dispositivo
 void handleDiscover() {
   DynamicJsonDocument doc(512);
   doc["device_id"] = "ESP32_RFID_GYMADS";
   doc["device_type"] = "RFID_READER";
-  doc["version"] = "4.0.0";
+  doc["version"] = "4.0.2";
   doc["manufacturer"] = "GYMADS";
   doc["wifi_connected"] = wifiConnected;
   doc["status"] = "ONLINE";
   doc["uptime"] = millis();
   doc["network_type"] = networkType;
+  doc["static_ip_enabled"] = useStaticIP;
+  doc["static_ip_configured"] = staticIPConfigured;
 
   if (wifiConnected) {
     doc["ip_address"] = WiFi.localIP().toString();
@@ -309,7 +420,7 @@ void handleDiscover() {
   server.send(200, "application/json", response);
 }
 
-// Manejador para recibir el estado de membres?a y controlar LEDs
+// Manejador para recibir el estado de membresía y controlar LEDs
 void handleMembershipStatus() {
   if (server.hasArg("plain")) {
     String body = server.arg("plain");
@@ -332,7 +443,7 @@ void handleMembershipStatus() {
 
 // =================== CONTROL DE LEDS ===================
 
-// Controlar LEDs seg?n el estado de membres?a
+// Controlar LEDs según el estado de membresía
 void controlStatusLeds(String status) {
   // Apagar todos los LEDs de estado primero
   turnOffAllStatusLeds();
@@ -345,10 +456,10 @@ void controlStatusLeds(String status) {
     digitalWrite(LED_ROJO, HIGH);
   }
   
-  // Iniciar el temporizador para apagar los LEDs despu?s de un tiempo
+  // Iniciar el temporizador para apagar los LEDs después de un tiempo
   ledStateTimeout = millis() + LED_TIMEOUT;
 
-  Serial.println("Estado de membres?a: " + status);
+  Serial.println("Estado de membresía: " + status);
 }
 
 // Manejar LEDs de estado
@@ -357,7 +468,7 @@ void handleStatusLeds() {
   if (wifiConnected) {
     digitalWrite(LED_WIFI, HIGH);
   } else {
-    // Parpadeo lento si no est? conectado
+    // Parpadeo lento si no está conectado
     static unsigned long lastBlink = 0;
     if (millis() - lastBlink > 1000) {
       digitalWrite(LED_WIFI, !digitalRead(LED_WIFI));
@@ -435,7 +546,7 @@ void testLedSequence() {
 String getCardUID() {
   String cardString = "";
   for (byte i = 0; i < rfidReader.uid.size; i++) {
-    // A?adir un 0 para n?meros hexadecimales menores a 16 (0x10)
+    // Añadir un 0 para números hexadecimales menores a 16 (0x10)
     if (rfidReader.uid.uidByte[i] < 0x10) {
       cardString += "0";
     }

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/app/global_widgets/qr_dialog.dart';
+import '../../../core/widgets/cached_user_image.dart';
 import '../controllers/clientes_controller.dart';
 
 class ClienteDetailView extends GetView<ClientesController> {
@@ -107,24 +108,11 @@ class ClienteDetailView extends GetView<ClientesController> {
                                 ),
                               ],
                             ),
-                            child: CircleAvatar(
-                              radius: 50,
-                              backgroundColor: AppColors.containerBackground,
-                              backgroundImage: cliente.photoUrl != null
-                                  ? NetworkImage(cliente.photoUrl!)
-                                  : null,
-                              child: cliente.photoUrl == null
-                                  ? Text(
-                                      cliente.name.isNotEmpty
-                                          ? cliente.name[0].toUpperCase()
-                                          : '?',
-                                      style: TextStyle(
-                                        fontSize: 36,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.titleColor,
-                                      ),
-                                    )
-                                  : null,
+                            child: UserProfileImage(
+                              imageUrl: cliente.photoUrl,
+                              userName: cliente.name,
+                              size: 100,
+                              showBorder: false,
                             ),
                           ),
                         ),

@@ -16,7 +16,7 @@ class ChecadorView extends GetView<ChecadorController> {
           MobileScanner(
             controller: MobileScannerController(
               detectionSpeed: DetectionSpeed.normal,
-              facing: CameraFacing.front,
+              facing: CameraFacing.back,
               torchEnabled: false,
             ),
             onDetect: controller.onDetect,
