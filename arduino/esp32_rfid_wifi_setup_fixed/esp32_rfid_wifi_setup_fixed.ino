@@ -26,7 +26,7 @@ const char* WIFI_PASSWORD = "N5q6aS55GGjDsYt7";
 // Configuración de IP estática
 bool useStaticIP = true;  // Establecer a false para usar DHCP
 IPAddress staticIP(192, 168, 100, 101);  // IP estática que quieres asignar al ESP32
-IPAddress gateway(192, 168, 1, 1);     // IP del router (puerta de enlace)
+IPAddress gateway(192, 168, 100, 1);     // IP del router (puerta de enlace)
 IPAddress subnet(255, 255, 255, 0);    // Máscara de subred
 IPAddress dns(8, 8, 8, 8);             // Servidor DNS (Google)
 
