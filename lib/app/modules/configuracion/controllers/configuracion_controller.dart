@@ -68,8 +68,8 @@ class ConfiguracionController extends GetxController {
       // Cargar IP manual si existe
       String? savedIP = prefs.getString('esp32_ip_manual');
       if (savedIP != null && savedIP.isNotEmpty) {
-        // Intentar conectar con la IP guardada
-        await connectToESP32WithIP(savedIP);
+        // Intentar conectar con la IP guardada sin mostrar notificación
+        await connectToESP32WithIP(savedIP, showNotification: false);
       }
       
       await RfidConfig.loadConfig();
@@ -90,7 +90,8 @@ class ConfiguracionController extends GetxController {
   Future<void> _initializeESP32Connection() async {
     try {
       // Intentar conectar directamente con la IP estática predeterminada
-      await connectToESP32WithIP(RfidConfig.DEFAULT_ESP32_IP);
+      // sin mostrar notificación (conexión silenciosa al iniciar)
+      await connectToESP32WithIP(RfidConfig.DEFAULT_ESP32_IP, showNotification: false);
     } catch (e) {
       esp32StatusMessage.value = 'Error de inicialización: $e';
     }
@@ -103,7 +104,7 @@ class ConfiguracionController extends GetxController {
 
 
   /// Conectar manualmente con IP específica (método principal de conexión)
-  Future<void> connectToESP32WithIP(String ipAddress) async {
+  Future<void> connectToESP32WithIP(String ipAddress, {bool showNotification = true}) async {
     try {
       isLoading.value = true;
       esp32StatusMessage.value = 'Conectando a $ipAddress...';
@@ -111,12 +112,14 @@ class ConfiguracionController extends GetxController {
       // Verificar formato de IP válido
       final RegExp ipRegex = RegExp(r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
       if (!ipRegex.hasMatch(ipAddress)) {
-        Get.snackbar(
-          'Formato inválido',
-          'La dirección IP no tiene un formato válido (ej: 192.168.1.100)',
-          backgroundColor: AppColors.warning,
-          colorText: Colors.white,
-        );
+        if (showNotification) {
+          Get.snackbar(
+            'Formato inválido',
+            'La dirección IP no tiene un formato válido (ej: 192.168.1.100)',
+            backgroundColor: AppColors.warning,
+            colorText: Colors.white,
+          );
+        }
         return;
       }
       
@@ -127,12 +130,14 @@ class ConfiguracionController extends GetxController {
         esp32IpAddress.value = ipAddress;
         esp32StatusMessage.value = 'ESP32 conectado: $ipAddress';
         
-        Get.snackbar(
-          'Conectado',
-          'ESP32 conectado exitosamente a $ipAddress',
-          backgroundColor: AppColors.success,
-          colorText: Colors.white,
-        );
+        if (showNotification) {
+          Get.snackbar(
+            'Conectado',
+            'ESP32 conectado exitosamente a $ipAddress',
+            backgroundColor: AppColors.success,
+            colorText: Colors.white,
+          );
+        }
         
         // Guardar la IP para uso futuro
         final prefs = await SharedPreferences.getInstance();
@@ -141,23 +146,27 @@ class ConfiguracionController extends GetxController {
         esp32Connected.value = false;
         esp32StatusMessage.value = 'No se pudo conectar a $ipAddress';
         
-        Get.snackbar(
-          'Error de conexión',
-          'No se pudo conectar al ESP32 en $ipAddress. Verifique que el dispositivo esté encendido y en la misma red.',
-          backgroundColor: AppColors.error,
-          colorText: Colors.white,
-        );
+        if (showNotification) {
+          Get.snackbar(
+            'Error de conexión',
+            'No se pudo conectar al ESP32 en $ipAddress. Verifique que el dispositivo esté encendido y en la misma red.',
+            backgroundColor: AppColors.error,
+            colorText: Colors.white,
+          );
+        }
       }
     } catch (e) {
       esp32Connected.value = false;
       esp32StatusMessage.value = 'Error: $e';
       
-      Get.snackbar(
-        'Error',
-        'Error al conectar: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      if (showNotification) {
+        Get.snackbar(
+          'Error',
+          'Error al conectar: $e',
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+      }
     } finally {
       isLoading.value = false;
     }

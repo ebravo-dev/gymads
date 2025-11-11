@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/global_widgets/cliente_card.dart';
 import 'package:gymads/app/global_widgets/cliente_form_dialog.dart';
+import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/core/utils/responsive_utils.dart';
 import 'cliente_detail_view.dart';
 
@@ -14,8 +15,11 @@ class ClientesView extends GetView<ClientesController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text('Clientes'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.textPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -32,21 +36,17 @@ class ClientesView extends GetView<ClientesController> {
       body: Obx(() {
         // Mostrar el indicador de carga a pantalla completa cuando isLoading es true
         if (controller.isLoading.value) {
-          return Center(
+          return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 20),
+                CircularProgressIndicator(color: AppColors.accent),
+                SizedBox(height: 20),
                 Text(
                   'Cargando clientes...',
                   style: TextStyle(
-                    fontSize: ResponsiveValues.getFontSize(context,
-                      mobile: 16,
-                      smallPhone: 14,
-                      tablet: 18
-                    ), 
-                    color: Colors.grey.shade600
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -68,11 +68,16 @@ class ClientesView extends GetView<ClientesController> {
                 children: [
                   // Barra de búsqueda
                   TextField(
+                    style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       hintText: 'Buscar cliente...',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: const TextStyle(color: AppColors.textHint),
+                      prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                      filled: true,
+                      fillColor: AppColors.containerBackground,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     ),
@@ -104,7 +109,7 @@ class ClientesView extends GetView<ClientesController> {
                             smallPhone: 60,
                             tablet: 100
                           ),
-                          color: Colors.grey,
+                          color: AppColors.textSecondary,
                         ),
                         SizedBox(height: ResponsiveValues.getSpacing(context,
                           mobile: 20,
@@ -117,7 +122,7 @@ class ClientesView extends GetView<ClientesController> {
                               : 'No hay resultados para tu búsqueda',
                           style: const TextStyle(
                             fontSize: 16,
-                            color: Colors.grey,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],

@@ -365,7 +365,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
 
   Widget _buildPaymentPanel() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(8),
@@ -389,7 +389,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                 _buildTotalRow('Impuestos:', controller.taxAmount),
               if (controller.discountAmount > 0)
                 _buildTotalRow('Descuento:', -controller.discountAmount),
-              Divider(height: 8, color: AppColors.textSecondary.withOpacity(0.3)),
+              Divider(height: 6, color: AppColors.textSecondary.withOpacity(0.3)),
               _buildTotalRow(
                 'TOTAL:',
                 controller.finalAmount,
@@ -397,7 +397,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
               ),
             ],
           )),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           // Método de pago
           Obx(() => DropdownButtonFormField<String>(
             value: controller.selectedPaymentMethod,
@@ -429,7 +429,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
               }
             },
           )),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           // Campo de monto recibido (solo para efectivo)
           Obx(() {
             if (controller.selectedPaymentMethod == 'efectivo') {
@@ -440,7 +440,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                     style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Monto recibido',
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
+                      labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                       prefixText: '\$',
                       prefixStyle: const TextStyle(color: AppColors.accent),
                       filled: true,
@@ -449,7 +449,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
@@ -457,17 +457,17 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                       controller.setReceivedAmount(amount);
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   if (controller.changeAmount >= 0)
                     Text(
                       'Cambio: \$${controller.changeAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: AppColors.success,
                       ),
                     ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                 ],
               );
             }
@@ -482,9 +482,9 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textPrimary,
                     side: const BorderSide(color: AppColors.textSecondary),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                  child: const Text('Limpiar'),
+                  child: const Text('Limpiar', style: TextStyle(fontSize: 14)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -497,18 +497,18 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   child: controller.isProcessingPayment
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          height: 18,
+                          width: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text('Procesar Venta'),
+                      : const Text('Procesar Venta', style: TextStyle(fontSize: 14)),
                 )),
               ),
             ],
@@ -571,7 +571,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
+        height: MediaQuery.of(context).size.height * 0.75,
         decoration: const BoxDecoration(
           color: AppColors.backgroundColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -669,7 +669,7 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
         ),
         // Panel de totales y pago
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
             border: Border(
@@ -679,7 +679,10 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
               ),
             ),
           ),
-          child: _buildPaymentPanel(),
+          child: SafeArea(
+            top: false,
+            child: _buildPaymentPanel(),
+          ),
         ),
       ],
     );

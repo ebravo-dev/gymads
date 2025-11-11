@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/core/utils/responsive_utils.dart';
 import '../controllers/membresias_controller.dart';
 import '../widgets/membership_form_dialog.dart';
@@ -11,8 +12,11 @@ class MembresiasView extends GetView<MembresiasController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text('Gestión de Membresías'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.textPrimary,
         actions: [
           // Botón para agregar nueva membresía en la AppBar
           IconButton(
@@ -56,7 +60,9 @@ class MembresiasView extends GetView<MembresiasController> {
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.accent),
+                );
               }
               
               if (controller.errorMessage.isNotEmpty) {
@@ -65,11 +71,11 @@ class MembresiasView extends GetView<MembresiasController> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                         const SizedBox(height: 16),
                         Text(
                           controller.errorMessage.value,
-                          style: const TextStyle(color: Colors.red),
+                          style: const TextStyle(color: AppColors.error),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -91,7 +97,7 @@ class MembresiasView extends GetView<MembresiasController> {
                             tablet: 100,
                             desktop: 120
                           ),
-                          color: Colors.grey,
+                          color: AppColors.textSecondary,
                         ),
                         SizedBox(height: ResponsiveValues.getSpacing(context,
                           mobile: 16,
@@ -106,7 +112,7 @@ class MembresiasView extends GetView<MembresiasController> {
                               tablet: 18,
                               desktop: 20
                             ),
-                            color: Colors.grey,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -129,24 +135,25 @@ class MembresiasView extends GetView<MembresiasController> {
       children: [
         // Filtros - Movido al principio para ser más prominente y similar a clientes_view
         Container(
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 12,
           ),
           decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 219, 87, 11),
+            color: AppColors.accent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
-              const Icon(Icons.filter_list, size: 22),
+              const Icon(Icons.filter_list, size: 22, color: AppColors.textPrimary),
               const SizedBox(width: 12),
-              Flexible(
-                child: const Text(
+              const Flexible(
+                child: Text(
                   'Mostrar membresías inactivas',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
+                    color: AppColors.textPrimary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -154,7 +161,7 @@ class MembresiasView extends GetView<MembresiasController> {
               Obx(() => Switch(
                 value: controller.showInactive.value,
                 onChanged: (value) => controller.showInactive.value = value,
-                activeColor: Colors.green,
+                activeColor: AppColors.success,
               )),
             ],
           ),

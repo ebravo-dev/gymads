@@ -11,8 +11,11 @@ class InventarioView extends GetView<InventarioController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text('Inventario'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.textPrimary,
         centerTitle: true,
         actions: [
           IconButton(
@@ -27,7 +30,7 @@ class InventarioView extends GetView<InventarioController> {
           Get.toNamed(Routes.PRODUCT_FORM);
         },
         backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -146,7 +149,7 @@ class InventarioView extends GetView<InventarioController> {
           label: Text(
             category,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.textPrimary,
+              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -156,7 +159,7 @@ class InventarioView extends GetView<InventarioController> {
           },
           backgroundColor: AppColors.cardBackground,
           selectedColor: AppColors.accent,
-          checkmarkColor: Colors.white,
+          checkmarkColor: AppColors.textPrimary,
           side: BorderSide(
             color: isSelected ? AppColors.accent : AppColors.accent.withOpacity(0.3),
             width: 1.5,
@@ -183,7 +186,7 @@ class InventarioView extends GetView<InventarioController> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.inventory_2, size: 64, color: AppColors.textHint),
+              Icon(Icons.inventory_2, size: 64, color: AppColors.textSecondary),
               const SizedBox(height: 16),
               Text(
                 'No hay productos registrados',
@@ -202,7 +205,7 @@ class InventarioView extends GetView<InventarioController> {
                 label: const Text('Agregar primer producto'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -262,7 +265,7 @@ class InventarioView extends GetView<InventarioController> {
                   child: Text(
                     'Stock: ${product.stock}',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -337,7 +340,8 @@ class InventarioView extends GetView<InventarioController> {
   void _showProductDetail(Product product) {
     Get.dialog(
       AlertDialog(
-        title: Text(product.name),
+        backgroundColor: AppColors.cardBackground,
+        title: Text(product.name, style: const TextStyle(color: AppColors.textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +357,7 @@ class InventarioView extends GetView<InventarioController> {
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Cerrar'),
+            child: const Text('Cerrar', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -361,6 +365,10 @@ class InventarioView extends GetView<InventarioController> {
               controller.editProduct(product);
               Get.toNamed(Routes.PRODUCT_FORM, arguments: {'isEditing': true});
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: AppColors.textPrimary,
+            ),
             child: const Text('Editar'),
           ),
         ],
@@ -378,10 +386,18 @@ class InventarioView extends GetView<InventarioController> {
             width: 100,
             child: Text(
               '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
+          ),
         ],
       ),
     );
@@ -395,7 +411,11 @@ class InventarioView extends GetView<InventarioController> {
     
     Get.dialog(
       AlertDialog(
-        title: Text('Registrar Transacción - ${product.name}'),
+        backgroundColor: AppColors.cardBackground,
+        title: Text(
+          'Registrar Transacción - ${product.name}',
+          style: const TextStyle(color: AppColors.textPrimary),
+        ),
         content: Form(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -403,9 +423,17 @@ class InventarioView extends GetView<InventarioController> {
               Obx(() {
                 return DropdownButtonFormField<TransactionType>(
                   value: controller.selectedTransactionType.value,
-                  decoration: const InputDecoration(
+                  dropdownColor: AppColors.cardBackground,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
                     labelText: 'Tipo de transacción',
-                    border: OutlineInputBorder(),
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.containerBackground,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                   items: TransactionType.values.map((type) {
                     return DropdownMenuItem<TransactionType>(
@@ -423,9 +451,16 @@ class InventarioView extends GetView<InventarioController> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: controller.quantityController,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: InputDecoration(
                   labelText: 'Cantidad',
-                  border: OutlineInputBorder(),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: AppColors.containerBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -442,9 +477,16 @@ class InventarioView extends GetView<InventarioController> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: controller.priceController,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: InputDecoration(
                   labelText: 'Precio unitario',
-                  border: OutlineInputBorder(),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: AppColors.containerBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
                   prefixText: '\$',
                 ),
                 keyboardType: TextInputType.number,
@@ -452,9 +494,16 @@ class InventarioView extends GetView<InventarioController> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: controller.notesController,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: InputDecoration(
                   labelText: 'Notas (opcional)',
-                  border: OutlineInputBorder(),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: AppColors.containerBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
                 maxLines: 2,
               ),
@@ -464,12 +513,16 @@ class InventarioView extends GetView<InventarioController> {
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Cancelar'),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
               controller.recordTransaction(product.id, product.name);
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: AppColors.textPrimary,
+            ),
             child: const Text('Registrar'),
           ),
         ],

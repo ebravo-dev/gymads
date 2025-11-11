@@ -10,10 +10,11 @@ class PromocionesView extends GetView<PromocionesController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text('Promociones'),
-        backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.textPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -33,18 +34,17 @@ class PromocionesView extends GetView<PromocionesController> {
       body: Obx(() {
         // Mostrar indicador de carga
         if (controller.isLoading.value) {
-          return Center(
+          return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 20),
+                CircularProgressIndicator(color: AppColors.accent),
+                SizedBox(height: 20),
                 Text(
                   'Cargando promociones...',
                   style: TextStyle(
-                    fontSize: ResponsiveValues.getFontSize(context,
-                        mobile: 16, smallPhone: 14, tablet: 18),
-                    color: Colors.grey.shade600,
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -71,15 +71,26 @@ class PromocionesView extends GetView<PromocionesController> {
     return Container(
       padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
           mobile: 16, smallPhone: 12, tablet: 24)),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: EdgeInsets.all(ResponsiveValues.getSpacing(context,
+          mobile: 16, smallPhone: 12, tablet: 24)),
       child: Column(
         children: [
           // Barra de búsqueda
           TextField(
+            style: const TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: 'Buscar promoción...',
-              prefixIcon: const Icon(Icons.search),
+              hintStyle: const TextStyle(color: AppColors.textHint),
+              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+              filled: true,
+              fillColor: AppColors.containerBackground,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
@@ -95,20 +106,24 @@ class PromocionesView extends GetView<PromocionesController> {
                     mobile: 8, smallPhone: 6, tablet: 12),
                 children: [
                   FilterChip(
-                    label: const Text('Solo activas'),
+                    label: const Text('Solo activas', style: TextStyle(color: AppColors.textPrimary)),
                     selected: controller.showOnlyActive.value,
                     onSelected: (selected) {
                       controller.showOnlyActive.value = selected;
                     },
+                    backgroundColor: AppColors.containerBackground,
                     selectedColor: AppColors.accent.withOpacity(0.3),
+                    checkmarkColor: AppColors.accent,
                   ),
                   FilterChip(
-                    label: const Text('Solo válidas'),
+                    label: const Text('Solo válidas', style: TextStyle(color: AppColors.textPrimary)),
                     selected: controller.showOnlyValid.value,
                     onSelected: (selected) {
                       controller.showOnlyValid.value = selected;
                     },
+                    backgroundColor: AppColors.containerBackground,
                     selectedColor: AppColors.accent.withOpacity(0.3),
+                    checkmarkColor: AppColors.accent,
                   ),
                 ],
               )),
@@ -130,7 +145,7 @@ class PromocionesView extends GetView<PromocionesController> {
                 Icons.local_offer_outlined,
                 size: ResponsiveValues.getIconSize(context,
                     mobile: 80, smallPhone: 60, tablet: 100),
-                color: Colors.grey,
+                color: AppColors.textSecondary,
               ),
               SizedBox(height: ResponsiveValues.getSpacing(context,
                   mobile: 20, smallPhone: 16, tablet: 24)),
@@ -140,7 +155,7 @@ class PromocionesView extends GetView<PromocionesController> {
                     : 'No hay resultados para tu búsqueda',
                 style: const TextStyle(
                   fontSize: 16,
-                  color: Colors.grey,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
@@ -161,6 +176,7 @@ class PromocionesView extends GetView<PromocionesController> {
 
   Widget _buildPromotionCard(BuildContext context, promocion) {
     return Card(
+      color: AppColors.cardBackground,
       margin: EdgeInsets.symmetric(
         horizontal: ResponsiveValues.getSpacing(context,
             mobile: 16, smallPhone: 12, tablet: 24),
@@ -203,7 +219,7 @@ class PromocionesView extends GetView<PromocionesController> {
                       child: Text(
                         promocion.isActive ? 'Activa' : 'Inactiva',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -225,7 +241,7 @@ class PromocionesView extends GetView<PromocionesController> {
                         child: Text(
                           promocion.isCurrentlyValid ? 'Válida' : 'Fuera de horario',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),

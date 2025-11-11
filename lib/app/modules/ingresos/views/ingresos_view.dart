@@ -12,10 +12,11 @@ class IngresosView extends GetView<IngresosController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text('Ingresos'),
-        backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.textPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -35,7 +36,7 @@ class IngresosView extends GetView<IngresosController> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(),
+                CircularProgressIndicator(color: AppColors.accent),
                 SizedBox(height: 20),
                 Text(
                   'Cargando ingresos...',
@@ -88,6 +89,9 @@ class IngresosView extends GetView<IngresosController> {
 
   Widget _buildFilters(BuildContext context) {
     return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
             mobile: 16, smallPhone: 12, tablet: 20)),
@@ -165,10 +169,18 @@ class IngresosView extends GetView<IngresosController> {
   Widget _buildConceptoFilter() {
     return Obx(() => DropdownButtonFormField<String?>(
           value: controller.selectedConcepto.value,
-          decoration: const InputDecoration(
+          dropdownColor: AppColors.cardBackground,
+          style: const TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
             labelText: 'Filtrar por concepto',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            labelStyle: const TextStyle(color: AppColors.textSecondary),
+            filled: true,
+            fillColor: AppColors.containerBackground,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: [
             const DropdownMenuItem<String?>(
@@ -195,9 +207,17 @@ class IngresosView extends GetView<IngresosController> {
   Widget _buildMetodoPagoFilter() {
     return Obx(() => DropdownButtonFormField<String?>(
           value: controller.selectedMetodoPago.value,
-          decoration: const InputDecoration(
+          dropdownColor: AppColors.cardBackground,
+          style: const TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
             labelText: 'Filtrar por método de pago',
-            border: OutlineInputBorder(),
+            labelStyle: const TextStyle(color: AppColors.textSecondary),
+            filled: true,
+            fillColor: AppColors.containerBackground,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: [
@@ -316,6 +336,9 @@ class IngresosView extends GetView<IngresosController> {
     Color color,
   ) {
     return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
             mobile: 16, smallPhone: 12, tablet: 20)),
@@ -377,6 +400,9 @@ class IngresosView extends GetView<IngresosController> {
 
   Widget _buildIncomeChart(BuildContext context) {
     return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
             mobile: 16, smallPhone: 12, tablet: 20)),
@@ -605,11 +631,11 @@ class IngresosView extends GetView<IngresosController> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.cardBackground,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withOpacity(0.3),
                           blurRadius: 4,
                           spreadRadius: 1,
                         ),
@@ -621,6 +647,7 @@ class IngresosView extends GetView<IngresosController> {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -657,7 +684,10 @@ class IngresosView extends GetView<IngresosController> {
                         const SizedBox(width: 4),
                         Text(
                           '${_getConceptoDisplayName(entry.key)} (${percentage}%)',
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ],
                     ),
@@ -756,10 +786,11 @@ class IngresosView extends GetView<IngresosController> {
                 onSelected: (selected) {
                   if (selected) controller.changeChartType('barras');
                 },
-                selectedColor: Colors.orange.shade100,
+                backgroundColor: AppColors.containerBackground,
+                selectedColor: AppColors.accent.withOpacity(0.3),
                 labelStyle: TextStyle(
                   color: controller.selectedChartType.value == 'barras'
-                      ? Colors.orange.shade700
+                      ? AppColors.accent
                       : AppColors.textSecondary,
                   fontWeight: controller.selectedChartType.value == 'barras'
                       ? FontWeight.bold
@@ -774,10 +805,11 @@ class IngresosView extends GetView<IngresosController> {
                 onSelected: (selected) {
                   if (selected) controller.changeChartType('pastel');
                 },
-                selectedColor: Colors.blue.shade100,
+                backgroundColor: AppColors.containerBackground,
+                selectedColor: AppColors.info.withOpacity(0.3),
                 labelStyle: TextStyle(
                   color: controller.selectedChartType.value == 'pastel'
-                      ? Colors.blue.shade700
+                      ? AppColors.info
                       : AppColors.textSecondary,
                   fontWeight: controller.selectedChartType.value == 'pastel'
                       ? FontWeight.bold
@@ -792,10 +824,11 @@ class IngresosView extends GetView<IngresosController> {
                 onSelected: (selected) {
                   if (selected) controller.changeChartType('lineas');
                 },
-                selectedColor: Colors.green.shade100,
+                backgroundColor: AppColors.containerBackground,
+                selectedColor: AppColors.success.withOpacity(0.3),
                 labelStyle: TextStyle(
                   color: controller.selectedChartType.value == 'lineas'
-                      ? Colors.green.shade700
+                      ? AppColors.success
                       : AppColors.textSecondary,
                   fontWeight: controller.selectedChartType.value == 'lineas'
                       ? FontWeight.bold
@@ -810,6 +843,8 @@ class IngresosView extends GetView<IngresosController> {
 
   Widget _buildRecentTransactions(BuildContext context) {
     return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
       child: Padding(
         padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
             mobile: 16, smallPhone: 12, tablet: 20)),
@@ -1072,11 +1107,11 @@ class PieChartPainter extends CustomPainter {
       paint,
     );
     
-    // Dibujar borde blanco
+    // Dibujar borde sutil
     final borderPaint = Paint()
-      ..color = Colors.white
+      ..color = AppColors.disabled.withOpacity(0.5)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 1;
     
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
