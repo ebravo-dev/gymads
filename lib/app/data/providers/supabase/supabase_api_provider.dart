@@ -236,6 +236,51 @@ class SupabaseApiProvider extends ApiProvider {
     }
   }
 
+  /// Método específico para obtener un usuario por su tarjeta RFID
+  Future<Map<String, dynamic>> getUserByRfid(String rfidUid) async {
+    try {
+      if (kDebugMode) {
+        print('Buscando usuario por RFID: $rfidUid');
+      }
+      
+      final response = await SupabaseService.client
+          .from(table)
+          .select()
+          .eq('rfid_card', rfidUid)
+          .limit(1);
+
+      if (kDebugMode) {
+        print('Respuesta de Supabase (getUserByRfid): $response');
+      }
+
+      if (response.isEmpty) {
+        if (kDebugMode) {
+          print('No se encontró usuario con RFID: $rfidUid');
+        }
+        return {
+          'error': false,
+          'message': 'Usuario no encontrado',
+          'data': null
+        };
+      }
+
+      return {
+        'error': false,
+        'message': 'Usuario encontrado',
+        'data': response[0]
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error en getUserByRfid: $e');
+      }
+      return {
+        'error': true,
+        'message': e.toString(),
+        'data': null
+      };
+    }
+  }
+
   /// Método específico para obtener usuarios con información de membresía
   Future<Map<String, dynamic>> getUsersWithMembershipInfo() async {
     try {

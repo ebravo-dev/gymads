@@ -5,6 +5,7 @@ import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/models/membership_type_model.dart';
 import 'package:gymads/app/data/models/promotion_model.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
+import 'package:gymads/app/data/services/background_rfid_service.dart';
 import 'package:gymads/app/modules/shared/widgets/rfid_reader_animation.dart';
 import 'package:gymads/app/modules/clientes/controllers/clientes_controller.dart';
 import 'package:gymads/core/theme/app_colors.dart';
@@ -850,6 +851,20 @@ class ClienteFormDialog extends StatelessWidget {
   Future<void> _showRfidReaderDialog(BuildContext context) async {
     final isReading = true.obs;
     final detectedUid = Rx<String?>(null);
+    
+    // Pausar el servicio de escaneo en segundo plano si está activo
+    BackgroundRfidService? backgroundService;
+    try {
+      if (Get.isRegistered<BackgroundRfidService>()) {
+        backgroundService = Get.find<BackgroundRfidService>();
+        if (backgroundService.isScanning.value) {
+          backgroundService.pauseScanning();
+          print('⏸️ Servicio de escaneo en segundo plano pausado para registro');
+        }
+      }
+    } catch (e) {
+      print('⚠️ No se pudo pausar el servicio de fondo: $e');
+    }
 
     // Mostrar el diálogo con la animación
     showDialog(
@@ -870,12 +885,18 @@ class ClienteFormDialog extends StatelessWidget {
               isReading.value = false;
               Get.back();
             }
+            
+            // Reanudar el servicio de escaneo en segundo plano
+            backgroundService?.resumeScanning();
           },
         ),
       ),
-    );
+    ).then((_) {
+      // Asegurarse de reanudar el servicio cuando se cierre el diálogo
+      backgroundService?.resumeScanning();
+    });
 
-    // Iniciar la lectura del RFID (en modo real o simulado)
+    // Iniciar la lectura del RFID en modo silencioso (sin LEDs ni buzzer)
     try {
       // Intentar iniciar el lector ESP32 real
       bool readerStarted = await RfidReaderService.startReading();
@@ -886,11 +907,12 @@ class ClienteFormDialog extends StatelessWidget {
         final maxAttempts = RfidConfig.maxReadingTimeoutSeconds * 1000 ~/ RfidConfig.pollingIntervalMs;
         
         while (isReading.value && attempts < maxAttempts && detectedUid.value == null) {
-          // Verificar si hay una tarjeta según el intervalo de polling configurado
-          final uid = await RfidReaderService.checkForCard();
+          // Verificar si hay una tarjeta usando el endpoint silencioso
+          final uid = await RfidReaderService.checkForCardSilent();
           if (uid != null) {
             detectedUid.value = uid;
             isReading.value = false;
+            print('🔇 Tarjeta capturada en modo silencioso: $uid');
             break;
           }
           attempts++;
@@ -909,6 +931,7 @@ class ClienteFormDialog extends StatelessWidget {
           );
           isReading.value = false;
           Get.back(); // Cerrar el diálogo
+          backgroundService?.resumeScanning(); // Reanudar servicio
         }
       }
     } catch (e) {
@@ -924,6 +947,7 @@ class ClienteFormDialog extends StatelessWidget {
         );
         isReading.value = false;
         Get.back(); // Cerrar el diálogo
+        backgroundService?.resumeScanning(); // Reanudar servicio
       }
     }
   }

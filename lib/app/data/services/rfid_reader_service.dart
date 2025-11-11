@@ -57,6 +57,58 @@ class RfidReaderService {
     }
   }
   
+  // Método silencioso para capturar UID sin activar LEDs ni buzzer
+  // Usado exclusivamente para registrar nuevas tarjetas RFID
+  static Future<String?> checkForCardSilent() async {
+    try {
+      // Verificar si hay configuración disponible
+      if (!RfidConfig.isConfigured) {
+        if (kDebugMode) {
+          print('ESP32 no configurado');
+        }
+        return null;
+      }
+      
+      final baseUrl = RfidConfig.baseUrl;
+      if (baseUrl == null) {
+        if (kDebugMode) {
+          print('No hay URL configurada para el ESP32');
+        }
+        return null;
+      }
+      
+      if (kDebugMode) {
+        print('🔇 Verificando tarjeta RFID (modo silencioso): $baseUrl/uid_only');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/uid_only'),
+      ).timeout(const Duration(seconds: 8));
+      
+      if (response.statusCode == 200) {
+        final responseText = response.body.trim();
+        
+        if (responseText.isNotEmpty && responseText != "NO_CARD") {
+          if (kDebugMode) {
+            print('🔇 UID detectado (silencioso): $responseText');
+          }
+          return responseText;
+        }
+        return null;
+      } else {
+        if (kDebugMode) {
+          print('Error al verificar tarjeta (silencioso): ${response.statusCode}');
+        }
+        return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error al verificar tarjeta (silencioso): $e');
+      }
+      return null;
+    }
+  }
+  
   // Método para iniciar la lectura (verificación de conectividad del ESP32)
   static Future<bool> startReading() async {
     try {

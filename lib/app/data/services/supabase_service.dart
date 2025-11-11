@@ -15,17 +15,11 @@ class SupabaseService {
   /// Cliente de Supabase para operaciones personalizadas
   static SupabaseClient get client => Supabase.instance.client;
 
-  /// Inicializa la conexión con Supabase y autentica al usuario
+  /// Autentica al usuario administrador
   /// 
-  /// Este método debe llamarse al inicio de la aplicación
-  static Future<void> initialize() async {
+  /// NOTA: Supabase debe estar inicializado ANTES de llamar este método
+  static Future<void> authenticate() async {
     try {
-      // Inicializar cliente de Supabase con credenciales del config
-      await Supabase.initialize(
-        url: SupabaseConfig.url,
-        anonKey: SupabaseConfig.anonKey,
-      );
-
       // Autenticar al usuario administrador
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: SupabaseConfig.userEmail,
@@ -41,7 +35,7 @@ class SupabaseService {
       }
     } catch (e) {
       if (kDebugMode && SupabaseConfig.debugMode) {
-        print('Error al inicializar Supabase: $e');
+        print('Error al autenticar usuario: $e');
       }
       rethrow;
     }

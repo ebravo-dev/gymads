@@ -7,6 +7,7 @@ import '../../../../core/utils/responsive_utils.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/button_menu_widget.dart';
+import '../widgets/background_welcome_dialog.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
@@ -229,15 +230,6 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.cyan.shade300,
                             onTap: controller.goToCheckIns,
                           ),
-                          
-                          // Opción de Check-in con RFID
-                          ButtonMenuWidget(
-                            icon: Icons.contactless,
-                            label: 'Lector',
-                            description: 'Acceso con tarjeta',
-                            color: Colors.indigo.shade300,
-                            onTap: controller.goToRfidCheckIn,
-                          ),
 
                           // Opción de Inventario
                           ButtonMenuWidget(
@@ -311,6 +303,9 @@ class HomeView extends GetView<HomeController> {
           ),
         ),
       ),
+      // Diálogo de bienvenida RFID en segundo plano
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: const BackgroundWelcomeDialog(),
     );
   }
 }

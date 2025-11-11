@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../routes/app_pages.dart';
 
@@ -24,11 +25,6 @@ class HomeController extends GetxController {
   void goToCheckIns() {
     statusMessages.add('Navegando a la pantalla de Check-Ins...');
     Get.toNamed(Routes.CHECADOR);
-  }
-
-  void goToRfidCheckIn() {
-    statusMessages.add('Navegando a Control de Acceso RFID...');
-    Get.toNamed(Routes.RFID_CHECKIN);
   }
 
   void goToPaymentRegistration() {

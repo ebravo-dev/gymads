@@ -185,7 +185,25 @@ void loop() {
         // Serial.println("Lectura bloqueada - intervalo muy corto");
       }
 
+      rfidReader.PICC_HaltA(); // Detener la lectura de la tarjeta actual
       delay(100); // Pequeño delay para evitar lecturas múltiples
+    } else {
+      // No hay tarjeta presente, resetear el UID después de un tiempo
+      static unsigned long lastNoCardTime = 0;
+      unsigned long currentTime = millis();
+      
+      if (lastUid != "NO_CARD") {
+        if (lastNoCardTime == 0) {
+          lastNoCardTime = currentTime; // Iniciar contador
+        } else if (currentTime - lastNoCardTime > 1000) { // 1 segundo sin tarjeta
+          lastUid = "NO_CARD";
+          lastScannedCard = "";
+          lastNoCardTime = 0;
+          Serial.println("Tarjeta removida - UID reseteado");
+        }
+      } else {
+        lastNoCardTime = 0; // Resetear contador si ya está en NO_CARD
+      }
     }
   }
 
@@ -354,6 +372,7 @@ void connectToWiFi() {
 void setupServerRoutes() {
   // Rutas para comunicación con la aplicación Flutter
   server.on("/api/uid", HTTP_GET, handleGetUid);
+  server.on("/api/uid_only", HTTP_GET, handleGetUidOnly);  // Nuevo endpoint silencioso
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/membership", HTTP_POST, handleMembershipStatus);
   server.on("/api/discover", HTTP_GET, handleDiscover);
@@ -366,12 +385,18 @@ void setupServerRoutes() {
 
 // Manejador para la ruta /api/uid
 void handleGetUid() {
+  // Solo enviar el UID, NO resetearlo
+  // El reseteo se maneja en el loop principal
   server.send(200, "text/plain", lastUid);
+}
 
-  // Después de enviar el UID, lo reseteamos
-  if (lastUid != "NO_CARD") {
-    lastUid = "NO_CARD";
-  }
+// Manejador para la ruta /api/uid_only - Solo devuelve el UID sin activar LEDs
+// Usado para capturar tarjetas al agregar nuevos clientes
+void handleGetUidOnly() {
+  // Este endpoint es idéntico a /api/uid, pero semánticamente diferente
+  // El servicio de fondo usa /api/uid y activa LEDs mediante /api/membership
+  // Los formularios de registro usan /api/uid_only y NO activan LEDs
+  server.send(200, "text/plain", lastUid);
 }
 
 // Manejador para la ruta /api/status
