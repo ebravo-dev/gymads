@@ -1031,18 +1031,60 @@ class IngresosView extends GetView<IngresosController> {
   }
 
   void _showDateRangePicker(BuildContext context) async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(
-        start: controller.fechaInicio.value ?? DateTime(DateTime.now().year, DateTime.now().month, 1),
-        end: controller.fechaFin.value ?? DateTime.now(),
-      ),
-    );
+    try {
+      final now = DateTime.now();
+      final firstDayOfMonth = DateTime(now.year, now.month, 1);
+      
+      // Asegurarnos de que las fechas sean válidas
+      final initialStart = controller.fechaInicio.value ?? firstDayOfMonth;
+      final initialEnd = controller.fechaFin.value ?? now;
+      
+      // Validar que las fechas no excedan los límites
+      final validStart = initialStart.isAfter(now) ? firstDayOfMonth : initialStart;
+      final validEnd = initialEnd.isAfter(now) ? now : initialEnd;
+      
+      final DateTimeRange? picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: now, // Usar la fecha actual exacta
+        initialDateRange: DateTimeRange(
+          start: validStart,
+          end: validEnd,
+        ),
+        builder: (BuildContext context, Widget? child) {
+          return Theme(
+            data: ThemeData.dark().copyWith(
+              colorScheme: ColorScheme.dark(
+                primary: AppColors.accent, // Color principal (naranja)
+                onPrimary: Colors.white, // Texto sobre el color principal
+                surface: AppColors.cardBackground, // Fondo del diálogo
+                onSurface: AppColors.textPrimary, // Texto sobre el fondo
+              ),
+              dialogBackgroundColor: AppColors.cardBackground,
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.accent, // Color de los botones
+                ),
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
 
-    if (picked != null) {
-      controller.setFechasPersonalizadas(picked.start, picked.end);
+      if (picked != null) {
+        controller.setFechasPersonalizadas(picked.start, picked.end);
+      }
+    } catch (e) {
+      print('❌ Error al mostrar selector de fechas: $e');
+      Get.snackbar(
+        'Error',
+        'No se pudo abrir el selector de fechas',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 
