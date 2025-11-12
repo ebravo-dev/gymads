@@ -31,7 +31,9 @@ class MembresiasView extends GetView<MembresiasController> {
           ),
         ],
       ),
-      body: _buildBody(context),
+      body: SafeArea(
+        child: _buildBody(context),
+      ),
       // El FloatingActionButton se ha eliminado y movido a la AppBar
     );
   }

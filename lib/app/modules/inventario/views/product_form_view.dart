@@ -80,24 +80,25 @@ class ProductFormView extends GetView<InventarioController> {
           }),
         ],
       ),
-      body: Form(
-        key: formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Sección de información básica
-              _buildSectionCard(
-                title: 'Información Básica',
-                icon: Icons.info_outline,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    style: const TextStyle(color: AppColors.textPrimary),
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre del producto *',
-                      hintText: 'Ej: Proteína Whey 1kg',
+      body: SafeArea(
+        child: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sección de información básica
+                _buildSectionCard(
+                  title: 'Información Básica',
+                  icon: Icons.info_outline,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre del producto *',
+                        hintText: 'Ej: Proteína Whey 1kg',
                       prefixIcon: Icon(Icons.shopping_bag, color: AppColors.accent),
                     ),
                     validator: (value) {
@@ -212,68 +213,12 @@ class ProductFormView extends GetView<InventarioController> {
                 ],
               ),
               
-              const SizedBox(height: 24),
-              
-              // Información adicional
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.info.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.info.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.lightbulb_outline, color: AppColors.info),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Los campos marcados con * son obligatorios. El producto se creará como activo por defecto.',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 100), // Espacio para el botón flotante
+              const SizedBox(height: 24), // Espacio al final del formulario
             ],
           ),
         ),
+        ),
       ),
-      floatingActionButton: Obx(() {
-        return FloatingActionButton.extended(
-          onPressed: controller.isLoading.value
-              ? null
-              : () {
-                  if (formKey.currentState!.validate()) {
-                    controller.saveProduct({
-                      'name': nameController.text,
-                      'description': descriptionController.text,
-                      'category': selectedCategory,
-                      'price': priceController.text,
-                      'stock': stockController.text,
-                    });
-                  }
-                },
-          backgroundColor: AppColors.accent,
-          foregroundColor: Colors.white,
-          icon: controller.isLoading.value
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Icon(isEditing ? Icons.update : Icons.save),
-          label: Text(isEditing ? 'Actualizar Producto' : 'Guardar Producto'),
-        );
-      }),
     );
   }
 

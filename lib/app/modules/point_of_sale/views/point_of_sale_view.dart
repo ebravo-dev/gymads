@@ -27,7 +27,9 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
           )),
         ],
       ),
-      body: _buildProductsPanel(),
+      body: SafeArea(
+        child: _buildProductsPanel(),
+      ),
       floatingActionButton: Obx(() => FloatingActionButton.extended(
         onPressed: () => _showCartModal(context),
         icon: Badge(

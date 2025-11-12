@@ -509,7 +509,8 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
           }
         } else {
           if (kDebugMode) {
-            print('❌ [RFID] Error: No se pudo registrar el acceso en Supabase');
+            print('⚠️ [RFID] No se registró el acceso: Ya existe una entrada para hoy');
+            print('   El usuario ${user.name} ya tiene una entrada registrada hoy');
           }
         }
       } catch (e) {

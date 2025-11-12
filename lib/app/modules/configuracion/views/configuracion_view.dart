@@ -23,18 +23,20 @@ class ConfiguracionView extends GetView<ConfiguracionController> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Obx(() => ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          // Header con información básica del usuario
-          _buildUserHeader(),
-          
-          const SizedBox(height: 24),
-          
-          // Lista de opciones de configuración
-          _buildConfigurationOptions(),
-        ],
-      )),
+      body: SafeArea(
+        child: Obx(() => ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            // Header con información básica del usuario
+            _buildUserHeader(),
+            
+            const SizedBox(height: 24),
+            
+            // Lista de opciones de configuración
+            _buildConfigurationOptions(),
+          ],
+        )),
+      ),
     );
   }
   

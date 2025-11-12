@@ -26,6 +26,43 @@ class AccessLogService {
         print('   🕐 Time: ${DateTime.now().toIso8601String()}');
       }
 
+      // Verificar si ya existe una entrada en el día actual (desde 1:00 AM)
+      final now = DateTime.now();
+      DateTime startOfDay;
+      
+      // Si es antes de la 1:00 AM, considerar el día anterior
+      if (now.hour < 1) {
+        final yesterday = now.subtract(const Duration(days: 1));
+        startOfDay = DateTime(yesterday.year, yesterday.month, yesterday.day, 1, 0, 0);
+      } else {
+        startOfDay = DateTime(now.year, now.month, now.day, 1, 0, 0);
+      }
+      
+      final endOfDay = startOfDay.add(const Duration(hours: 24));
+
+      if (kDebugMode) {
+        print('   📅 Verificando entradas desde: ${startOfDay.toIso8601String()}');
+        print('   📅 Hasta: ${endOfDay.toIso8601String()}');
+      }
+
+      // Verificar si ya hay una entrada registrada en el rango de tiempo
+      final existingAccess = await _supabase
+          .from('access_logs')
+          .select()
+          .eq('user_id', userId)
+          .eq('access_type', 'entrada')
+          .gte('access_time', startOfDay.toIso8601String())
+          .lt('access_time', endOfDay.toIso8601String())
+          .limit(1);
+
+      if (existingAccess.isNotEmpty) {
+        if (kDebugMode) {
+          print('⚠️ [AccessLogService] Ya existe una entrada registrada para hoy');
+          print('   🕐 Entrada existente: ${existingAccess.first['access_time']}');
+        }
+        return false; // No registrar entrada duplicada
+      }
+
       final accessData = {
         'user_id': userId,
         'user_name': userName,

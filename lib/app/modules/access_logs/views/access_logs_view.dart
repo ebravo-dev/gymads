@@ -31,16 +31,18 @@ class AccessLogsView extends GetView<AccessLogsController> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Estadísticas superiores
-          _buildStatsSection(),
-          
-          // Lista de logs
-          Expanded(
-            child: _buildLogsList(),
-          ),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Estadísticas superiores
+            _buildStatsSection(),
+            
+            // Lista de logs
+            Expanded(
+              child: _buildLogsList(),
+            ),
+          ],
+        ),
       ),
     );
   }

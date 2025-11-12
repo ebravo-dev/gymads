@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,10 +33,11 @@ class ConfiguracionController extends GetxController {
   final RxString qrCodeFormat = 'auto'.obs;
   
   @override
+  @override
   void onInit() {
     super.onInit();
     _loadConfiguration();
-    _initializeESP32Connection();
+    // No llamar _initializeESP32Connection() aquí porque _loadConfiguration ya lo hace
   }
 
   @override
@@ -76,24 +78,12 @@ class ConfiguracionController extends GetxController {
       await _checkRfidConnection();
       
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error al cargar configuración: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      // No mostrar notificación de error, solo log en consola
+      if (kDebugMode) {
+        print('❌ Error al cargar configuración: $e');
+      }
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  Future<void> _initializeESP32Connection() async {
-    try {
-      // Intentar conectar directamente con la IP estática predeterminada
-      // sin mostrar notificación (conexión silenciosa al iniciar)
-      await connectToESP32WithIP(RfidConfig.DEFAULT_ESP32_IP, showNotification: false);
-    } catch (e) {
-      esp32StatusMessage.value = 'Error de inicialización: $e';
     }
   }
 

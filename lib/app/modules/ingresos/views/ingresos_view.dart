@@ -30,25 +30,26 @@ class IngresosView extends GetView<IngresosController> {
           ),
         ],
       ),
-      body: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: AppColors.accent),
-                SizedBox(height: 20),
-                Text(
-                  'Cargando ingresos...',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
+      body: SafeArea(
+        child: Obx(() {
+          if (controller.isLoading.value) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: AppColors.accent),
+                  SizedBox(height: 20),
+                  Text(
+                    'Cargando ingresos...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }
+                ],
+              ),
+            );
+          }
 
         return RefreshIndicator(
           onRefresh: controller.refreshData,
@@ -83,7 +84,8 @@ class IngresosView extends GetView<IngresosController> {
             ),
           ),
         );
-      }),
+        }),
+      ),
     );
   }
 

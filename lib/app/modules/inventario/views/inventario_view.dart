@@ -22,26 +22,27 @@ class InventarioView extends GetView<InventarioController> {
             icon: const Icon(Icons.refresh),
             onPressed: () => controller.loadProducts(),
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          controller.resetForm();
-          Get.toNamed(Routes.PRODUCT_FORM);
-        },
-        backgroundColor: AppColors.accent,
-        foregroundColor: AppColors.textPrimary,
-        child: const Icon(Icons.add),
-      ),
-      body: Column(
-        children: [
-          _buildStatsSection(),
-          _buildSearchBar(),
-          _buildCategoryFilter(),
-          Expanded(
-            child: _buildProductList(),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              controller.resetForm();
+              Get.toNamed(Routes.PRODUCT_FORM);
+            },
+            tooltip: 'Agregar producto',
           ),
         ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildStatsSection(),
+            _buildSearchBar(),
+            _buildCategoryFilter(),
+            Expanded(
+              child: _buildProductList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -286,6 +287,7 @@ class InventarioView extends GetView<InventarioController> {
         ),
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
+          color: AppColors.cardBackground,
           onSelected: (value) {
             if (value == 'edit') {
               controller.editProduct(product);
@@ -299,35 +301,47 @@ class InventarioView extends GetView<InventarioController> {
             }
           },
           itemBuilder: (BuildContext context) => [
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               value: 'edit',
-              child: ListTile(
-                leading: Icon(Icons.edit, color: AppColors.accent),
-                title: Text('Editar', style: TextStyle(color: AppColors.textPrimary)),
+              child: Row(
+                children: [
+                  Icon(Icons.edit, color: AppColors.accent, size: 20),
+                  const SizedBox(width: 12),
+                  Text('Editar', style: TextStyle(color: AppColors.textPrimary)),
+                ],
               ),
             ),
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               value: 'transaction',
-              child: ListTile(
-                leading: Icon(Icons.sync_alt, color: AppColors.info),
-                title: Text('Registrar transacción', style: TextStyle(color: AppColors.textPrimary)),
+              child: Row(
+                children: [
+                  Icon(Icons.sync_alt, color: AppColors.info, size: 20),
+                  const SizedBox(width: 12),
+                  Text('Registrar transacción', style: TextStyle(color: AppColors.textPrimary)),
+                ],
               ),
             ),
             // Solo mostrar "Desactivar" si hay stock
             if (product.stock > 0)
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'deactivate',
-                child: ListTile(
-                  leading: Icon(Icons.visibility_off, color: AppColors.warning),
-                  title: Text('Desactivar', style: TextStyle(color: AppColors.textPrimary)),
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_off, color: AppColors.warning, size: 20),
+                    const SizedBox(width: 12),
+                    Text('Desactivar', style: TextStyle(color: AppColors.textPrimary)),
+                  ],
                 ),
               ),
             // Siempre mostrar "Eliminar permanentemente"
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               value: 'delete',
-              child: ListTile(
-                leading: Icon(Icons.delete_forever, color: AppColors.error),
-                title: Text('Eliminar permanentemente', style: TextStyle(color: AppColors.textPrimary)),
+              child: Row(
+                children: [
+                  Icon(Icons.delete_forever, color: AppColors.error, size: 20),
+                  const SizedBox(width: 12),
+                  Text('Eliminar permanentemente', style: TextStyle(color: AppColors.textPrimary)),
+                ],
               ),
             ),
           ],

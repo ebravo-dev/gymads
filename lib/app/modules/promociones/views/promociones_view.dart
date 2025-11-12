@@ -31,22 +31,23 @@ class PromocionesView extends GetView<PromocionesController> {
           ),
         ],
       ),
-      body: Obx(() {
-        // Mostrar indicador de carga
-        if (controller.isLoading.value) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: AppColors.accent),
-                SizedBox(height: 20),
-                Text(
-                  'Cargando promociones...',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
+      body: SafeArea(
+        child: Obx(() {
+          // Mostrar indicador de carga
+          if (controller.isLoading.value) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: AppColors.accent),
+                  SizedBox(height: 20),
+                  Text(
+                    'Cargando promociones...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
               ],
             ),
           );
@@ -63,7 +64,8 @@ class PromocionesView extends GetView<PromocionesController> {
             ),
           ],
         );
-      }),
+        }),
+      ),
     );
   }
 

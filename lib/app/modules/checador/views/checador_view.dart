@@ -11,48 +11,49 @@ class ChecadorView extends GetView<ChecadorController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Control de Acceso'), centerTitle: true),
-      body: Stack(
-        children: [
-          MobileScanner(
-            controller: MobileScannerController(
-              detectionSpeed: DetectionSpeed.normal,
-              facing: CameraFacing.back,
-              torchEnabled: false,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            MobileScanner(
+              controller: MobileScannerController(
+                detectionSpeed: DetectionSpeed.normal,
+                facing: CameraFacing.back,
+                torchEnabled: false,
+              ),
+              onDetect: controller.onDetect,
             ),
-            onDetect: controller.onDetect,
-          ),
 
-          // Mensaje guía
-          Positioned(
-            bottom: 24,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Obx(
-                  () => Text(
-                    controller.errorMessage.isEmpty
-                        ? 'Escanea el código QR del usuario'
-                        : controller.errorMessage.value,
-                    style: TextStyle(
-                      color:
-                          controller.errorMessage.isEmpty
-                              ? Colors.white
-                              : Colors.redAccent,
+            // Mensaje guía
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Obx(
+                    () => Text(
+                      controller.errorMessage.isEmpty
+                          ? 'Escanea el código QR del usuario'
+                          : controller.errorMessage.value,
+                      style: TextStyle(
+                        color:
+                            controller.errorMessage.isEmpty
+                                ? Colors.white
+                                : Colors.redAccent,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
 
           // Indicador de carga
           Obx(
@@ -75,7 +76,8 @@ class ChecadorView extends GetView<ChecadorController> {
               isVisible: controller.isShowingDialog.value,
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

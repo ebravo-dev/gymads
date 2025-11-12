@@ -33,21 +33,22 @@ class ClientesView extends GetView<ClientesController> {
           ),
         ],
       ),
-      body: Obx(() {
-        // Mostrar el indicador de carga a pantalla completa cuando isLoading es true
-        if (controller.isLoading.value) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: AppColors.accent),
-                SizedBox(height: 20),
-                Text(
-                  'Cargando clientes...',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
+      body: SafeArea(
+        child: Obx(() {
+          // Mostrar el indicador de carga a pantalla completa cuando isLoading es true
+          if (controller.isLoading.value) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: AppColors.accent),
+                  SizedBox(height: 20),
+                  Text(
+                    'Cargando clientes...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
+                    ),
                 ),
               ],
             ),
@@ -149,7 +150,8 @@ class ClientesView extends GetView<ClientesController> {
             ),
           ],
         );
-      }),
+        }),
+      ),
     );
   }
 
