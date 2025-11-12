@@ -36,30 +36,34 @@ class ClienteCard extends StatelessWidget {
             : 'Sin fecha de expiración';
 
     // Determinar colores según el estado
+    final bool isExpired = cliente.daysRemaining <= 0 && cliente.expirationDate != null;
+    
     final Color primaryColor =
-        cliente.isActive
-            ? cliente.needsRenewal
-                ? AppColors.warning
-                : AppColors.info
-            : AppColors.error;
+        !cliente.isActive || isExpired
+            ? AppColors.error  // Rojo para inactivo o vencido
+            : cliente.needsRenewal
+                ? AppColors.warning  // Naranja para por vencer (5 días o menos)
+                : AppColors.info;  // Azul para activo
 
     final Color statusColor = primaryColor.withOpacity(0.1);
 
     // Texto del estado
     final String statusText =
-        cliente.isActive
-            ? cliente.needsRenewal
-                ? 'Por vencer'
-                : 'Activo'
-            : 'Inactivo';
+        !cliente.isActive
+            ? 'Inactivo'
+            : isExpired
+                ? 'Vencido'
+                : cliente.needsRenewal
+                    ? 'Por vencer'
+                    : 'Activo';
 
     // Icono según el estado
     final IconData statusIcon =
-        cliente.isActive
-            ? cliente.needsRenewal
-                ? Icons.warning_rounded
-                : Icons.check_circle_rounded
-            : Icons.cancel_rounded;
+        !cliente.isActive || isExpired
+            ? Icons.cancel_rounded  // X para inactivo o vencido
+            : cliente.needsRenewal
+                ? Icons.warning_rounded  // Advertencia para por vencer
+                : Icons.check_circle_rounded;  // Check para activo
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
