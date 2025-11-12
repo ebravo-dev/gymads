@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Añadido para FilteringTextInputFormatter
 import 'package:get/get.dart';
 import 'package:gymads/app/data/models/user_model.dart';
 import 'package:gymads/app/data/models/membership_type_model.dart';
@@ -205,6 +206,7 @@ class ClienteFormDialog extends StatelessWidget {
                         controller: userNumberController,
                         decoration: InputDecoration(
                           labelText: 'Número de Usuario',
+                          hintText: 'Ej: 001, 123',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -215,9 +217,15 @@ class ClienteFormDialog extends StatelessWidget {
                         style: TextStyle(color: AppColors.accent),
                         keyboardType: TextInputType.number,
                         readOnly: isEditing,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly, // Solo números
+                        ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Por favor ingrese un número de usuario';
+                          }
+                          if (!RegExp(r'^\d+$').hasMatch(value)) {
+                            return 'Solo se permiten números';
                           }
                           return null;
                         },
@@ -231,19 +239,31 @@ class ClienteFormDialog extends StatelessWidget {
                               controller: rfidController,
                               decoration: InputDecoration(
                                 labelText: 'Tarjeta RFID',
-                                hintText: 'Código RFID o use el lector',
+                                hintText: 'Use el lector NFC para escanear',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                prefixIcon: const Icon(Icons.contactless),
+                                prefixIcon: const Icon(Icons.nfc), // Cambiado a icono NFC
                                 filled: true,
                                 fillColor: AppColors.containerBackground,
                               ),
                               style: TextStyle(color: AppColors.textPrimary),
+                              readOnly: true, // Solo lectura - no se puede escribir manualmente
+                              validator: (value) {
+                                if (value != null && value.isNotEmpty) {
+                                  if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+                                    return 'Solo se permiten letras y números';
+                                  }
+                                  if (value.length < 4) {
+                                    return 'Mínimo 4 caracteres';
+                                  }
+                                }
+                                return null;
+                              },
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Botón mejorado para el lector RFID con Material Design 3
+                          // Botón mejorado para el lector RFID/NFC con Material Design 3
                           Material(
                             color: AppColors.accent,
                             borderRadius: BorderRadius.circular(10),
@@ -257,7 +277,7 @@ class ClienteFormDialog extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
-                                  Icons.sensor_door,
+                                  Icons.nfc, // Cambiado a icono NFC
                                   color: Colors.white,
                                   size: 24,
                                 ),
@@ -273,6 +293,7 @@ class ClienteFormDialog extends StatelessWidget {
                         controller: nombreController,
                         decoration: InputDecoration(
                           labelText: 'Nombre',
+                          hintText: 'Nombre completo',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -281,9 +302,20 @@ class ClienteFormDialog extends StatelessWidget {
                           fillColor: AppColors.containerBackground,
                         ),
                         style: TextStyle(color: AppColors.textPrimary),
+                        textCapitalization: TextCapitalization.words,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]')), // Solo letras y espacios
+                          LengthLimitingTextInputFormatter(100), // Máximo 100 caracteres
+                        ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Por favor ingrese un nombre';
+                          }
+                          if (value.trim().length < 2) {
+                            return 'El nombre debe tener al menos 2 caracteres';
+                          }
+                          if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$').hasMatch(value)) {
+                            return 'Solo se permiten letras y espacios';
                           }
                           return null;
                         },
@@ -307,7 +339,7 @@ class ClienteFormDialog extends StatelessWidget {
                         autoValidateMode: AutovalidateMode.onUserInteraction,
                         initialValue: initialPhoneNumber,
                         formatInput: true,
-                        keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                        keyboardType: TextInputType.phone, // Teclado numérico de teléfono (solo números)
                         textStyle: TextStyle(color: AppColors.textPrimary),
                         selectorTextStyle: TextStyle(
                           color: AppColors.textPrimary,
@@ -547,10 +579,11 @@ class ClienteFormDialog extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
+                                color: AppColors.accent.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: Colors.orange.withOpacity(0.3),
+                                  color: AppColors.accent.withOpacity(0.3),
+                                  width: 1.5,
                                 ),
                               ),
                               child: Column(
@@ -560,7 +593,7 @@ class ClienteFormDialog extends StatelessWidget {
                                     children: [
                                       Icon(
                                         Icons.local_offer,
-                                        color: Colors.orange,
+                                        color: AppColors.accent,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
@@ -569,7 +602,8 @@ class ClienteFormDialog extends StatelessWidget {
                                           'Promociones Disponibles',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.orange.shade700,
+                                            fontSize: 15,
+                                            color: AppColors.textPrimary,
                                           ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -585,8 +619,8 @@ class ClienteFormDialog extends StatelessWidget {
                                         return Text(
                                           'No hay promociones disponibles',
                                           style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600,
+                                            fontSize: 13,
+                                            color: AppColors.textSecondary,
                                           ),
                                         );
                                       }
@@ -599,13 +633,18 @@ class ClienteFormDialog extends StatelessWidget {
                                             return RadioListTile<String?>(
                                               title: Text(
                                                 'Sin promoción',
-                                                style: TextStyle(fontSize: 14),
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: AppColors.textPrimary,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
                                               subtitle: Text(
                                                 'Total: \$${(currentController.membershipCost.value + currentController.registrationFee.value).toStringAsFixed(2)}',
                                                 style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey.shade600,
+                                                  fontSize: 13,
+                                                  color: AppColors.textSecondary,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
                                               ),
                                               value: null,
@@ -630,7 +669,8 @@ class ClienteFormDialog extends StatelessWidget {
                                                   promotion.name,
                                                   style: TextStyle(
                                                     fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: AppColors.textPrimary,
                                                   ),
                                                 ),
                                                 subtitle: Column(
@@ -640,16 +680,17 @@ class ClienteFormDialog extends StatelessWidget {
                                                       Text(
                                                         promotion.description!,
                                                         style: TextStyle(
-                                                          fontSize: 11,
-                                                          color: Colors.grey.shade600,
+                                                          fontSize: 12,
+                                                          color: AppColors.textSecondary,
                                                         ),
                                                       ),
+                                                    const SizedBox(height: 2),
                                                     Text(
                                                       'Descuento: -\$${discount.toStringAsFixed(2)} | Total: \$${finalAmount.toStringAsFixed(2)}',
                                                       style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.green.shade700,
-                                                        fontWeight: FontWeight.w500,
+                                                        fontSize: 13,
+                                                        color: Colors.green.shade400,
+                                                        fontWeight: FontWeight.w600,
                                                       ),
                                                     ),
                                                   ],

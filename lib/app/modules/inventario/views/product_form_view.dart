@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Añadido para FilteringTextInputFormatter
 import 'package:get/get.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 import '../controllers/inventario_controller.dart';
@@ -99,15 +100,26 @@ class ProductFormView extends GetView<InventarioController> {
                       decoration: const InputDecoration(
                         labelText: 'Nombre del producto *',
                         hintText: 'Ej: Proteína Whey 1kg',
-                      prefixIcon: Icon(Icons.shopping_bag, color: AppColors.accent),
+                        prefixIcon: Icon(Icons.shopping_bag, color: AppColors.accent),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-()]')), // Solo letras, números y algunos caracteres especiales
+                        LengthLimitingTextInputFormatter(100), // Máximo 100 caracteres
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor ingresa el nombre del producto';
+                        }
+                        if (value.trim().length < 2) {
+                          return 'El nombre debe tener al menos 2 caracteres';
+                        }
+                        if (!RegExp(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-()]+$').hasMatch(value)) {
+                          return 'Solo se permiten letras, números y caracteres básicos';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingresa el nombre del producto';
-                      }
-                      return null;
-                    },
-                  ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: descriptionController,
@@ -116,8 +128,14 @@ class ProductFormView extends GetView<InventarioController> {
                       labelText: 'Descripción',
                       hintText: 'Describe las características del producto...',
                       prefixIcon: Icon(Icons.description, color: AppColors.accent),
+                      helperText: 'Opcional - Máximo 500 caracteres',
+                      helperStyle: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
                     maxLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(500), // Máximo 500 caracteres
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Obx(() {
@@ -170,15 +188,27 @@ class ProductFormView extends GetView<InventarioController> {
                             hintText: '0.00',
                             prefixIcon: Icon(Icons.monetization_on, color: AppColors.accent),
                             prefixText: '\$',
+                            helperText: 'Solo números',
+                            helperStyle: TextStyle(fontSize: 10),
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')), // Solo números decimales con hasta 2 decimales
+                            LengthLimitingTextInputFormatter(10), // Máximo 10 caracteres (9999999.99)
+                          ],
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Requerido';
                             }
+                            if (!RegExp(r'^\d+\.?\d{0,2}$').hasMatch(value)) {
+                              return 'Formato inválido';
+                            }
                             final price = double.tryParse(value);
                             if (price == null || price <= 0) {
-                              return 'Precio inválido';
+                              return 'Debe ser mayor a 0';
+                            }
+                            if (price > 9999999.99) {
+                              return 'Precio muy alto';
                             }
                             return null;
                           },
@@ -194,15 +224,27 @@ class ProductFormView extends GetView<InventarioController> {
                             hintText: '0',
                             prefixIcon: Icon(Icons.inventory, color: AppColors.accent),
                             suffixText: 'unidades',
+                            helperText: 'Solo números',
+                            helperStyle: TextStyle(fontSize: 10),
                           ),
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly, // Solo números enteros
+                            LengthLimitingTextInputFormatter(6), // Máximo 6 dígitos (999,999)
+                          ],
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Requerido';
                             }
+                            if (!RegExp(r'^\d+$').hasMatch(value)) {
+                              return 'Solo números enteros';
+                            }
                             final stock = int.tryParse(value);
                             if (stock == null || stock < 0) {
-                              return 'Stock inválido';
+                              return 'Debe ser 0 o mayor';
+                            }
+                            if (stock > 999999) {
+                              return 'Stock muy alto';
                             }
                             return null;
                           },

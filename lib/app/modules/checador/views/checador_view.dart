@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:gymads/core/theme/app_colors.dart';
 import '../controllers/checador_controller.dart';
 import '../../shared/widgets/welcome_screen_widget.dart';
 
@@ -10,7 +11,17 @@ class ChecadorView extends GetView<ChecadorController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Control de Acceso'), centerTitle: true),
+      backgroundColor: AppColors.backgroundColor,
+      appBar: AppBar(
+        title: const Text(
+          'Control de Acceso',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        centerTitle: true,
+        backgroundColor: AppColors.cardBackground,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Stack(
           children: [
@@ -26,8 +37,8 @@ class ChecadorView extends GetView<ChecadorController> {
             // Mensaje guía
             Positioned(
               bottom: 16,
-              left: 0,
-              right: 0,
+              left: 16,
+              right: 16,
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -35,19 +46,32 @@ class ChecadorView extends GetView<ChecadorController> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.cardBackground.withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.accent.withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Obx(
                     () => Text(
                       controller.errorMessage.isEmpty
                           ? 'Escanea el código QR del usuario'
                           : controller.errorMessage.value,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color:
-                            controller.errorMessage.isEmpty
-                                ? Colors.white
-                                : Colors.redAccent,
+                        color: controller.errorMessage.isEmpty
+                            ? AppColors.textPrimary
+                            : Colors.red.shade400,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -57,13 +81,17 @@ class ChecadorView extends GetView<ChecadorController> {
 
           // Indicador de carga
           Obx(
-            () =>
-                controller.isLoading.value
-                    ? Container(
-                      color: Colors.black54,
-                      child: const Center(child: CircularProgressIndicator()),
-                    )
-                    : const SizedBox.shrink(),
+            () => controller.isLoading.value
+                ? Container(
+                    color: AppColors.backgroundColor.withOpacity(0.8),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.accent,
+                        strokeWidth: 3,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
 
           // Pantalla de bienvenida compartida
