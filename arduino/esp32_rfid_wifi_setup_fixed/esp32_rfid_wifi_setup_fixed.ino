@@ -179,6 +179,8 @@ void setup() {
     Serial.print(".");
     Serial.println((versiondata >> 8) & 0xFF);
     nfc->SAMConfig();
+    // Configurar reintentos bajos para evitar bloqueo del loop y desconexiones WiFi
+    nfc->setPassiveActivationRetries(0x02);
   }
 
   // Conectar a WiFi
@@ -421,6 +423,8 @@ void setupServerRoutes() {
 void handleGetUid() {
   // Solo enviar el UID, NO resetearlo
   // El reseteo se maneja en el loop principal
+  server.sendHeader("Connection", "close");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "text/plain", lastUid);
 }
 
