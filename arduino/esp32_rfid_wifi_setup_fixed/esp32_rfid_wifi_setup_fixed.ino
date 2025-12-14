@@ -54,8 +54,8 @@ const uint8_t APDU_GET_DATA[] = {
 
 // =================== CONFIGURACIÓN WIFI ===================
 // TODO: Cambiar estas credenciales por las de tu red WiFi
-const char* WIFI_SSID = "FamiliaBlanco";
-const char* WIFI_PASSWORD = "*E2d0e0r4";
+const char* WIFI_SSID = "FamiliaBlanco_2.4";
+const char* WIFI_PASSWORD = "*E2d0e0r46";
 
 // =================== CONFIGURACIÓN DE ESCANEO RFID ===================
 // Intervalo mínimo entre lecturas de la misma tarjeta (en milisegundos)
@@ -65,9 +65,9 @@ const unsigned long CARD_READ_INTERVAL_MS = 3000;
 
 // =================== CONFIGURACIÓN DE IP ESTÁTICA ===================
 // Configuración de IP estática
-bool useStaticIP = true;  // Establecer a false para usar DHCP
-IPAddress staticIP(192, 168, 68, 108);  // IP estática que quieres asignar al ESP32
-IPAddress gateway(192, 168, 68, 1);     // IP del router (puerta de enlace)
+bool useStaticIP = false;  // Establecer a false para usar DHCP
+IPAddress staticIP(192, 168, 1, 109);  // IP estática que quieres asignar al ESP32
+IPAddress gateway(192, 168, 1, 1);     // IP del router (puerta de enlace)
 IPAddress subnet(255, 255, 255, 0);    // Máscara de subred
 IPAddress dns(8, 8, 8, 8);             // Servidor DNS (Google)
 
@@ -413,6 +413,7 @@ void setupServerRoutes() {
   server.on("/api/membership", HTTP_POST, handleMembershipStatus);
   server.on("/api/discover", HTTP_GET, handleDiscover);
 
+  // Configurar headers CORS manualmente para mayor compatibilidad
   server.enableCORS(true);
 }
 
@@ -434,6 +435,10 @@ void handleGetUidOnly() {
 
 // Manejador para la ruta /api/status
 void handleStatus() {
+  // Agregar headers para evitar problemas de conexión
+  server.sendHeader("Connection", "close");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  
   DynamicJsonDocument doc(300);
   doc["status"] = "OK";
   doc["wifi_connected"] = wifiConnected;
