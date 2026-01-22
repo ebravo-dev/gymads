@@ -72,10 +72,13 @@ class BackgroundRfidService extends GetxService {
               ),
             ],
           ),
-          backgroundColor: isError ? const Color(0xFFE53935) : const Color(0xFF1DB954),
+          backgroundColor:
+              isError ? const Color(0xFFE53935) : const Color(0xFF1DB954),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          margin: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          margin:
+              const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           duration: const Duration(seconds: 2),
           dismissDirection: DismissDirection.horizontal,
@@ -333,10 +336,11 @@ class BackgroundRfidService extends GetxService {
 
     // Mostrar interfaz según la vista actual
     final currentRoute = Get.currentRoute;
-    
+
     if (kDebugMode) {
       print('🛣️ Ruta actual: "$currentRoute"');
-      print('🏠 Es home: ${currentRoute == Routes.HOME || currentRoute == "/"}');
+      print(
+          '🏠 Es home: ${currentRoute == Routes.HOME || currentRoute == "/"}');
     }
 
     if (currentRoute == Routes.HOME || currentRoute == '/') {

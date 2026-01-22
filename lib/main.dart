@@ -12,7 +12,8 @@ import 'package:gymads/app/routes/app_pages.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// GlobalKey para acceder al ScaffoldMessenger desde cualquier parte de la app
-final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   // Carga las variables de entorno
@@ -31,7 +32,7 @@ void main() async {
 
   // Autentica al usuario administrador
   await SupabaseService.authenticate();
-  
+
   // Verifica la conexión a la base de datos
   await SupabaseService.testDatabaseConnection();
   print('Conexión a la base de datos verificada');
