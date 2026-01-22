@@ -630,25 +630,28 @@ class ClientesController extends GetxController {
         }
 
         // Mostrar mensaje de éxito ANTES de cerrar el diálogo
-        final successMessage = 'Membresía renovada correctamente. Monto cobrado: \$${total.toStringAsFixed(2)}';
-        
+        final successMessage =
+            'Membresía renovada correctamente. Monto cobrado: \$${total.toStringAsFixed(2)}';
+
         Get.back(); // Cerrar el diálogo de renovación
-        
+
         // Esperar a que la navegación se complete antes de mostrar snackbar
         await Future.delayed(const Duration(milliseconds: 800));
         _showSnackbarSafe('Éxito', successMessage);
-        
+
         return true;
       } else {
         Get.back();
         await Future.delayed(const Duration(milliseconds: 800));
-        _showSnackbarSafe('Error', 'No se pudo renovar la membresía', isError: true);
+        _showSnackbarSafe('Error', 'No se pudo renovar la membresía',
+            isError: true);
         return false;
       }
     } catch (e) {
       Get.back();
       await Future.delayed(const Duration(milliseconds: 800));
-      _showSnackbarSafe('Error', 'Error al renovar membresía: $e', isError: true);
+      _showSnackbarSafe('Error', 'Error al renovar membresía: $e',
+          isError: true);
       return false;
     } finally {
       isLoading.value = false;
