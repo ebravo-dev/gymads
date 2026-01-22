@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import '../../../core/utils/snackbar_helper.dart';
 import '../../../data/models/access_log_model.dart';
 import '../../../data/services/access_log_service.dart';
 
@@ -66,14 +66,7 @@ class AccessLogsController extends GetxController {
       }
       
       // Mostrar snackbar de error
-      Get.snackbar(
-        'Error',
-        'No se pudieron cargar los registros de acceso: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: const Color(0xFFF44336),
-        colorText: const Color(0xFFFFFFFF),
-        duration: const Duration(seconds: 5),
-      );
+      SnackbarHelper.error('Error', 'No se pudieron cargar los registros de acceso: $e');
     } finally {
       isLoading.value = false;
     }

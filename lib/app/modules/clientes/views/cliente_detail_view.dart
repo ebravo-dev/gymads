@@ -5,6 +5,7 @@ import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/app/global_widgets/qr_dialog.dart';
 import '../../../core/widgets/cached_user_image.dart';
 import '../controllers/clientes_controller.dart';
+import '../../../core/utils/snackbar_helper.dart';
 
 class ClienteDetailView extends GetView<ClientesController> {
   final UserModel cliente;
@@ -785,20 +786,18 @@ class ClienteDetailView extends GetView<ClientesController> {
   // Funciones para manejar las acciones
   void _editCliente() {
     Get.back(); // Volver a la lista de clientes
-    Get.snackbar(
+    SnackbarHelper.info(
       'Editar',
       'Redirigiendo a edición de cliente...',
-      snackPosition: SnackPosition.BOTTOM,
     );
     // La lógica de edición se manejará desde la vista principal
   }
 
   void _renovarCliente() {
     Get.back(); // Volver a la lista de clientes
-    Get.snackbar(
+    SnackbarHelper.info(
       'Renovar',
       'Redirigiendo a renovación de membresía...',
-      snackPosition: SnackPosition.BOTTOM,
     );
     // La lógica de renovación se manejará desde la vista principal
   }

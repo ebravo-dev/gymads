@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/core/utils/responsive_utils.dart';
 import '../controllers/ingresos_controller.dart';
+import '../../../core/utils/snackbar_helper.dart';
 
 class IngresosView extends GetView<IngresosController> {
   const IngresosView({super.key});
@@ -127,12 +128,9 @@ class IngresosView extends GetView<IngresosController> {
                           if (selected) controller.changePeriodo(periodo);
                         } catch (e) {
                           print('❌ Error al cambiar período: $e');
-                          Get.snackbar(
+                          SnackbarHelper.error(
                             'Error',
                             'Error al cambiar período',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
                           );
                         }
                       },
@@ -1077,13 +1075,9 @@ class IngresosView extends GetView<IngresosController> {
       }
     } catch (e) {
       print('❌ Error al mostrar selector de fechas: $e');
-      Get.snackbar(
+      SnackbarHelper.error(
         'Error',
         'No se pudo abrir el selector de fechas',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
       );
     }
   }

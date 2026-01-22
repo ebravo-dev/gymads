@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gymads/app/core/utils/snackbar_helper.dart';
 import 'package:gymads/app/data/models/ingreso_model.dart';
 import 'package:gymads/app/data/services/ingreso_service.dart';
 
@@ -67,13 +68,7 @@ class IngresosController extends GetxController {
       print('❌ Error al obtener estadísticas: $e');
       errorMessage.value = 'Error al cargar estadísticas: $e';
       
-      Get.snackbar(
-        'Error',
-        'Error al cargar estadísticas: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al cargar estadísticas: $e');
     } finally {
       isLoading.value = false;
     }
@@ -149,13 +144,7 @@ class IngresosController extends GetxController {
       refreshData();
     } catch (e) {
       print('❌ Error al cambiar período: $e');
-      Get.snackbar(
-        'Error',
-        'Error al cambiar período: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al cambiar período: $e');
     }
   }
 
@@ -166,13 +155,7 @@ class IngresosController extends GetxController {
       fetchIngresos();
     } catch (e) {
       print('❌ Error al cambiar concepto: $e');
-      Get.snackbar(
-        'Error',
-        'Error al aplicar filtro: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al aplicar filtro: $e');
     }
   }
 
@@ -183,13 +166,7 @@ class IngresosController extends GetxController {
       fetchIngresos();
     } catch (e) {
       print('❌ Error al cambiar método de pago: $e');
-      Get.snackbar(
-        'Error',
-        'Error al aplicar filtro: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al aplicar filtro: $e');
     }
   }
 
@@ -224,13 +201,7 @@ class IngresosController extends GetxController {
       print('❌ Error general al refrescar datos: $e');
       errorMessage.value = 'Error al actualizar datos: $e';
       
-      Get.snackbar(
-        'Error',
-        'Error al actualizar datos. Intente nuevamente.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al actualizar datos. Intente nuevamente.');
     } finally {
       isLoading.value = false;
     }
@@ -297,13 +268,7 @@ class IngresosController extends GetxController {
       // No es necesario recargar datos, sólo cambiar la visualización
     } catch (e) {
       print('❌ Error al cambiar tipo de gráfica: $e');
-      Get.snackbar(
-        'Error',
-        'Error al cambiar tipo de gráfica: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al cambiar tipo de gráfica: $e');
     }
   }
 

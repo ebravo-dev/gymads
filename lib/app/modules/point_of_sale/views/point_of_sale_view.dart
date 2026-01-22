@@ -4,6 +4,7 @@ import '../controllers/point_of_sale_controller.dart';
 import '../../../data/models/product_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/sales_stats_widget.dart';
+import '../../../core/utils/snackbar_helper.dart';
 
 class PointOfSaleView extends GetView<PointOfSaleController> {
   const PointOfSaleView({super.key});
@@ -693,11 +694,9 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
   void _processSale() async {
     final success = await controller.processSale();
     if (success) {
-      Get.snackbar(
+      SnackbarHelper.success(
         'Éxito',
         'Venta procesada correctamente',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
       );
     }
   }

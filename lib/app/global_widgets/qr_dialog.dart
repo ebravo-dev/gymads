@@ -10,6 +10,7 @@ import 'package:gymads/app/modules/clientes/services/qr_cache_service.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../core/utils/snackbar_helper.dart';
 
 class QrDialog extends StatefulWidget {
   final String nombre;
@@ -77,12 +78,9 @@ class _QrDialogState extends State<QrDialog> {
       final qrImage = await _generateVisualQrImage(widget.userNumber);
 
       if (qrImage == null) {
-        Get.snackbar(
+        SnackbarHelper.error(
           'Error',
           'No se pudo generar el código QR',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColors.error,
-          colorText: Colors.white,
         );
         return;
       }
@@ -114,13 +112,9 @@ class _QrDialogState extends State<QrDialog> {
       );
 
       if (result.status == ShareResultStatus.success) {
-        Get.snackbar(
+        SnackbarHelper.success(
           'QR Compartido',
           'Código QR compartido exitosamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColors.success,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
         );
       } else {
         // Manejar error de compartir silenciosamente
@@ -128,13 +122,9 @@ class _QrDialogState extends State<QrDialog> {
       }
     } catch (e) {
       print('Error al compartir QR: $e');
-      Get.snackbar(
+      SnackbarHelper.error(
         'Error',
         'No se pudo compartir el código QR. Intenta nuevamente.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
       );
     } finally {
       if (mounted) {
@@ -217,12 +207,9 @@ Total pagado: \$${widget.totalAmount.toStringAsFixed(2)}''';
     if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
       await launchUrl(Uri.parse(whatsappUrl));
     } else {
-      Get.snackbar(
+      SnackbarHelper.error(
         'Error',
         'No se pudo abrir WhatsApp',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
       );
     }
   }

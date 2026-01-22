@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import '../../../core/utils/snackbar_helper.dart';
 
 class CircularCameraView extends StatefulWidget {
   final Function(File) onPhotoTaken;
@@ -139,12 +140,9 @@ class _CircularCameraViewState extends State<CircularCameraView>
       }
     } catch (e) {
       if (mounted) {
-        Get.snackbar(
+        SnackbarHelper.error(
           'Error',
           'No se pudo tomar la foto: ${e.toString()}',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
         );
       }
     } finally {

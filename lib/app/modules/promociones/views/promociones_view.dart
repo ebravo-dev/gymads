@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:gymads/app/modules/promociones/controllers/promociones_controller.dart';
 import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/core/utils/responsive_utils.dart';
+import 'package:gymads/app/core/utils/snackbar_helper.dart';
 
 class PromocionesView extends GetView<PromocionesController> {
   const PromocionesView({super.key});
@@ -648,13 +649,7 @@ class PromocionesView extends GetView<PromocionesController> {
       }
     } catch (e) {
       print('❌ Error en _savePromotion: $e');
-      Get.snackbar(
-        'Error',
-        'Error inesperado: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error inesperado: $e');
     }
   }
 

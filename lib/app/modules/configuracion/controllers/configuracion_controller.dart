@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../core/utils/snackbar_helper.dart';
 
 class ConfiguracionController extends GetxController {
   // Variables observables para la configuración
@@ -103,12 +104,7 @@ class ConfiguracionController extends GetxController {
       final RegExp ipRegex = RegExp(r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
       if (!ipRegex.hasMatch(ipAddress)) {
         if (showNotification) {
-          Get.snackbar(
-            'Formato inválido',
-            'La dirección IP no tiene un formato válido (ej: 192.168.1.100)',
-            backgroundColor: AppColors.warning,
-            colorText: Colors.white,
-          );
+          SnackbarHelper.error('Formato inválido', 'La dirección IP no tiene un formato válido (ej: 192.168.1.100)');
         }
         return;
       }
@@ -121,12 +117,7 @@ class ConfiguracionController extends GetxController {
         esp32StatusMessage.value = 'ESP32 conectado: $ipAddress';
         
         if (showNotification) {
-          Get.snackbar(
-            'Conectado',
-            'ESP32 conectado exitosamente a $ipAddress',
-            backgroundColor: AppColors.success,
-            colorText: Colors.white,
-          );
+          SnackbarHelper.success('Conectado', 'ESP32 conectado exitosamente a $ipAddress');
         }
         
         // Guardar la IP para uso futuro
@@ -137,12 +128,7 @@ class ConfiguracionController extends GetxController {
         esp32StatusMessage.value = 'No se pudo conectar a $ipAddress';
         
         if (showNotification) {
-          Get.snackbar(
-            'Error de conexión',
-            'No se pudo conectar al ESP32 en $ipAddress. Verifique que el dispositivo esté encendido y en la misma red.',
-            backgroundColor: AppColors.error,
-            colorText: Colors.white,
-          );
+          SnackbarHelper.error('Error de conexión', 'No se pudo conectar al ESP32 en $ipAddress. Verifique que el dispositivo esté encendido y en la misma red.');
         }
       }
     } catch (e) {
@@ -150,12 +136,7 @@ class ConfiguracionController extends GetxController {
       esp32StatusMessage.value = 'Error: $e';
       
       if (showNotification) {
-        Get.snackbar(
-          'Error',
-          'Error al conectar: $e',
-          backgroundColor: AppColors.error,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.error('Error', 'Error al conectar: $e');
       }
     } finally {
       isLoading.value = false;
@@ -220,44 +201,20 @@ class ConfiguracionController extends GetxController {
       if (cardUid != null) {
         rfidConnectionStatus.value = true;
         connectionStatusMessage.value = 'RFID conectado - Tarjeta detectada';
-        
-        Get.snackbar(
-          'Conexión exitosa',
-          'El lector RFID está funcionando correctamente',
-          backgroundColor: AppColors.success,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.success('Conexión exitosa', 'El lector RFID está funcionando correctamente');
       } else if (RfidConfig.isConfigured) {
         rfidConnectionStatus.value = true;
         connectionStatusMessage.value = 'RFID conectado - Sin tarjeta';
-        
-        Get.snackbar(
-          'Conexión OK',
-          'El lector RFID está conectado pero no hay tarjeta presente',
-          backgroundColor: AppColors.info,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.info('Conexión OK', 'El lector RFID está conectado pero no hay tarjeta presente');
       } else {
         rfidConnectionStatus.value = false;
         connectionStatusMessage.value = 'RFID no configurado';
-        
-        Get.snackbar(
-          'Sin configurar',
-          'El lector RFID no está configurado',
-          backgroundColor: AppColors.warning,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.info('Sin configurar', 'El lector RFID no está configurado');
       }
     } catch (e) {
       rfidConnectionStatus.value = false;
       connectionStatusMessage.value = 'Error: $e';
-      
-      Get.snackbar(
-        'Error',
-        'Error al probar conexión: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al probar conexión: $e');
     } finally {
       isLoading.value = false;
     }
@@ -274,19 +231,9 @@ class ConfiguracionController extends GetxController {
       await prefs.setString('user_email', userEmail.value);
       await prefs.setString('user_role', userRole.value);
       
-      Get.snackbar(
-        'Guardado',
-        'Configuración de usuario guardada',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.success('Guardado', 'Configuración de usuario guardada');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error al guardar configuración: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al guardar configuración: $e');
     }
   }
 
@@ -298,19 +245,9 @@ class ConfiguracionController extends GetxController {
       await prefs.setBool('sound_enabled', soundEnabled.value);
       await prefs.setDouble('sound_volume', soundVolume.value);
       
-      Get.snackbar(
-        'Guardado',
-        'Configuración de audio guardada',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.success('Guardado', 'Configuración de audio guardada');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error al guardar configuración de audio: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al guardar configuración de audio: $e');
     }
   }
 
@@ -322,19 +259,9 @@ class ConfiguracionController extends GetxController {
       await prefs.setBool('qr_enabled', qrEnabled.value);
       await prefs.setString('qr_format', qrCodeFormat.value);
       
-      Get.snackbar(
-        'Guardado',
-        'Configuración de QR guardada',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.success('Guardado', 'Configuración de QR guardada');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error al guardar configuración de QR: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al guardar configuración de QR: $e');
     }
   }
 
@@ -353,19 +280,9 @@ class ConfiguracionController extends GetxController {
       qrEnabled.value = true;
       qrCodeFormat.value = 'auto';
       
-      Get.snackbar(
-        'Restablecido',
-        'Configuración restablecida a valores por defecto',
-        backgroundColor: AppColors.info,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.info('Restablecido', 'Configuración restablecida a valores por defecto');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error al restablecer configuración: $e',
-        backgroundColor: AppColors.error,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al restablecer configuración: $e');
     }
   }
 
@@ -463,12 +380,7 @@ class ConfiguracionController extends GetxController {
             onPressed: () {
               // Aquí implementar la lógica de cierre de sesión
               Get.back();
-              Get.snackbar(
-                'Cerrar Sesión',
-                'Funcionalidad en desarrollo',
-                backgroundColor: AppColors.info,
-                colorText: Colors.white,
-              );
+              SnackbarHelper.info('Cerrar Sesión', 'Funcionalidad en desarrollo');
             },
             child: const Text('Cerrar Sesión'),
           ),

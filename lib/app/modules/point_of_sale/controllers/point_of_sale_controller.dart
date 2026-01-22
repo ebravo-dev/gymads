@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import '../../../core/utils/snackbar_helper.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/sale_model.dart';
 import '../../../data/repositories/product_repository.dart';
@@ -82,11 +83,7 @@ class PointOfSaleController extends GetxController {
       if (kDebugMode) {
         print('Error al cargar productos: $e');
       }
-      Get.snackbar(
-        'Error',
-        'No se pudieron cargar los productos',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      SnackbarHelper.error('Error', 'No se pudieron cargar los productos');
     } finally {
       _isLoading.value = false;
     }
@@ -100,11 +97,7 @@ class PointOfSaleController extends GetxController {
   /// Agregar producto al carrito
   void addProductToCart(Product product, {int quantity = 1}) {
     if (product.stock < quantity) {
-      Get.snackbar(
-        'Stock insuficiente',
-        'Solo hay ${product.stock} unidades disponibles',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      SnackbarHelper.error('Stock insuficiente', 'Solo hay ${product.stock} unidades disponibles');
       return;
     }
     
@@ -117,11 +110,7 @@ class PointOfSaleController extends GetxController {
       final newQuantity = existingItem.quantity + quantity;
       
       if (newQuantity > product.stock) {
-        Get.snackbar(
-          'Stock insuficiente',
-          'Solo hay ${product.stock} unidades disponibles',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        SnackbarHelper.error('Stock insuficiente', 'Solo hay ${product.stock} unidades disponibles');
         return;
       }
       
@@ -140,12 +129,7 @@ class PointOfSaleController extends GetxController {
     
     _calculateTotals();
     
-    Get.snackbar(
-      'Producto agregado',
-      '${product.name} x$quantity',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 1),
-    );
+    SnackbarHelper.success('Producto agregado', '${product.name} x$quantity');
   }
   
   /// Actualizar cantidad de un item en el carrito
@@ -160,11 +144,7 @@ class PointOfSaleController extends GetxController {
       // Verificar stock disponible
       final product = _availableProducts.firstWhereOrNull((p) => p.id == productId);
       if (product != null && newQuantity > product.stock) {
-        Get.snackbar(
-          'Stock insuficiente',
-          'Solo hay ${product.stock} unidades disponibles',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        SnackbarHelper.error('Stock insuficiente', 'Solo hay ${product.stock} unidades disponibles');
         return;
       }
       
@@ -234,11 +214,7 @@ class PointOfSaleController extends GetxController {
   /// Procesar venta
   Future<bool> processSale() async {
     if (!canProcessSale()) {
-      Get.snackbar(
-        'Error',
-        'No se puede procesar la venta. Verifique los datos.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      SnackbarHelper.error('Error', 'No se puede procesar la venta. Verifique los datos.');
       return false;
     }
     
@@ -270,11 +246,7 @@ class PointOfSaleController extends GetxController {
       final result = await _saleRepository.createSale(sale);
       
       if (result != null) {
-        Get.snackbar(
-          'Venta procesada',
-          'Venta completada exitosamente',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        SnackbarHelper.success('Venta procesada', 'Venta completada exitosamente');
         
         // Limpiar carrito y estado
         clearCart();
@@ -285,22 +257,14 @@ class PointOfSaleController extends GetxController {
         
         return true;
       } else {
-        Get.snackbar(
-          'Error',
-          'No se pudo procesar la venta',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        SnackbarHelper.error('Error', 'No se pudo procesar la venta');
         return false;
       }
     } catch (e) {
       if (kDebugMode) {
         print('Error al procesar venta: $e');
       }
-      Get.snackbar(
-        'Error',
-        'Error inesperado al procesar la venta',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      SnackbarHelper.error('Error', 'Error inesperado al procesar la venta');
       return false;
     } finally {
       _isProcessingPayment.value = false;

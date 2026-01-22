@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../views/circular_camera_view.dart';
+import '../../../core/utils/snackbar_helper.dart';
 
 class PhotoCaptureWidget extends StatelessWidget {
   final Function(File) onPhotoTaken;
@@ -85,10 +86,9 @@ class PhotoCaptureWidget extends StatelessWidget {
           onPhotoTaken(file);
         }
       } catch (fallbackError) {
-        Get.snackbar(
+        SnackbarHelper.error(
           'Error',
           'No se pudo tomar la foto. Por favor, intenta de nuevo.',
-          snackPosition: SnackPosition.BOTTOM,
         );
       }
     }

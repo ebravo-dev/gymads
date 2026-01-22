@@ -13,6 +13,7 @@ import 'package:gymads/core/theme/app_colors.dart';
 import 'package:gymads/app/data/config/rfid_config.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import '../modules/shared/widgets/photo_capture_widget.dart';
+import '../core/utils/snackbar_helper.dart';
 
 class ClienteFormDialog extends StatelessWidget {
   final TextEditingController nombreController;
@@ -494,13 +495,9 @@ class ClienteFormDialog extends StatelessWidget {
 
                               // Si está editando y la membresía seleccionada está inactiva, mostrar advertencia
                               if (isEditing && !isActive) {
-                                Get.snackbar(
+                                SnackbarHelper.info(
                                   'Membresía Inactiva',
                                   'Esta membresía ya no está disponible. Se recomienda seleccionar una membresía activa.',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  backgroundColor: Colors.orange,
-                                  colorText: Colors.white,
-                                  duration: const Duration(seconds: 4),
                                 );
                               }
 
@@ -1063,13 +1060,9 @@ class ClienteFormDialog extends StatelessWidget {
         // Si no se pudo iniciar el lector real, mostrar un mensaje de error
         if (isReading.value) {
           // Verificar que el usuario no haya cancelado
-          Get.snackbar(
+          SnackbarHelper.error(
             'Error de conexión',
             'No se pudo conectar con el lector RFID. Verifica la configuración.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 3),
           );
           isReading.value = false;
           if (Navigator.of(context).canPop()) {
@@ -1081,13 +1074,9 @@ class ClienteFormDialog extends StatelessWidget {
     } catch (e) {
       // En caso de error, mostrar mensaje
       if (isReading.value) {
-        Get.snackbar(
+        SnackbarHelper.error(
           'Error',
           'No se pudo leer la tarjeta RFID: ${e.toString()}',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
         );
         isReading.value = false;
         if (Navigator.of(context).canPop()) {

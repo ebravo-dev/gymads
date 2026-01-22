@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gymads/app/core/utils/snackbar_helper.dart';
 import 'package:gymads/app/data/models/promotion_model.dart';
 import 'package:gymads/app/data/providers/promotion_provider.dart';
 
@@ -153,13 +154,7 @@ class PromocionesController extends GetxController {
     } catch (e) {
       print('❌ Error al obtener promociones: $e');
       errorMessage.value = 'Error al cargar promociones: $e';
-      Get.snackbar(
-        'Error',
-        'Error al cargar promociones: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al cargar promociones: $e');
     } finally {
       isLoading.value = false;
       print('🏁 Carga de promociones completada');
@@ -193,13 +188,7 @@ class PromocionesController extends GetxController {
       if (success) {
         print('✅ Promoción creada exitosamente');
         
-        Get.snackbar(
-          'Éxito',
-          'Promoción creada correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.success('Éxito', 'Promoción creada correctamente');
         
         // Actualizar la lista en background después del éxito
         _refreshPromociones();
@@ -207,24 +196,12 @@ class PromocionesController extends GetxController {
         return true;
       } else {
         print('❌ Error al crear promoción en el provider');
-        Get.snackbar(
-          'Error',
-          'No se pudo crear la promoción',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.error('Error', 'No se pudo crear la promoción');
         return false;
       }
     } catch (e) {
       print('❌ Excepción al crear promoción: $e');
-      Get.snackbar(
-        'Error',
-        'Error al crear promoción: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al crear promoción: $e');
       return false;
     }
   }
@@ -239,36 +216,18 @@ class PromocionesController extends GetxController {
       if (success) {
         print('✅ Promoción actualizada exitosamente');
         
-        Get.snackbar(
-          'Éxito',
-          'Promoción actualizada correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.success('Éxito', 'Promoción actualizada correctamente');
         
         // Actualizar la lista en background después del éxito
         _refreshPromociones();
         
         return true;
       } else {
-        Get.snackbar(
-          'Error',
-          'No se pudo actualizar la promoción',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.error('Error', 'No se pudo actualizar la promoción');
         return false;
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error al actualizar promoción: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al actualizar promoción: $e');
       return false;
     }
   }
@@ -283,36 +242,18 @@ class PromocionesController extends GetxController {
       if (success) {
         print('✅ Promoción eliminada exitosamente');
         
-        Get.snackbar(
-          'Éxito',
-          'Promoción eliminada correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.success('Éxito', 'Promoción eliminada correctamente');
         
         // Actualizar la lista en background después del éxito
         _refreshPromociones();
         
         return true;
       } else {
-        Get.snackbar(
-          'Error',
-          'No se pudo eliminar la promoción',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.error('Error', 'No se pudo eliminar la promoción');
         return false;
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error al eliminar promoción: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al eliminar promoción: $e');
       return false;
     }
   }
@@ -335,31 +276,13 @@ class PromocionesController extends GetxController {
           print('📝 Elemento actualizado en la lista local');
         }
         
-        Get.snackbar(
-          'Éxito',
-          'Estado de promoción ${isActive ? "activado" : "desactivado"}',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.success('Éxito', 'Estado de promoción ${isActive ? "activado" : "desactivado"}');
       } else {
-        Get.snackbar(
-          'Error',
-          'No se pudo cambiar el estado de la promoción',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.error('Error', 'No se pudo cambiar el estado de la promoción');
       }
     } catch (e) {
       print('❌ Error al cambiar estado: $e');
-      Get.snackbar(
-        'Error',
-        'Error al cambiar estado de promoción: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Error al cambiar estado de promoción: $e');
     }
   }
 
@@ -423,35 +346,17 @@ class PromocionesController extends GetxController {
   /// Valida el formulario
   bool validateForm() {
     if (nombreController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Error',
-        'El nombre de la promoción es requerido',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'El nombre de la promoción es requerido');
       return false;
     }
 
     if (double.tryParse(discountValueController.text) == null) {
-      Get.snackbar(
-        'Error',
-        'El valor del descuento debe ser un número válido',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'El valor del descuento debe ser un número válido');
       return false;
     }
 
     if (selectedAppliesTo.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Debe seleccionar a qué aplica la promoción',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.error('Error', 'Debe seleccionar a qué aplica la promoción');
       return false;
     }
 
