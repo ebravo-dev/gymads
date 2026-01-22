@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gymads/main.dart' show rootScaffoldMessengerKey;
 import '../models/user_model.dart';
 import '../repositories/user_repository.dart';
 import 'rfid_reader_service.dart';
@@ -30,67 +31,63 @@ class BackgroundRfidService extends GetxService {
   String? _lastScannedCard;
   static const _scanCooldown = Duration(seconds: 3);
 
-  /// Método seguro para mostrar notificación pequeña en parte superior
+  /// Método para mostrar notificación usando el ScaffoldMessenger global
   void _showSnackbarSafe(String title, String message, {bool isError = false}) {
     if (kDebugMode) {
       print('📢 Mostrando notificación: $title - $message');
     }
 
-    Future.delayed(const Duration(milliseconds: 100), () {
-      try {
-        final context = Get.context;
-        if (context == null) {
-          if (kDebugMode) print('❌ Context es null');
-          return;
-        }
-
-        // Limpiar snackbars anteriores
-        ScaffoldMessenger.of(context).clearSnackBars();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isError ? Icons.error_outline : Icons.check_circle_outline,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    message,
-                    style: const TextStyle(fontSize: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor:
-                isError ? Colors.red.shade600 : Colors.green.shade600,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height - 120,
-              left: MediaQuery.of(context).size.width * 0.3,
-              right: 16,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            dismissDirection: DismissDirection.horizontal,
-          ),
-        );
-
-        if (kDebugMode) print('✅ Notificación mostrada');
-      } catch (e) {
-        if (kDebugMode) {
-          print('❌ Error mostrando notificación: $e');
-        }
+    try {
+      final messenger = rootScaffoldMessengerKey.currentState;
+      if (messenger == null) {
+        if (kDebugMode) print('❌ ScaffoldMessenger es null');
+        return;
       }
-    });
+
+      // Limpiar snackbars anteriores
+      messenger.clearSnackBars();
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isError ? Icons.close_rounded : Icons.check_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: isError ? const Color(0xFFE53935) : const Color(0xFF1DB954),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          margin: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          duration: const Duration(seconds: 2),
+          dismissDirection: DismissDirection.horizontal,
+        ),
+      );
+
+      if (kDebugMode) print('✅ SnackBar mostrado via GlobalKey');
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error mostrando snackbar: $e');
+      }
+    }
   }
 
   // Usuario actual escaneado
@@ -336,6 +333,11 @@ class BackgroundRfidService extends GetxService {
 
     // Mostrar interfaz según la vista actual
     final currentRoute = Get.currentRoute;
+    
+    if (kDebugMode) {
+      print('🛣️ Ruta actual: "$currentRoute"');
+      print('🏠 Es home: ${currentRoute == Routes.HOME || currentRoute == "/"}');
+    }
 
     if (currentRoute == Routes.HOME || currentRoute == '/') {
       // Estamos en home, mostrar diálogo completo
@@ -347,6 +349,9 @@ class BackgroundRfidService extends GetxService {
       currentUser.value = null;
     } else {
       // Estamos en otra vista, mostrar notificación pequeña
+      if (kDebugMode) {
+        print('📱 Mostrando notificación para: ${user.name}');
+      }
       _showSuccessNotification(user.name);
     }
   }
@@ -393,110 +398,5 @@ class BackgroundRfidService extends GetxService {
   void onClose() {
     stopScanning();
     super.onClose();
-  }
-}
-
-/// Widget para notificación pequeña en esquina superior derecha
-class _TopNotification extends StatefulWidget {
-  final String title;
-  final String message;
-  final bool isError;
-  final VoidCallback onDismiss;
-
-  const _TopNotification({
-    required this.title,
-    required this.message,
-    required this.isError,
-    required this.onDismiss,
-  });
-
-  @override
-  State<_TopNotification> createState() => _TopNotificationState();
-}
-
-class _TopNotificationState extends State<_TopNotification>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: MediaQuery.of(context).padding.top + 8,
-      right: 8,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
-            color: widget.isError ? Colors.red.shade600 : Colors.green.shade600,
-            child: InkWell(
-              onTap: widget.onDismiss,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                constraints: const BoxConstraints(maxWidth: 200),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      widget.isError
-                          ? Icons.error_outline
-                          : Icons.check_circle_outline,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.message,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

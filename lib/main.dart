@@ -11,6 +11,9 @@ import 'package:gymads/app/modules/clientes/services/qr_cache_service.dart';
 import 'package:gymads/app/routes/app_pages.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// GlobalKey para acceder al ScaffoldMessenger desde cualquier parte de la app
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 void main() async {
   // Carga las variables de entorno
   await dotenv.load(fileName: ".env");
@@ -91,6 +94,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: "Gymads",
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       initialRoute: AppPages.INITIAL,
       getPages: AppPages.routes,
       initialBinding: InitialBinding(),
