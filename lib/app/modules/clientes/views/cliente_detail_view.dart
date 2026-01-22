@@ -23,7 +23,7 @@ class ClienteDetailView extends GetView<ClientesController> {
         slivers: [
           // AppBar moderno con gradiente
           _buildSliverAppBar(),
-          
+
           // Contenido principal
           SliverToBoxAdapter(
             child: SingleChildScrollView(
@@ -35,19 +35,19 @@ class ClienteDetailView extends GetView<ClientesController> {
                     const SizedBox(height: 20),
                     // Header con información principal
                     _buildHeaderCard(),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Cards de información rápida
                     _buildQuickInfoCards(),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Información detallada
                     _buildDetailCards(),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Botones de acción
                     _buildActionButtons(),
                   ],
@@ -136,7 +136,8 @@ class ClienteDetailView extends GetView<ClientesController> {
                         const SizedBox(height: 8),
                         // ID del cliente
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.containerBackground,
                             borderRadius: BorderRadius.circular(20),
@@ -205,7 +206,7 @@ class ClienteDetailView extends GetView<ClientesController> {
             ],
           ),
           const SizedBox(height: 20),
-          
+
           // Información de membresía
           Row(
             children: [
@@ -234,7 +235,8 @@ class ClienteDetailView extends GetView<ClientesController> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.success.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -336,13 +338,15 @@ class ClienteDetailView extends GetView<ClientesController> {
                   icon: Icons.credit_card_outlined,
                   title: 'RFID',
                   value: cliente.rfidCard ?? 'No asignada',
-                  color: cliente.rfidCard != null ? AppColors.success : AppColors.textSecondary,
+                  color: cliente.rfidCard != null
+                      ? AppColors.success
+                      : AppColors.textSecondary,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Segunda fila: QR Code (centrado, más ancho)
           _buildQrCard(),
         ],
@@ -400,7 +404,7 @@ class ClienteDetailView extends GetView<ClientesController> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Botón de acción
           _buildQrActionButton(
             label: 'Ver QR',
@@ -530,7 +534,7 @@ class ClienteDetailView extends GetView<ClientesController> {
                 ),
             ],
           ),
-          
+
           if (!cliente.isActive) ...[
             const SizedBox(height: 16),
             // Card de información adicional
@@ -541,12 +545,12 @@ class ClienteDetailView extends GetView<ClientesController> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: cliente.isNewRegistration() 
+                    color: cliente.isNewRegistration()
                         ? AppColors.error.withOpacity(0.1)
                         : AppColors.info.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: cliente.isNewRegistration() 
+                      color: cliente.isNewRegistration()
                           ? AppColors.error.withOpacity(0.3)
                           : AppColors.info.withOpacity(0.3),
                       width: 1,
@@ -555,8 +559,12 @@ class ClienteDetailView extends GetView<ClientesController> {
                   child: Row(
                     children: [
                       Icon(
-                        cliente.isNewRegistration() ? Icons.warning_outlined : Icons.info_outlined,
-                        color: cliente.isNewRegistration() ? AppColors.error : AppColors.info,
+                        cliente.isNewRegistration()
+                            ? Icons.warning_outlined
+                            : Icons.info_outlined,
+                        color: cliente.isNewRegistration()
+                            ? AppColors.error
+                            : AppColors.info,
                         size: 24,
                       ),
                       const SizedBox(width: 12),
@@ -566,7 +574,9 @@ class ClienteDetailView extends GetView<ClientesController> {
                               ? 'Requiere pago de registro nuevo (\$${UserModel.registrationFee.toStringAsFixed(0)})'
                               : 'Puede renovar sin costo adicional',
                           style: TextStyle(
-                            color: cliente.isNewRegistration() ? AppColors.error : AppColors.info,
+                            color: cliente.isNewRegistration()
+                                ? AppColors.error
+                                : AppColors.info,
                             fontWeight: FontWeight.w500,
                             fontSize: 14,
                           ),

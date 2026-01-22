@@ -49,22 +49,22 @@ class PromocionesView extends GetView<PromocionesController> {
                       color: AppColors.textSecondary,
                     ),
                   ),
-              ],
-            ),
-          );
-        }
+                ],
+              ),
+            );
+          }
 
-        return Column(
-          children: [
-            // Barra de búsqueda y filtros
-            _buildSearchAndFilters(context),
-            
-            // Lista de promociones
-            Expanded(
-              child: _buildPromotionsList(context),
-            ),
-          ],
-        );
+          return Column(
+            children: [
+              // Barra de búsqueda y filtros
+              _buildSearchAndFilters(context),
+
+              // Lista de promociones
+              Expanded(
+                child: _buildPromotionsList(context),
+              ),
+            ],
+          );
         }),
       ),
     );
@@ -88,7 +88,8 @@ class PromocionesView extends GetView<PromocionesController> {
             decoration: InputDecoration(
               hintText: 'Buscar promoción...',
               hintStyle: const TextStyle(color: AppColors.textHint),
-              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+              prefixIcon:
+                  const Icon(Icons.search, color: AppColors.textSecondary),
               filled: true,
               fillColor: AppColors.containerBackground,
               border: OutlineInputBorder(
@@ -99,17 +100,19 @@ class PromocionesView extends GetView<PromocionesController> {
             ),
             onChanged: (value) => controller.searchQuery.value = value,
           ),
-          
-          SizedBox(height: ResponsiveValues.getSpacing(context,
-              mobile: 12, smallPhone: 8, tablet: 16)),
-          
+
+          SizedBox(
+              height: ResponsiveValues.getSpacing(context,
+                  mobile: 12, smallPhone: 8, tablet: 16)),
+
           // Filtros
           Obx(() => Wrap(
                 spacing: ResponsiveValues.getSpacing(context,
                     mobile: 8, smallPhone: 6, tablet: 12),
                 children: [
                   FilterChip(
-                    label: const Text('Solo activas', style: TextStyle(color: AppColors.textPrimary)),
+                    label: const Text('Solo activas',
+                        style: TextStyle(color: AppColors.textPrimary)),
                     selected: controller.showOnlyActive.value,
                     onSelected: (selected) {
                       controller.showOnlyActive.value = selected;
@@ -119,7 +122,8 @@ class PromocionesView extends GetView<PromocionesController> {
                     checkmarkColor: AppColors.accent,
                   ),
                   FilterChip(
-                    label: const Text('Solo válidas', style: TextStyle(color: AppColors.textPrimary)),
+                    label: const Text('Solo válidas',
+                        style: TextStyle(color: AppColors.textPrimary)),
                     selected: controller.showOnlyValid.value,
                     onSelected: (selected) {
                       controller.showOnlyValid.value = selected;
@@ -150,8 +154,9 @@ class PromocionesView extends GetView<PromocionesController> {
                     mobile: 80, smallPhone: 60, tablet: 100),
                 color: AppColors.textSecondary,
               ),
-              SizedBox(height: ResponsiveValues.getSpacing(context,
-                  mobile: 20, smallPhone: 16, tablet: 24)),
+              SizedBox(
+                  height: ResponsiveValues.getSpacing(context,
+                      mobile: 20, smallPhone: 16, tablet: 24)),
               Text(
                 controller.promociones.isEmpty
                     ? 'No hay promociones registradas'
@@ -228,7 +233,7 @@ class PromocionesView extends GetView<PromocionesController> {
                         ),
                       ),
                     ),
-                    
+
                     // Indicador de validez actual
                     if (promocion.isActive) ...[
                       const SizedBox(width: 8),
@@ -242,7 +247,9 @@ class PromocionesView extends GetView<PromocionesController> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          promocion.isCurrentlyValid ? 'Válida' : 'Fuera de horario',
+                          promocion.isCurrentlyValid
+                              ? 'Válida'
+                              : 'Fuera de horario',
                           style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 12,
@@ -255,9 +262,9 @@ class PromocionesView extends GetView<PromocionesController> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // Descripción del descuento
             Text(
               promocion.discountDescription,
@@ -268,7 +275,7 @@ class PromocionesView extends GetView<PromocionesController> {
                 color: AppColors.accent,
               ),
             ),
-            
+
             if (promocion.description != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -280,9 +287,9 @@ class PromocionesView extends GetView<PromocionesController> {
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 12),
-            
+
             // Información adicional
             Wrap(
               spacing: 16,
@@ -295,7 +302,7 @@ class PromocionesView extends GetView<PromocionesController> {
                     Icons.label_outline,
                     'Aplica a: ${promocion.appliesTo.join(", ")}',
                   ),
-                
+
                 // Día de la semana
                 if (promocion.dayOfWeekName != null)
                   _buildInfoChip(
@@ -303,7 +310,7 @@ class PromocionesView extends GetView<PromocionesController> {
                     Icons.calendar_today,
                     promocion.dayOfWeekName!,
                   ),
-                
+
                 // Horario
                 if (promocion.timeStart != null && promocion.timeEnd != null)
                   _buildInfoChip(
@@ -311,7 +318,7 @@ class PromocionesView extends GetView<PromocionesController> {
                     Icons.access_time,
                     '${promocion.timeStart} - ${promocion.timeEnd}',
                   ),
-                
+
                 // Máximo de usos
                 if (promocion.maxUses != null)
                   _buildInfoChip(
@@ -321,9 +328,9 @@ class PromocionesView extends GetView<PromocionesController> {
                   ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Botones de acción
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -338,9 +345,9 @@ class PromocionesView extends GetView<PromocionesController> {
                       foregroundColor: AppColors.info,
                     ),
                   ),
-                  
+
                   const SizedBox(width: 8),
-                  
+
                   TextButton.icon(
                     onPressed: () => controller.togglePromotionStatus(
                         promocion.id!, !promocion.isActive),
@@ -355,11 +362,12 @@ class PromocionesView extends GetView<PromocionesController> {
                           : AppColors.success,
                     ),
                   ),
-                  
+
                   const SizedBox(width: 8),
-                  
+
                   TextButton.icon(
-                    onPressed: () => _showDeleteConfirmation(context, promocion),
+                    onPressed: () =>
+                        _showDeleteConfirmation(context, promocion),
                     icon: const Icon(Icons.delete, size: 16),
                     label: const Text('Eliminar'),
                     style: TextButton.styleFrom(
@@ -374,7 +382,7 @@ class PromocionesView extends GetView<PromocionesController> {
                     color: AppColors.info,
                     tooltip: 'Editar',
                   ),
-                  
+
                   IconButton(
                     onPressed: () => controller.togglePromotionStatus(
                         promocion.id!, !promocion.isActive),
@@ -387,9 +395,10 @@ class PromocionesView extends GetView<PromocionesController> {
                         : AppColors.success,
                     tooltip: promocion.isActive ? 'Desactivar' : 'Activar',
                   ),
-                  
+
                   IconButton(
-                    onPressed: () => _showDeleteConfirmation(context, promocion),
+                    onPressed: () =>
+                        _showDeleteConfirmation(context, promocion),
                     icon: const Icon(Icons.delete, size: 20),
                     color: AppColors.error,
                     tooltip: 'Eliminar',
@@ -429,7 +438,7 @@ class PromocionesView extends GetView<PromocionesController> {
   void _showAddDialog(BuildContext context) {
     // Limpiar formulario y resetear estado
     controller.clearForm();
-    
+
     // Pequeño delay para asegurar que el estado se actualice
     Future.delayed(const Duration(milliseconds: 50), () {
       _showPromotionDialog(context, isEditing: false);
@@ -450,7 +459,8 @@ class PromocionesView extends GetView<PromocionesController> {
           padding: const EdgeInsets.all(20),
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.9,
-            maxWidth: ResponsiveValues.isTablet(context) ? 600 : double.infinity,
+            maxWidth:
+                ResponsiveValues.isTablet(context) ? 600 : double.infinity,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -465,18 +475,18 @@ class PromocionesView extends GetView<PromocionesController> {
                   color: AppColors.titleColor,
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Formulario (implementar en un widget separado)
               Expanded(
                 child: SingleChildScrollView(
                   child: _buildPromotionForm(context),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Botones
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -487,7 +497,8 @@ class PromocionesView extends GetView<PromocionesController> {
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton(
-                    onPressed: () => _savePromotion(context, isEditing, promocion),
+                    onPressed: () =>
+                        _savePromotion(context, isEditing, promocion),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accent,
                       foregroundColor: Colors.white,
@@ -515,9 +526,9 @@ class PromocionesView extends GetView<PromocionesController> {
             border: OutlineInputBorder(),
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Descripción
         TextFormField(
           controller: controller.descripcionController,
@@ -527,9 +538,9 @@ class PromocionesView extends GetView<PromocionesController> {
           ),
           maxLines: 2,
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Tipo de descuento
         Obx(() => DropdownButtonFormField<String>(
               value: controller.selectedDiscountType.value,
@@ -549,9 +560,9 @@ class PromocionesView extends GetView<PromocionesController> {
                 }
               },
             )),
-        
+
         const SizedBox(height: 16),
-        
+
         // Valor del descuento
         TextFormField(
           controller: controller.discountValueController,
@@ -563,9 +574,9 @@ class PromocionesView extends GetView<PromocionesController> {
           ),
           keyboardType: TextInputType.number,
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Aplica a (checkboxes)
         const Text('Aplica a:', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
@@ -586,9 +597,9 @@ class PromocionesView extends GetView<PromocionesController> {
                 );
               }).toList(),
             )),
-        
+
         const SizedBox(height: 16),
-        
+
         // Día de la semana
         Obx(() => DropdownButtonFormField<int?>(
               value: controller.selectedDayOfWeek.value,
@@ -612,9 +623,9 @@ class PromocionesView extends GetView<PromocionesController> {
                 controller.selectedDayOfWeek.value = value;
               },
             )),
-        
+
         const SizedBox(height: 16),
-        
+
         // Estado activo
         Obx(() => SwitchListTile(
               title: const Text('Promoción activa'),
@@ -629,19 +640,20 @@ class PromocionesView extends GetView<PromocionesController> {
 
   void _savePromotion(BuildContext context, bool isEditing, promocion) async {
     if (!controller.validateForm()) return;
-    
+
     try {
       final promotionModel = controller.createPromotionFromForm();
-      
+
       bool success;
       if (isEditing) {
         print('🔄 Editando promoción...');
-        success = await controller.updatePromocion(promocion.id!, promotionModel);
+        success =
+            await controller.updatePromocion(promocion.id!, promotionModel);
       } else {
         print('🔄 Creando nueva promoción...');
         success = await controller.createPromocion(promotionModel);
       }
-      
+
       if (success) {
         print('✅ Operación exitosa, cerrando diálogo...');
         // Cerrar el diálogo de forma segura
@@ -664,13 +676,13 @@ class PromocionesView extends GetView<PromocionesController> {
       buttonColor: Colors.red,
       onConfirm: () async {
         print('🔄 Iniciando eliminación de promoción...');
-        
+
         // Cerrar el diálogo de confirmación primero
         Navigator.of(context).pop();
-        
+
         // Luego ejecutar la eliminación
         final success = await controller.deletePromocion(promocion.id!);
-        
+
         if (success) {
           print('✅ Promoción eliminada exitosamente');
         } else {

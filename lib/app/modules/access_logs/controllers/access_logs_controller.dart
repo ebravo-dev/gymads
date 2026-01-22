@@ -9,7 +9,7 @@ class AccessLogsController extends GetxController {
   final isLoading = false.obs;
   final accessLogs = <AccessLogModel>[].obs;
   final errorMessage = ''.obs;
-  
+
   // Estadísticas
   final totalEntries = 0.obs;
   final totalQrAccesses = 0.obs;
@@ -26,17 +26,17 @@ class AccessLogsController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      
+
       if (kDebugMode) {
         print('📊 Cargando logs de acceso desde Supabase...');
       }
 
       final logs = await AccessLogService.getAllAccessLogs();
-      
+
       if (logs != null && logs.isNotEmpty) {
         accessLogs.value = logs;
         calculateStatistics();
-        
+
         if (kDebugMode) {
           print('✅ ${logs.length} logs de acceso cargados exitosamente');
         }
@@ -44,7 +44,7 @@ class AccessLogsController extends GetxController {
         // Caso donde la consulta fue exitosa pero no hay datos
         accessLogs.clear();
         errorMessage.value = '';
-        
+
         if (kDebugMode) {
           print('ℹ️ No se encontraron logs de acceso en la base de datos');
         }
@@ -52,7 +52,7 @@ class AccessLogsController extends GetxController {
         // Caso donde hubo un error en la consulta
         errorMessage.value = 'No se pudieron cargar los logs de acceso';
         accessLogs.clear();
-        
+
         if (kDebugMode) {
           print('❌ Error: No se pudieron cargar los logs');
         }
@@ -60,13 +60,14 @@ class AccessLogsController extends GetxController {
     } catch (e) {
       errorMessage.value = 'Error al cargar logs: ${e.toString()}';
       accessLogs.clear();
-      
+
       if (kDebugMode) {
         print('❌ Excepción al cargar logs: $e');
       }
-      
+
       // Mostrar snackbar de error
-      SnackbarHelper.error('Error', 'No se pudieron cargar los registros de acceso: $e');
+      SnackbarHelper.error(
+          'Error', 'No se pudieron cargar los registros de acceso: $e');
     } finally {
       isLoading.value = false;
     }
@@ -75,8 +76,9 @@ class AccessLogsController extends GetxController {
   /// Calcular estadísticas
   void calculateStatistics() {
     final logs = accessLogs;
-    
-    totalEntries.value = logs.where((log) => log.accessType == 'entrada').length;
+
+    totalEntries.value =
+        logs.where((log) => log.accessType == 'entrada').length;
     totalQrAccesses.value = logs.where((log) => log.method == 'qr').length;
     totalRfidAccesses.value = logs.where((log) => log.method == 'rfid').length;
   }

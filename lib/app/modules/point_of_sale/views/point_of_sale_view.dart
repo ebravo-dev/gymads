@@ -19,29 +19,31 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
         foregroundColor: AppColors.textPrimary,
         actions: [
           Obx(() => IconButton(
-            icon: Badge(
-              label: Text('${controller.cartItems.length}'),
-              backgroundColor: AppColors.accent,
-              child: const Icon(Icons.shopping_cart),
-            ),
-            onPressed: () => _showCartModal(context),
-          )),
+                icon: Badge(
+                  label: Text('${controller.cartItems.length}'),
+                  backgroundColor: AppColors.accent,
+                  child: const Icon(Icons.shopping_cart),
+                ),
+                onPressed: () => _showCartModal(context),
+              )),
         ],
       ),
       body: SafeArea(
         child: _buildProductsPanel(),
       ),
       floatingActionButton: Obx(() => FloatingActionButton.extended(
-        onPressed: () => _showCartModal(context),
-        icon: Badge(
-          label: Text('${controller.cartItems.length}'),
-          backgroundColor: AppColors.accent,
-          child: const Icon(Icons.shopping_cart),
-        ),
-        label: const Text('Ver Carrito'),
-        backgroundColor: controller.cartItems.isNotEmpty ? AppColors.accent : AppColors.disabled,
-        foregroundColor: AppColors.textPrimary,
-      )),
+            onPressed: () => _showCartModal(context),
+            icon: Badge(
+              label: Text('${controller.cartItems.length}'),
+              backgroundColor: AppColors.accent,
+              child: const Icon(Icons.shopping_cart),
+            ),
+            label: const Text('Ver Carrito'),
+            backgroundColor: controller.cartItems.isNotEmpty
+                ? AppColors.accent
+                : AppColors.disabled,
+            foregroundColor: AppColors.textPrimary,
+          )),
     );
   }
 
@@ -60,7 +62,8 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
               decoration: InputDecoration(
                 hintText: 'Buscar productos...',
                 hintStyle: const TextStyle(color: AppColors.textHint),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                prefixIcon:
+                    const Icon(Icons.search, color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.cardBackground,
                 border: OutlineInputBorder(
@@ -79,9 +82,9 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                   child: CircularProgressIndicator(color: AppColors.accent),
                 );
               }
-              
+
               final products = controller.filteredProducts;
-              
+
               if (products.isEmpty) {
                 return Center(
                   child: Text(
@@ -90,12 +93,15 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                   ),
                 );
               }
-              
+
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 1200 ? 4 : 
-                                       constraints.maxWidth > 800 ? 3 : 2;
-                  
+                  final crossAxisCount = constraints.maxWidth > 1200
+                      ? 4
+                      : constraints.maxWidth > 800
+                          ? 3
+                          : 2;
+
                   return GridView.builder(
                     padding: const EdgeInsets.all(16),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -126,15 +132,15 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
         (item) => item.productId == product.id,
       );
       final currentQuantity = cartItem?.quantity ?? 0;
-      
+
       return Card(
         elevation: 3,
         color: AppColors.cardBackground,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: currentQuantity > 0 
-            ? BorderSide(color: AppColors.accent, width: 2)
-            : BorderSide.none,
+          side: currentQuantity > 0
+              ? BorderSide(color: AppColors.accent, width: 2)
+              : BorderSide.none,
         ),
         child: InkWell(
           onTap: () => controller.addProductToCart(product),
@@ -216,7 +222,8 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                   'Stock: ${product.stock}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: product.stock > 0 ? AppColors.success : AppColors.error,
+                    color:
+                        product.stock > 0 ? AppColors.success : AppColors.error,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -314,7 +321,8 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                       item.quantity - 1,
                     ),
                     padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
                   ),
                   Text(
                     '${item.quantity}',
@@ -332,7 +340,8 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                       item.quantity + 1,
                     ),
                     padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
                   ),
                 ],
               ),
@@ -352,10 +361,12 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                     textAlign: TextAlign.center,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                    icon: const Icon(Icons.delete_outline,
+                        color: AppColors.error, size: 20),
                     onPressed: () => controller.removeFromCart(item.productId),
                     padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
                   ),
                 ],
               ),
@@ -385,53 +396,57 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
         children: [
           // Totales
           Obx(() => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTotalRow('Subtotal:', controller.totalAmount),
-              if (controller.taxAmount > 0)
-                _buildTotalRow('Impuestos:', controller.taxAmount),
-              if (controller.discountAmount > 0)
-                _buildTotalRow('Descuento:', -controller.discountAmount),
-              Divider(height: 6, color: AppColors.textSecondary.withOpacity(0.3)),
-              _buildTotalRow(
-                'TOTAL:',
-                controller.finalAmount,
-                isTotal: true,
-              ),
-            ],
-          )),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTotalRow('Subtotal:', controller.totalAmount),
+                  if (controller.taxAmount > 0)
+                    _buildTotalRow('Impuestos:', controller.taxAmount),
+                  if (controller.discountAmount > 0)
+                    _buildTotalRow('Descuento:', -controller.discountAmount),
+                  Divider(
+                      height: 6,
+                      color: AppColors.textSecondary.withOpacity(0.3)),
+                  _buildTotalRow(
+                    'TOTAL:',
+                    controller.finalAmount,
+                    isTotal: true,
+                  ),
+                ],
+              )),
           const SizedBox(height: 8),
           // Método de pago
           Obx(() => DropdownButtonFormField<String>(
-            value: controller.selectedPaymentMethod,
-            dropdownColor: AppColors.cardBackground,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              labelText: 'Método de pago',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
-              filled: true,
-              fillColor: AppColors.containerBackground,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            items: controller.paymentMethods.map((method) {
-              return DropdownMenuItem(
-                value: method,
-                child: Text(
-                  _getPaymentMethodName(method),
-                  style: const TextStyle(color: AppColors.textPrimary),
+                value: controller.selectedPaymentMethod,
+                dropdownColor: AppColors.cardBackground,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Método de pago',
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: AppColors.containerBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                        color: AppColors.textSecondary.withOpacity(0.3)),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                controller.setPaymentMethod(value);
-              }
-            },
-          )),
+                items: controller.paymentMethods.map((method) {
+                  return DropdownMenuItem(
+                    value: method,
+                    child: Text(
+                      _getPaymentMethodName(method),
+                      style: const TextStyle(color: AppColors.textPrimary),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    controller.setPaymentMethod(value);
+                  }
+                },
+              )),
           const SizedBox(height: 8),
           // Campo de monto recibido (solo para efectivo)
           Obx(() {
@@ -443,16 +458,19 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
                     style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Monto recibido',
-                      labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      labelStyle: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13),
                       prefixText: '\$',
                       prefixStyle: const TextStyle(color: AppColors.accent),
                       filled: true,
                       fillColor: AppColors.containerBackground,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
+                        borderSide: BorderSide(
+                            color: AppColors.textSecondary.withOpacity(0.3)),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                     ),
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
@@ -494,25 +512,28 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
               Expanded(
                 flex: 2,
                 child: Obx(() => ElevatedButton(
-                  onPressed: controller.canProcessSale() && !controller.isProcessingPayment
-                      ? () => _processSale()
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  child: controller.isProcessingPayment
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('Procesar Venta', style: TextStyle(fontSize: 14)),
-                )),
+                      onPressed: controller.canProcessSale() &&
+                              !controller.isProcessingPayment
+                          ? () => _processSale()
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      child: controller.isProcessingPayment
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text('Procesar Venta',
+                              style: TextStyle(fontSize: 14)),
+                    )),
               ),
             ],
           ),
@@ -533,7 +554,8 @@ class PointOfSaleView extends GetView<PointOfSaleController> {
               style: TextStyle(
                 fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
                 fontSize: isTotal ? 16 : 14,
-                color: isTotal ? AppColors.textPrimary : AppColors.textSecondary,
+                color:
+                    isTotal ? AppColors.textPrimary : AppColors.textSecondary,
               ),
               overflow: TextOverflow.ellipsis,
             ),

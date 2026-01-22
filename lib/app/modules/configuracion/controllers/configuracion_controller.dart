@@ -10,29 +10,29 @@ import '../../../core/utils/snackbar_helper.dart';
 class ConfiguracionController extends GetxController {
   // Variables observables para la configuración
   final RxBool isLoading = false.obs;
-  
+
   // Variables para información de cuenta
   final RxString userName = 'Eder Blanco'.obs;
   final RxString userEmail = 'eder@gymads.com'.obs;
   final RxString userRole = 'Admin'.obs;
-  
+
   // Variables para configuración del lector RFID
   final RxBool rfidConnectionStatus = false.obs;
   final RxString connectionStatusMessage = 'Verificando conexión...'.obs;
   final RxString esp32IpAddress = ''.obs;
-  
+
   // Variables para ESP32 con IP manual
   final RxBool esp32Connected = false.obs;
   final RxString esp32StatusMessage = 'ESP32 desconectado'.obs;
-  
+
   // Variables para configuración de audio
   final RxBool soundEnabled = true.obs;
   final RxDouble soundVolume = 0.8.obs;
-  
+
   // Variables para configuración de QR
   final RxBool qrEnabled = true.obs;
   final RxString qrCodeFormat = 'auto'.obs;
-  
+
   @override
   @override
   void onInit() {
@@ -51,33 +51,32 @@ class ConfiguracionController extends GetxController {
   Future<void> _loadConfiguration() async {
     try {
       isLoading.value = true;
-      
+
       // Cargar configuración desde SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Configuración de usuario
       userName.value = prefs.getString('user_name') ?? 'Eder Blanco';
       userEmail.value = prefs.getString('user_email') ?? 'eder@gymads.com';
       userRole.value = prefs.getString('user_role') ?? 'Admin';
-      
+
       // Configuración de audio
       soundEnabled.value = prefs.getBool('sound_enabled') ?? true;
       soundVolume.value = prefs.getDouble('sound_volume') ?? 0.8;
-      
+
       // Configuración de QR
       qrEnabled.value = prefs.getBool('qr_enabled') ?? true;
       qrCodeFormat.value = prefs.getString('qr_format') ?? 'auto';
-      
+
       // Cargar IP manual si existe
       String? savedIP = prefs.getString('esp32_ip_manual');
       if (savedIP != null && savedIP.isNotEmpty) {
         // Intentar conectar con la IP guardada sin mostrar notificación
         await connectToESP32WithIP(savedIP, showNotification: false);
       }
-      
+
       await RfidConfig.loadConfig();
       await _checkRfidConnection();
-      
     } catch (e) {
       // No mostrar notificación de error, solo log en consola
       if (kDebugMode) {
@@ -90,51 +89,52 @@ class ConfiguracionController extends GetxController {
 
   // =================== MÉTODOS DE CONEXIÓN ESP32 ===================
 
-
-
-
-
   /// Conectar manualmente con IP específica (método principal de conexión)
-  Future<void> connectToESP32WithIP(String ipAddress, {bool showNotification = true}) async {
+  Future<void> connectToESP32WithIP(String ipAddress,
+      {bool showNotification = true}) async {
     try {
       isLoading.value = true;
       esp32StatusMessage.value = 'Conectando a $ipAddress...';
-      
+
       // Verificar formato de IP válido
-      final RegExp ipRegex = RegExp(r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
+      final RegExp ipRegex = RegExp(
+          r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
       if (!ipRegex.hasMatch(ipAddress)) {
         if (showNotification) {
-          SnackbarHelper.error('Formato inválido', 'La dirección IP no tiene un formato válido (ej: 192.168.1.100)');
+          SnackbarHelper.error('Formato inválido',
+              'La dirección IP no tiene un formato válido (ej: 192.168.1.100)');
         }
         return;
       }
-      
+
       bool connected = await RfidConfig.setManualIP(ipAddress);
-      
+
       if (connected) {
         esp32Connected.value = true;
         esp32IpAddress.value = ipAddress;
         esp32StatusMessage.value = 'ESP32 conectado: $ipAddress';
-        
+
         if (showNotification) {
-          SnackbarHelper.success('Conectado', 'ESP32 conectado exitosamente a $ipAddress');
+          SnackbarHelper.success(
+              'Conectado', 'ESP32 conectado exitosamente a $ipAddress');
         }
-        
+
         // Guardar la IP para uso futuro
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('esp32_ip_manual', ipAddress);
       } else {
         esp32Connected.value = false;
         esp32StatusMessage.value = 'No se pudo conectar a $ipAddress';
-        
+
         if (showNotification) {
-          SnackbarHelper.error('Error de conexión', 'No se pudo conectar al ESP32 en $ipAddress. Verifique que el dispositivo esté encendido y en la misma red.');
+          SnackbarHelper.error('Error de conexión',
+              'No se pudo conectar al ESP32 en $ipAddress. Verifique que el dispositivo esté encendido y en la misma red.');
         }
       }
     } catch (e) {
       esp32Connected.value = false;
       esp32StatusMessage.value = 'Error: $e';
-      
+
       if (showNotification) {
         SnackbarHelper.error('Error', 'Error al conectar: $e');
       }
@@ -147,10 +147,11 @@ class ConfiguracionController extends GetxController {
   Future<void> getESP32Status() async {
     try {
       bool available = await RfidConfig.isESP32Available();
-      
+
       if (available) {
         esp32Connected.value = true;
-        esp32IpAddress.value = RfidConfig.getCurrentIP() ?? RfidConfig.DEFAULT_ESP32_IP;
+        esp32IpAddress.value =
+            RfidConfig.getCurrentIP() ?? RfidConfig.DEFAULT_ESP32_IP;
         esp32StatusMessage.value = 'ESP32 conectado: ${esp32IpAddress.value}';
       } else {
         esp32Connected.value = false;
@@ -168,7 +169,7 @@ class ConfiguracionController extends GetxController {
       // Verificar si hay configuración RFID
       bool isConfigured = RfidConfig.isConfigured;
       rfidConnectionStatus.value = isConfigured;
-      
+
       if (isConfigured) {
         connectionStatusMessage.value = 'RFID configurado';
         if (RfidConfig.baseUrl != null) {
@@ -194,22 +195,25 @@ class ConfiguracionController extends GetxController {
     try {
       isLoading.value = true;
       connectionStatusMessage.value = 'Probando conexión...';
-      
+
       // Intentar leer una tarjeta para probar la conexión
       String? cardUid = await RfidReaderService.checkForCard();
-      
+
       if (cardUid != null) {
         rfidConnectionStatus.value = true;
         connectionStatusMessage.value = 'RFID conectado - Tarjeta detectada';
-        SnackbarHelper.success('Conexión exitosa', 'El lector RFID está funcionando correctamente');
+        SnackbarHelper.success('Conexión exitosa',
+            'El lector RFID está funcionando correctamente');
       } else if (RfidConfig.isConfigured) {
         rfidConnectionStatus.value = true;
         connectionStatusMessage.value = 'RFID conectado - Sin tarjeta';
-        SnackbarHelper.info('Conexión OK', 'El lector RFID está conectado pero no hay tarjeta presente');
+        SnackbarHelper.info('Conexión OK',
+            'El lector RFID está conectado pero no hay tarjeta presente');
       } else {
         rfidConnectionStatus.value = false;
         connectionStatusMessage.value = 'RFID no configurado';
-        SnackbarHelper.info('Sin configurar', 'El lector RFID no está configurado');
+        SnackbarHelper.info(
+            'Sin configurar', 'El lector RFID no está configurado');
       }
     } catch (e) {
       rfidConnectionStatus.value = false;
@@ -226,11 +230,11 @@ class ConfiguracionController extends GetxController {
   Future<void> saveUserConfiguration() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       await prefs.setString('user_name', userName.value);
       await prefs.setString('user_email', userEmail.value);
       await prefs.setString('user_role', userRole.value);
-      
+
       SnackbarHelper.success('Guardado', 'Configuración de usuario guardada');
     } catch (e) {
       SnackbarHelper.error('Error', 'Error al guardar configuración: $e');
@@ -241,13 +245,14 @@ class ConfiguracionController extends GetxController {
   Future<void> saveAudioConfiguration() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       await prefs.setBool('sound_enabled', soundEnabled.value);
       await prefs.setDouble('sound_volume', soundVolume.value);
-      
+
       SnackbarHelper.success('Guardado', 'Configuración de audio guardada');
     } catch (e) {
-      SnackbarHelper.error('Error', 'Error al guardar configuración de audio: $e');
+      SnackbarHelper.error(
+          'Error', 'Error al guardar configuración de audio: $e');
     }
   }
 
@@ -255,10 +260,10 @@ class ConfiguracionController extends GetxController {
   Future<void> saveQRConfiguration() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       await prefs.setBool('qr_enabled', qrEnabled.value);
       await prefs.setString('qr_format', qrCodeFormat.value);
-      
+
       SnackbarHelper.success('Guardado', 'Configuración de QR guardada');
     } catch (e) {
       SnackbarHelper.error('Error', 'Error al guardar configuración de QR: $e');
@@ -270,7 +275,7 @@ class ConfiguracionController extends GetxController {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
-      
+
       // Restablecer valores por defecto
       userName.value = 'Eder Blanco';
       userEmail.value = 'eder@gymads.com';
@@ -279,8 +284,9 @@ class ConfiguracionController extends GetxController {
       soundVolume.value = 0.8;
       qrEnabled.value = true;
       qrCodeFormat.value = 'auto';
-      
-      SnackbarHelper.info('Restablecido', 'Configuración restablecida a valores por defecto');
+
+      SnackbarHelper.info(
+          'Restablecido', 'Configuración restablecida a valores por defecto');
     } catch (e) {
       SnackbarHelper.error('Error', 'Error al restablecer configuración: $e');
     }
@@ -304,7 +310,8 @@ class ConfiguracionController extends GetxController {
             Text('✓ Mayor estabilidad y rendimiento'),
             SizedBox(height: 12),
             Text('IMPORTANTE:', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('El ESP32 debe estar en la misma red WiFi que este dispositivo.'),
+            Text(
+                'El ESP32 debe estar en la misma red WiFi que este dispositivo.'),
           ],
         ),
         actions: [
@@ -316,9 +323,9 @@ class ConfiguracionController extends GetxController {
       ),
     );
   }
-  
+
   // =================== MÉTODOS PARA NAVEGACIÓN DE CONFIGURACIÓN ===================
-  
+
   /// Abrir configuración de cuenta
   void openAccountSettings() {
     // Mostrar un diálogo simple por ahora
@@ -341,7 +348,7 @@ class ConfiguracionController extends GetxController {
       ),
     );
   }
-  
+
   /// Abrir configuración de aplicación
   void openAppSettings() {
     // Mostrar un diálogo simple por ahora
@@ -364,7 +371,7 @@ class ConfiguracionController extends GetxController {
       ),
     );
   }
-  
+
   /// Cerrar sesión
   void logout() {
     Get.dialog(
@@ -380,7 +387,8 @@ class ConfiguracionController extends GetxController {
             onPressed: () {
               // Aquí implementar la lógica de cierre de sesión
               Get.back();
-              SnackbarHelper.info('Cerrar Sesión', 'Funcionalidad en desarrollo');
+              SnackbarHelper.info(
+                  'Cerrar Sesión', 'Funcionalidad en desarrollo');
             },
             child: const Text('Cerrar Sesión'),
           ),

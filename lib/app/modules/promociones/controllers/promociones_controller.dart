@@ -47,11 +47,7 @@ class PromocionesController extends GetxController {
     'free_membership'
   ];
 
-  final List<String> appliesToOptions = [
-    'registration',
-    'membership',
-    'both'
-  ];
+  final List<String> appliesToOptions = ['registration', 'membership', 'both'];
 
   final List<String> daysOfWeek = [
     'Domingo',
@@ -64,12 +60,8 @@ class PromocionesController extends GetxController {
   ];
 
   // Lista de tipos de membresía disponibles (se puede cargar dinámicamente)
-  final membershipTypesOptions = <String>[
-    'normal',
-    'premium',
-    'anual',
-    'estudiante'
-  ].obs;
+  final membershipTypesOptions =
+      <String>['normal', 'premium', 'anual', 'estudiante'].obs;
 
   @override
   void onInit() {
@@ -101,8 +93,13 @@ class PromocionesController extends GetxController {
     var filtered = promociones.where((promocion) {
       // Filtro por texto de búsqueda
       final matchesSearch = searchQuery.value.isEmpty ||
-          promocion.name.toLowerCase().contains(searchQuery.value.toLowerCase()) ||
-          (promocion.description?.toLowerCase().contains(searchQuery.value.toLowerCase()) ?? false);
+          promocion.name
+              .toLowerCase()
+              .contains(searchQuery.value.toLowerCase()) ||
+          (promocion.description
+                  ?.toLowerCase()
+                  .contains(searchQuery.value.toLowerCase()) ??
+              false);
 
       // Filtro por estado activo
       final matchesActive = !showOnlyActive.value || promocion.isActive;
@@ -140,11 +137,11 @@ class PromocionesController extends GetxController {
       print('🔄 Obteniendo promociones...');
 
       final result = await promotionProvider.getPromotions();
-      
+
       // Limpiar la lista y agregar los nuevos elementos
       promociones.clear();
       promociones.addAll(result);
-      
+
       print('✅ Promociones obtenidas: ${result.length}');
       print('📋 Lista actualizada. Total en memoria: ${promociones.length}');
 
@@ -165,7 +162,8 @@ class PromocionesController extends GetxController {
   Future<void> _refreshPromociones() async {
     // Solo actualizar si no hay una carga en progreso
     if (!isLoading.value) {
-      await Future.delayed(const Duration(milliseconds: 300)); // Delay más corto
+      await Future.delayed(
+          const Duration(milliseconds: 300)); // Delay más corto
       await fetchPromociones();
     } else {
       print('⚠️ Carga en progreso, posponiendo actualización');
@@ -182,17 +180,17 @@ class PromocionesController extends GetxController {
   Future<bool> createPromocion(PromotionModel promocion) async {
     try {
       print('🔄 Creando promoción: ${promocion.name}');
-      
+
       final success = await promotionProvider.createPromotion(promocion);
-      
+
       if (success) {
         print('✅ Promoción creada exitosamente');
-        
+
         SnackbarHelper.success('Éxito', 'Promoción creada correctamente');
-        
+
         // Actualizar la lista en background después del éxito
         _refreshPromociones();
-        
+
         return true;
       } else {
         print('❌ Error al crear promoción en el provider');
@@ -210,17 +208,17 @@ class PromocionesController extends GetxController {
   Future<bool> updatePromocion(String id, PromotionModel promocion) async {
     try {
       print('🔄 Actualizando promoción: ${promocion.name}');
-      
+
       final success = await promotionProvider.updatePromotion(id, promocion);
-      
+
       if (success) {
         print('✅ Promoción actualizada exitosamente');
-        
+
         SnackbarHelper.success('Éxito', 'Promoción actualizada correctamente');
-        
+
         // Actualizar la lista en background después del éxito
         _refreshPromociones();
-        
+
         return true;
       } else {
         SnackbarHelper.error('Error', 'No se pudo actualizar la promoción');
@@ -236,17 +234,17 @@ class PromocionesController extends GetxController {
   Future<bool> deletePromocion(String id) async {
     try {
       print('🔄 Eliminando promoción con ID: $id');
-      
+
       final success = await promotionProvider.deletePromotion(id);
-      
+
       if (success) {
         print('✅ Promoción eliminada exitosamente');
-        
+
         SnackbarHelper.success('Éxito', 'Promoción eliminada correctamente');
-        
+
         // Actualizar la lista en background después del éxito
         _refreshPromociones();
-        
+
         return true;
       } else {
         SnackbarHelper.error('Error', 'No se pudo eliminar la promoción');
@@ -262,23 +260,27 @@ class PromocionesController extends GetxController {
   Future<void> togglePromotionStatus(String id, bool isActive) async {
     try {
       print('🔄 Cambiando estado de promoción: $id a $isActive');
-      
-      final success = await promotionProvider.togglePromotionStatus(id, isActive);
-      
+
+      final success =
+          await promotionProvider.togglePromotionStatus(id, isActive);
+
       if (success) {
         print('✅ Estado cambiado exitosamente');
-        
+
         // Actualizar solo el elemento específico en la lista
         final index = promociones.indexWhere((p) => p.id == id);
         if (index != -1) {
-          final updatedPromotion = promociones[index].copyWith(isActive: isActive);
+          final updatedPromotion =
+              promociones[index].copyWith(isActive: isActive);
           promociones[index] = updatedPromotion;
           print('📝 Elemento actualizado en la lista local');
         }
-        
-        SnackbarHelper.success('Éxito', 'Estado de promoción ${isActive ? "activado" : "desactivado"}');
+
+        SnackbarHelper.success('Éxito',
+            'Estado de promoción ${isActive ? "activado" : "desactivado"}');
       } else {
-        SnackbarHelper.error('Error', 'No se pudo cambiar el estado de la promoción');
+        SnackbarHelper.error(
+            'Error', 'No se pudo cambiar el estado de la promoción');
       }
     } catch (e) {
       print('❌ Error al cambiar estado: $e');
@@ -300,13 +302,12 @@ class PromocionesController extends GetxController {
     timeStartController.text = promocion.timeStart ?? '';
     timeEndController.text = promocion.timeEnd ?? '';
     isActiveForm.value = promocion.isActive;
-    conditionsController.text = promocion.conditions.isNotEmpty 
-        ? jsonEncode(promocion.conditions) 
-        : '';
+    conditionsController.text =
+        promocion.conditions.isNotEmpty ? jsonEncode(promocion.conditions) : '';
 
     // Formatear fechas
     if (promocion.startDate != null) {
-      startDateController.text = 
+      startDateController.text =
           '${promocion.startDate!.day.toString().padLeft(2, '0')}/'
           '${promocion.startDate!.month.toString().padLeft(2, '0')}/'
           '${promocion.startDate!.year}';
@@ -315,7 +316,7 @@ class PromocionesController extends GetxController {
     }
 
     if (promocion.endDate != null) {
-      endDateController.text = 
+      endDateController.text =
           '${promocion.endDate!.day.toString().padLeft(2, '0')}/'
           '${promocion.endDate!.month.toString().padLeft(2, '0')}/'
           '${promocion.endDate!.year}';
@@ -351,12 +352,14 @@ class PromocionesController extends GetxController {
     }
 
     if (double.tryParse(discountValueController.text) == null) {
-      SnackbarHelper.error('Error', 'El valor del descuento debe ser un número válido');
+      SnackbarHelper.error(
+          'Error', 'El valor del descuento debe ser un número válido');
       return false;
     }
 
     if (selectedAppliesTo.isEmpty) {
-      SnackbarHelper.error('Error', 'Debe seleccionar a qué aplica la promoción');
+      SnackbarHelper.error(
+          'Error', 'Debe seleccionar a qué aplica la promoción');
       return false;
     }
 
@@ -404,8 +407,8 @@ class PromocionesController extends GetxController {
 
     return PromotionModel(
       name: nombreController.text.trim(),
-      description: descripcionController.text.trim().isEmpty 
-          ? null 
+      description: descripcionController.text.trim().isEmpty
+          ? null
           : descripcionController.text.trim(),
       discountType: selectedDiscountType.value,
       discountValue: double.parse(discountValueController.text),
@@ -415,7 +418,8 @@ class PromocionesController extends GetxController {
       isActive: isActiveForm.value,
       appliesTo: List<String>.from(selectedAppliesTo),
       dayOfWeek: selectedDayOfWeek.value,
-      timeStart: timeStartController.text.isEmpty ? null : timeStartController.text,
+      timeStart:
+          timeStartController.text.isEmpty ? null : timeStartController.text,
       timeEnd: timeEndController.text.isEmpty ? null : timeEndController.text,
       membershipTypes: List<String>.from(selectedMembershipTypes),
       maxUses: int.tryParse(maxUsesController.text),

@@ -21,13 +21,15 @@ class SnackbarHelper {
   }
 
   /// Método interno para mostrar snackbars de forma segura
-  static void _show(String title, String message, {bool isError = false, bool isInfo = false}) {
+  static void _show(String title, String message,
+      {bool isError = false, bool isInfo = false}) {
     // Usar Future.delayed para evitar problemas de overlay durante navegación
     Future.delayed(const Duration(milliseconds: 100), () {
       try {
         final context = Get.context;
         if (context == null) {
-          debugPrint('SnackbarHelper: Context es null, no se puede mostrar snackbar');
+          debugPrint(
+              'SnackbarHelper: Context es null, no se puede mostrar snackbar');
           return;
         }
 
@@ -36,7 +38,7 @@ class SnackbarHelper {
 
         Color backgroundColor;
         IconData icon;
-        
+
         if (isError) {
           backgroundColor = Colors.red.shade600;
           icon = Icons.error_outline;
@@ -82,7 +84,8 @@ class SnackbarHelper {
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             dismissDirection: DismissDirection.horizontal,
           ),
         );

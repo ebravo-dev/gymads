@@ -52,39 +52,42 @@ class IngresosView extends GetView<IngresosController> {
             );
           }
 
-        return RefreshIndicator(
-          onRefresh: controller.refreshData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
-                mobile: 16, smallPhone: 12, tablet: 24)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Filtros y período
-                _buildFilters(context),
-                
-                SizedBox(height: ResponsiveValues.getSpacing(context,
-                    mobile: 20, smallPhone: 16, tablet: 24)),
-                
-                // Tarjetas de estadísticas
-                _buildStatsCards(context),
-                
-                SizedBox(height: ResponsiveValues.getSpacing(context,
-                    mobile: 20, smallPhone: 16, tablet: 24)),
-                
-                // Gráfica de ingresos
-                _buildIncomeChart(context),
-                
-                SizedBox(height: ResponsiveValues.getSpacing(context,
-                    mobile: 20, smallPhone: 16, tablet: 24)),
-                
-                // Lista de transacciones recientes
-                _buildRecentTransactions(context),
-              ],
+          return RefreshIndicator(
+            onRefresh: controller.refreshData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
+                  mobile: 16, smallPhone: 12, tablet: 24)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Filtros y período
+                  _buildFilters(context),
+
+                  SizedBox(
+                      height: ResponsiveValues.getSpacing(context,
+                          mobile: 20, smallPhone: 16, tablet: 24)),
+
+                  // Tarjetas de estadísticas
+                  _buildStatsCards(context),
+
+                  SizedBox(
+                      height: ResponsiveValues.getSpacing(context,
+                          mobile: 20, smallPhone: 16, tablet: 24)),
+
+                  // Gráfica de ingresos
+                  _buildIncomeChart(context),
+
+                  SizedBox(
+                      height: ResponsiveValues.getSpacing(context,
+                          mobile: 20, smallPhone: 16, tablet: 24)),
+
+                  // Lista de transacciones recientes
+                  _buildRecentTransactions(context),
+                ],
+              ),
             ),
-          ),
-        );
+          );
         }),
       ),
     );
@@ -110,16 +113,18 @@ class IngresosView extends GetView<IngresosController> {
                 color: AppColors.titleColor,
               ),
             ),
-            
-            SizedBox(height: ResponsiveValues.getSpacing(context,
-                mobile: 16, smallPhone: 12, tablet: 20)),
-            
+
+            SizedBox(
+                height: ResponsiveValues.getSpacing(context,
+                    mobile: 16, smallPhone: 12, tablet: 20)),
+
             // Selector de período
             Obx(() => Wrap(
                   spacing: ResponsiveValues.getSpacing(context,
                       mobile: 8, smallPhone: 6, tablet: 12),
                   children: controller.periodos.map((periodo) {
-                    final isSelected = controller.selectedPeriodo.value == periodo;
+                    final isSelected =
+                        controller.selectedPeriodo.value == periodo;
                     return FilterChip(
                       label: Text(periodo.capitalize!),
                       selected: isSelected,
@@ -139,10 +144,11 @@ class IngresosView extends GetView<IngresosController> {
                     );
                   }).toList(),
                 )),
-            
-            SizedBox(height: ResponsiveValues.getSpacing(context,
-                mobile: 12, smallPhone: 8, tablet: 16)),
-            
+
+            SizedBox(
+                height: ResponsiveValues.getSpacing(context,
+                    mobile: 12, smallPhone: 8, tablet: 16)),
+
             // Filtros adicionales
             if (ResponsiveValues.isTablet(context))
               Row(
@@ -180,7 +186,8 @@ class IngresosView extends GetView<IngresosController> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: [
             const DropdownMenuItem<String?>(
@@ -245,11 +252,12 @@ class IngresosView extends GetView<IngresosController> {
   Widget _buildStatsCards(BuildContext context) {
     return Obx(() {
       final stats = controller.estadisticas.value;
-      
+
       return ResponsiveValues.isTablet(context)
           ? Row(
               children: [
-                Expanded(child: _buildStatCard(
+                Expanded(
+                    child: _buildStatCard(
                   context,
                   'Total Ingresos',
                   controller.formatCurrency(stats.totalIngresos),
@@ -257,7 +265,8 @@ class IngresosView extends GetView<IngresosController> {
                   AppColors.success,
                 )),
                 const SizedBox(width: 16),
-                Expanded(child: _buildStatCard(
+                Expanded(
+                    child: _buildStatCard(
                   context,
                   'Transacciones',
                   stats.totalTransacciones.toString(),
@@ -265,7 +274,8 @@ class IngresosView extends GetView<IngresosController> {
                   AppColors.info,
                 )),
                 const SizedBox(width: 16),
-                Expanded(child: _buildStatCard(
+                Expanded(
+                    child: _buildStatCard(
                   context,
                   'Promedio',
                   controller.formatCurrency(stats.promedioTransaccion),
@@ -273,7 +283,8 @@ class IngresosView extends GetView<IngresosController> {
                   AppColors.accent,
                 )),
                 const SizedBox(width: 16),
-                Expanded(child: _buildStatCard(
+                Expanded(
+                    child: _buildStatCard(
                   context,
                   'Nuevos Registros',
                   stats.registrosNuevos.toString(),
@@ -286,7 +297,8 @@ class IngresosView extends GetView<IngresosController> {
               children: [
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard(
+                    Expanded(
+                        child: _buildStatCard(
                       context,
                       'Total Ingresos',
                       controller.formatCurrency(stats.totalIngresos),
@@ -294,7 +306,8 @@ class IngresosView extends GetView<IngresosController> {
                       AppColors.success,
                     )),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard(
+                    Expanded(
+                        child: _buildStatCard(
                       context,
                       'Transacciones',
                       stats.totalTransacciones.toString(),
@@ -306,7 +319,8 @@ class IngresosView extends GetView<IngresosController> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard(
+                    Expanded(
+                        child: _buildStatCard(
                       context,
                       'Promedio',
                       controller.formatCurrency(stats.promedioTransaccion),
@@ -314,7 +328,8 @@ class IngresosView extends GetView<IngresosController> {
                       AppColors.accent,
                     )),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard(
+                    Expanded(
+                        child: _buildStatCard(
                       context,
                       'Nuevos Registros',
                       stats.registrosNuevos.toString(),
@@ -355,7 +370,8 @@ class IngresosView extends GetView<IngresosController> {
                       mobile: 24, smallPhone: 20, tablet: 28),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -368,10 +384,9 @@ class IngresosView extends GetView<IngresosController> {
                 ),
               ],
             ),
-            
-            SizedBox(height: ResponsiveValues.getSpacing(context,
-                mobile: 8, smallPhone: 6, tablet: 12)),
-            
+            SizedBox(
+                height: ResponsiveValues.getSpacing(context,
+                    mobile: 8, smallPhone: 6, tablet: 12)),
             Text(
               title,
               style: TextStyle(
@@ -380,9 +395,7 @@ class IngresosView extends GetView<IngresosController> {
                 color: AppColors.textSecondary,
               ),
             ),
-            
             const SizedBox(height: 4),
-            
             Text(
               value,
               style: TextStyle(
@@ -421,17 +434,16 @@ class IngresosView extends GetView<IngresosController> {
                     color: AppColors.titleColor,
                   ),
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Selector de tipo de gráfica
                 _buildChartTypeSelector(),
               ],
             ),
-            
-            SizedBox(height: ResponsiveValues.getSpacing(context,
-                mobile: 20, smallPhone: 16, tablet: 24)),
-            
+            SizedBox(
+                height: ResponsiveValues.getSpacing(context,
+                    mobile: 20, smallPhone: 16, tablet: 24)),
             Obx(() {
               if (!controller.tieneDatosGrafica) {
                 return SizedBox(
@@ -457,7 +469,7 @@ class IngresosView extends GetView<IngresosController> {
                   ),
                 );
               }
-              
+
               // Seleccionar el tipo de gráfica a mostrar
               switch (controller.selectedChartType.value) {
                 case 'barras':
@@ -511,7 +523,7 @@ class IngresosView extends GetView<IngresosController> {
               final entry = entries[index];
               final height = maxValue > 0 ? (entry.value / maxValue) * 180 : 0;
               final colorIndex = index % barColors.length;
-              
+
               return Container(
                 width: 60,
                 margin: const EdgeInsets.only(right: 12),
@@ -528,7 +540,7 @@ class IngresosView extends GetView<IngresosController> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // Barra
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 500),
@@ -547,9 +559,9 @@ class IngresosView extends GetView<IngresosController> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Etiqueta
                     Text(
                       entry.key,
@@ -565,7 +577,7 @@ class IngresosView extends GetView<IngresosController> {
             },
           ),
         ),
-        
+
         // Leyenda
         Padding(
           padding: const EdgeInsets.only(top: 16),
@@ -586,13 +598,14 @@ class IngresosView extends GetView<IngresosController> {
   Widget _buildPieChart(BuildContext context) {
     final datos = controller.getDatosPastel();
     if (datos.isEmpty) {
-      return const SizedBox(height: 200, child: Center(child: Text("No hay datos para mostrar")));
+      return const SizedBox(
+          height: 200, child: Center(child: Text("No hay datos para mostrar")));
     }
 
     final entries = datos.entries.toList();
     final total = controller.getTotalPastel();
     final colores = controller.getColoresPastel();
-    
+
     return SizedBox(
       height: 300,
       child: Column(
@@ -609,12 +622,13 @@ class IngresosView extends GetView<IngresosController> {
                     final entry = entries[index];
                     final percentage = entry.value / total;
                     final colorIndex = index % colores.length;
-                    
+
                     // Ángulo de inicio y fin del segmento
-                    final startAngle = index > 0 
-                        ? entries.sublist(0, index).fold(0.0, (prev, e) => prev + (e.value / total) * 2 * pi) 
+                    final startAngle = index > 0
+                        ? entries.sublist(0, index).fold(
+                            0.0, (prev, e) => prev + (e.value / total) * 2 * pi)
                         : 0.0;
-                    
+
                     return CustomPaint(
                       size: const Size(200, 200),
                       painter: PieChartPainter(
@@ -625,7 +639,7 @@ class IngresosView extends GetView<IngresosController> {
                       ),
                     );
                   }),
-                  
+
                   // Círculo interior
                   Container(
                     width: 80,
@@ -657,10 +671,10 @@ class IngresosView extends GetView<IngresosController> {
               ),
             ),
           ),
-          
+
           // Leyenda
           const SizedBox(height: 20),
-          
+
           Expanded(
             child: SingleChildScrollView(
               child: Wrap(
@@ -669,10 +683,12 @@ class IngresosView extends GetView<IngresosController> {
                 children: List.generate(entries.length, (index) {
                   final entry = entries[index];
                   final colorIndex = index % colores.length;
-                  final percentage = ((entry.value / total) * 100).toStringAsFixed(1);
-                  
+                  final percentage =
+                      ((entry.value / total) * 100).toStringAsFixed(1);
+
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -705,16 +721,17 @@ class IngresosView extends GetView<IngresosController> {
   Widget _buildLineChart(BuildContext context) {
     final datos = controller.getDatosLinea();
     if (datos.isEmpty) {
-      return const SizedBox(height: 200, child: Center(child: Text("No hay datos para mostrar")));
+      return const SizedBox(
+          height: 200, child: Center(child: Text("No hay datos para mostrar")));
     }
 
     final entries = datos.entries.toList();
     entries.sort((a, b) => a.key.compareTo(b.key)); // Ordenar por fecha/clave
-    
+
     final maxValue = datos.values.reduce((a, b) => a > b ? a : b);
     final dataPoints = entries.map((e) => e.value).toList();
     final labels = entries.map((e) => e.key).toList();
-    
+
     return SizedBox(
       height: 250,
       child: Column(
@@ -731,7 +748,7 @@ class IngresosView extends GetView<IngresosController> {
               ),
             ),
           ),
-          
+
           // Gráfica de líneas
           Expanded(
             child: CustomPaint(
@@ -744,7 +761,7 @@ class IngresosView extends GetView<IngresosController> {
               ),
             ),
           ),
-          
+
           // Etiquetas del eje X
           SizedBox(
             height: 30,
@@ -752,7 +769,8 @@ class IngresosView extends GetView<IngresosController> {
               scrollDirection: Axis.horizontal,
               itemCount: entries.length,
               itemBuilder: (context, index) {
-                final width = MediaQuery.of(context).size.width / (entries.length > 6 ? 6 : entries.length);
+                final width = MediaQuery.of(context).size.width /
+                    (entries.length > 6 ? 6 : entries.length);
                 return SizedBox(
                   width: width,
                   child: Center(
@@ -866,7 +884,6 @@ class IngresosView extends GetView<IngresosController> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                
                 TextButton(
                   onPressed: () {
                     // TODO: Navegar a vista completa de transacciones
@@ -875,10 +892,9 @@ class IngresosView extends GetView<IngresosController> {
                 ),
               ],
             ),
-            
-            SizedBox(height: ResponsiveValues.getSpacing(context,
-                mobile: 16, smallPhone: 12, tablet: 20)),
-            
+            SizedBox(
+                height: ResponsiveValues.getSpacing(context,
+                    mobile: 16, smallPhone: 12, tablet: 20)),
             Obx(() {
               if (!controller.tieneIngresos) {
                 return const Center(
@@ -893,7 +909,7 @@ class IngresosView extends GetView<IngresosController> {
                   ),
                 );
               }
-              
+
               return Column(
                 children: controller.ingresos.take(5).map((ingreso) {
                   return _buildTransactionTile(context, ingreso);
@@ -925,7 +941,9 @@ class IngresosView extends GetView<IngresosController> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: controller.getColorForConcepto(ingreso.concepto).withOpacity(0.2),
+              color: controller
+                  .getColorForConcepto(ingreso.concepto)
+                  .withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -934,9 +952,9 @@ class IngresosView extends GetView<IngresosController> {
               size: 20,
             ),
           ),
-          
+
           const SizedBox(width: 12),
-          
+
           // Información de la transacción
           Expanded(
             flex: 3,
@@ -950,9 +968,7 @@ class IngresosView extends GetView<IngresosController> {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                
                 const SizedBox(height: 4),
-                
                 Row(
                   children: [
                     Expanded(
@@ -965,20 +981,22 @@ class IngresosView extends GetView<IngresosController> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    
                     const SizedBox(width: 8),
-                    
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: controller.getColorForMetodoPago(ingreso.metodoPago).withOpacity(0.2),
+                        color: controller
+                            .getColorForMetodoPago(ingreso.metodoPago)
+                            .withOpacity(0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         ingreso.metodoPagoDescripcion,
                         style: TextStyle(
                           fontSize: 10,
-                          color: controller.getColorForMetodoPago(ingreso.metodoPago),
+                          color: controller
+                              .getColorForMetodoPago(ingreso.metodoPago),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -988,9 +1006,9 @@ class IngresosView extends GetView<IngresosController> {
               ],
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // Monto y fecha
           SizedBox(
             width: ResponsiveValues.isTablet(context) ? 120 : 90,
@@ -1008,9 +1026,7 @@ class IngresosView extends GetView<IngresosController> {
                   textAlign: TextAlign.end,
                   overflow: TextOverflow.ellipsis,
                 ),
-                
                 const SizedBox(height: 4),
-                
                 Text(
                   _formatDate(ingreso.fecha),
                   style: const TextStyle(
@@ -1032,15 +1048,16 @@ class IngresosView extends GetView<IngresosController> {
     try {
       final now = DateTime.now();
       final firstDayOfMonth = DateTime(now.year, now.month, 1);
-      
+
       // Asegurarnos de que las fechas sean válidas
       final initialStart = controller.fechaInicio.value ?? firstDayOfMonth;
       final initialEnd = controller.fechaFin.value ?? now;
-      
+
       // Validar que las fechas no excedan los límites
-      final validStart = initialStart.isAfter(now) ? firstDayOfMonth : initialStart;
+      final validStart =
+          initialStart.isAfter(now) ? firstDayOfMonth : initialStart;
       final validEnd = initialEnd.isAfter(now) ? now : initialEnd;
-      
+
       final DateTimeRange? picked = await showDateRangePicker(
         context: context,
         firstDate: DateTime(2020),
@@ -1131,11 +1148,11 @@ class PieChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width, size.height) / 2 - 10;
-    
+
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    
+
     // Dibujar segmento del pastel
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
@@ -1144,13 +1161,13 @@ class PieChartPainter extends CustomPainter {
       true,
       paint,
     );
-    
+
     // Dibujar borde sutil
     final borderPaint = Paint()
       ..color = AppColors.disabled.withOpacity(0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    
+
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
@@ -1161,9 +1178,9 @@ class PieChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(PieChartPainter oldDelegate) => 
-      color != oldDelegate.color || 
-      startAngle != oldDelegate.startAngle || 
+  bool shouldRepaint(PieChartPainter oldDelegate) =>
+      color != oldDelegate.color ||
+      startAngle != oldDelegate.startAngle ||
       sweepAngle != oldDelegate.sweepAngle ||
       percentage != oldDelegate.percentage;
 }
@@ -1184,23 +1201,23 @@ class LineChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (dataPoints.isEmpty || maxValue <= 0) return;
-    
+
     final paint = Paint()
       ..color = lineColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0
       ..strokeCap = StrokeCap.round;
-    
+
     final dotPaint = Paint()
       ..color = lineColor
       ..style = PaintingStyle.fill;
-    
+
     // Dibujar líneas de guía horizontales
     final gridPaint = Paint()
       ..color = Colors.grey.withOpacity(0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-    
+
     // Dibujar 5 líneas de guía horizontales
     for (int i = 0; i <= 4; i++) {
       final y = size.height - (size.height * i / 4);
@@ -1210,24 +1227,25 @@ class LineChartPainter extends CustomPainter {
         gridPaint,
       );
     }
-    
+
     final path = Path();
-    
+
     // Calculamos el ancho de cada punto en el eje X
-    final pointWidth = size.width / (dataPoints.length - 1 > 0 ? dataPoints.length - 1 : 1);
-    
+    final pointWidth =
+        size.width / (dataPoints.length - 1 > 0 ? dataPoints.length - 1 : 1);
+
     // Iniciamos el path
     bool isFirstPoint = true;
     List<Offset> points = [];
-    
+
     for (int i = 0; i < dataPoints.length; i++) {
       final value = dataPoints[i];
       final x = i * pointWidth;
       final y = size.height - (value / maxValue * size.height * 0.9);
       final point = Offset(x, y);
-      
+
       points.add(point);
-      
+
       if (isFirstPoint) {
         path.moveTo(x, y);
         isFirstPoint = false;
@@ -1235,34 +1253,34 @@ class LineChartPainter extends CustomPainter {
         path.lineTo(x, y);
       }
     }
-    
+
     // Dibujar la línea
     canvas.drawPath(path, paint);
-    
+
     // Dibujar los puntos
     for (final point in points) {
       canvas.drawCircle(point, 5, dotPaint);
     }
-    
+
     // Dibujar área bajo la curva
     if (points.isNotEmpty) {
       final areaPaint = Paint()
         ..color = lineColor.withOpacity(0.2)
         ..style = PaintingStyle.fill;
-      
+
       final areaPath = Path()..addPath(path, Offset.zero);
       areaPath.lineTo(points.last.dx, size.height);
       areaPath.lineTo(points.first.dx, size.height);
       areaPath.lineTo(points.first.dx, points.first.dy);
-      
+
       canvas.drawPath(areaPath, areaPaint);
     }
   }
 
   @override
-  bool shouldRepaint(LineChartPainter oldDelegate) => 
-      dataPoints != oldDelegate.dataPoints || 
-      labels != oldDelegate.labels || 
+  bool shouldRepaint(LineChartPainter oldDelegate) =>
+      dataPoints != oldDelegate.dataPoints ||
+      labels != oldDelegate.labels ||
       maxValue != oldDelegate.maxValue ||
       lineColor != oldDelegate.lineColor;
 }
