@@ -16,7 +16,7 @@ class UserModel {
   final DateTime? lastPaymentDate;
   final int daysRemaining;
   final double membershipPrice; // Precio dinámico desde base de datos
-  
+
   // Campos de promociones
   final String? currentPromotionId;
   final String? currentPromotionName;
@@ -29,14 +29,14 @@ class UserModel {
     'normal': 480.0,
     'estudiante': 350.0,
     'profesor': 350.0,
-    'anual': 4800.0,    // Agregado precio anual
+    'anual': 4800.0, // Agregado precio anual
   };
   // Duración de membresías (días)
   static const Map<String, int> membershipDurations = {
     'normal': 30,
     'estudiante': 30,
     'profesor': 30,
-    'anual': 365,       // Agregado duración anual
+    'anual': 365, // Agregado duración anual
   };
 
   // Precio de registro nuevo
@@ -58,7 +58,7 @@ class UserModel {
     this.lastPaymentDate,
     this.daysRemaining = 0,
     this.membershipPrice = 0.0, // Precio dinámico con valor por defecto
-    
+
     // Campos de promociones
     this.currentPromotionId,
     this.currentPromotionName,
@@ -86,9 +86,12 @@ class UserModel {
     }
 
     // Parsear las fechas asegurándose de que sean válidas (manejando snake_case y camelCase)
-    final DateTime? expDate = parseDateTime(json['expiration_date'] ?? json['expirationDate']);
-    final DateTime joinDate = parseDateTime(json['join_date'] ?? json['joinDate']) ?? DateTime.now();
-    final DateTime? lastPaymentDate = parseDateTime(json['last_payment_date'] ?? json['lastPaymentDate']);
+    final DateTime? expDate =
+        parseDateTime(json['expiration_date'] ?? json['expirationDate']);
+    final DateTime joinDate =
+        parseDateTime(json['join_date'] ?? json['joinDate']) ?? DateTime.now();
+    final DateTime? lastPaymentDate =
+        parseDateTime(json['last_payment_date'] ?? json['lastPaymentDate']);
 
     if (kDebugMode) {
       print('DEBUG! Fecha de registro: $joinDate');
@@ -113,25 +116,38 @@ class UserModel {
       name: (json['name'] ?? '').toString().trim(),
       phone: (json['phone'] ?? '').toString().trim(),
       membershipType:
-          (json['membership_type'] ?? json['membershipType'] ?? 'normal').toString().toLowerCase(),
+          (json['membership_type'] ?? json['membershipType'] ?? 'normal')
+              .toString()
+              .toLowerCase(),
       joinDate: joinDate,
       expirationDate: expDate,
       isActive: json['is_active'] ?? json['isActive'] == true,
       photoUrl: (json['photo_url'] ?? json['photoUrl'])?.toString(),
       qrCode: (json['qr_code'] ?? json['qrCode'])?.toString(),
       rfidCard: (json['rfid_card'] ?? json['rfidCard'])?.toString(),
-      userNumber: ((json['user_number'] ?? json['userNumber'] ?? '')).toString().trim(),
+      userNumber:
+          ((json['user_number'] ?? json['userNumber'] ?? '')).toString().trim(),
       accessHistory: List<dynamic>.from(json['accessHistory'] ?? []),
       lastPaymentDate: lastPaymentDate,
       daysRemaining: daysLeft,
-      membershipPrice: (json['membership_price'] ?? 0.0).toDouble(), // Precio desde BD
-      
+      membershipPrice:
+          (json['membership_price'] ?? 0.0).toDouble(), // Precio desde BD
+
       // Campos de promociones
-      currentPromotionId: (json['current_promotion_id'] ?? json['currentPromotionId'])?.toString(),
-      currentPromotionName: (json['current_promotion_name'] ?? json['currentPromotionName'])?.toString(),
-      promotionDiscountAmount: (json['promotion_discount_amount'] ?? json['promotionDiscountAmount'] ?? 0.0).toDouble(),
-      promotionAppliedDate: parseDateTime(json['promotion_applied_date'] ?? json['promotionAppliedDate']),
-      promotionExpiresDate: parseDateTime(json['promotion_expires_date'] ?? json['promotionExpiresDate']),
+      currentPromotionId:
+          (json['current_promotion_id'] ?? json['currentPromotionId'])
+              ?.toString(),
+      currentPromotionName:
+          (json['current_promotion_name'] ?? json['currentPromotionName'])
+              ?.toString(),
+      promotionDiscountAmount: (json['promotion_discount_amount'] ??
+              json['promotionDiscountAmount'] ??
+              0.0)
+          .toDouble(),
+      promotionAppliedDate: parseDateTime(
+          json['promotion_applied_date'] ?? json['promotionAppliedDate']),
+      promotionExpiresDate: parseDateTime(
+          json['promotion_expires_date'] ?? json['promotionExpiresDate']),
     );
   }
 
@@ -139,7 +155,7 @@ class UserModel {
     if (kDebugMode) {
       print('Convirtiendo a JSON con fecha de expiración: $expirationDate');
     }
-    
+
     // Adaptamos los nombres de las columnas a la estructura real de la base de datos
     // y omitimos accessHistory que no existe en la tabla
     final Map<String, dynamic> jsonMap = {
@@ -147,22 +163,28 @@ class UserModel {
       'phone': phone,
       'membership_type': membershipType, // snake_case para la base de datos
       'join_date': joinDate.toUtc().toIso8601String(), // snake_case
-      'expiration_date': expirationDate?.toUtc().toIso8601String(), // snake_case
+      'expiration_date':
+          expirationDate?.toUtc().toIso8601String(), // snake_case
       'is_active': isActive, // snake_case
       'photo_url': photoUrl, // snake_case
       'qr_code': qrCode, // snake_case
       'rfid_card': rfidCard, // snake_case
       'user_number': userNumber, // snake_case
-      'last_payment_date': lastPaymentDate?.toUtc().toIso8601String(), // snake_case
-      
-      // Campos de promociones
-      'current_promotion_id': currentPromotionId,
+      'last_payment_date':
+          lastPaymentDate?.toUtc().toIso8601String(), // snake_case
+
+      // Campos de promociones - solo incluir si tienen valor válido
       'current_promotion_name': currentPromotionName,
       'promotion_discount_amount': promotionDiscountAmount,
       'promotion_applied_date': promotionAppliedDate?.toUtc().toIso8601String(),
       'promotion_expires_date': promotionExpiresDate?.toUtc().toIso8601String(),
     };
-    
+
+    // Solo incluir current_promotion_id si es un UUID válido (no null, no vacío)
+    if (currentPromotionId != null && currentPromotionId!.isNotEmpty) {
+      jsonMap['current_promotion_id'] = currentPromotionId;
+    }
+
     return jsonMap;
   }
 
@@ -182,7 +204,7 @@ class UserModel {
     List<dynamic>? accessHistory,
     DateTime? lastPaymentDate,
     double? membershipPrice, // Agregado precio de membresía
-    
+
     // Campos de promociones
     String? currentPromotionId,
     String? currentPromotionName,
@@ -204,12 +226,14 @@ class UserModel {
       userNumber: userNumber ?? this.userNumber,
       accessHistory: accessHistory ?? this.accessHistory,
       lastPaymentDate: lastPaymentDate ?? this.lastPaymentDate,
-      membershipPrice: membershipPrice ?? this.membershipPrice, // Precio dinámico
-      
+      membershipPrice:
+          membershipPrice ?? this.membershipPrice, // Precio dinámico
+
       // Campos de promociones
       currentPromotionId: currentPromotionId ?? this.currentPromotionId,
       currentPromotionName: currentPromotionName ?? this.currentPromotionName,
-      promotionDiscountAmount: promotionDiscountAmount ?? this.promotionDiscountAmount,
+      promotionDiscountAmount:
+          promotionDiscountAmount ?? this.promotionDiscountAmount,
       promotionAppliedDate: promotionAppliedDate ?? this.promotionAppliedDate,
       promotionExpiresDate: promotionExpiresDate ?? this.promotionExpiresDate,
     );
@@ -249,44 +273,45 @@ class UserModel {
 
     return total;
   }
-  
+
   // Métodos relacionados con promociones
-  
+
   /// Verifica si el usuario tiene una promoción activa
   bool get hasActivePromotion {
     if (currentPromotionId == null) return false;
     if (promotionExpiresDate == null) return true; // Sin fecha de expiración
     return DateTime.now().isBefore(promotionExpiresDate!);
   }
-  
+
   /// Obtiene el texto descriptivo de la promoción activa
   String get promotionDisplayText {
     if (!hasActivePromotion) return '';
-    
+
     String text = currentPromotionName ?? 'Promoción activa';
     if (promotionDiscountAmount > 0) {
       text += ' (-\$${promotionDiscountAmount.toStringAsFixed(2)})';
     }
     return text;
   }
-  
+
   /// Verifica si la promoción está por expirar (próximos 7 días)
   bool get promotionExpiringSoon {
     if (!hasActivePromotion || promotionExpiresDate == null) return false;
-    final daysUntilExpiration = promotionExpiresDate!.difference(DateTime.now()).inDays;
+    final daysUntilExpiration =
+        promotionExpiresDate!.difference(DateTime.now()).inDays;
     return daysUntilExpiration <= 7 && daysUntilExpiration > 0;
   }
-  
+
   /// Calcula el monto total considerando la promoción activa
   double calculateTotalWithPromotion() {
     double total = calculateTotalPayment();
-    
+
     if (hasActivePromotion && promotionDiscountAmount > 0) {
       total -= promotionDiscountAmount;
       // Asegurar que el total no sea negativo
       total = total < 0 ? 0 : total;
     }
-    
+
     return total;
   }
 }

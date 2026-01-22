@@ -26,6 +26,26 @@ class MembresiasController extends GetxController {
   // Membresía seleccionada actualmente (para editar)
   final Rx<MembershipTypeModel?> selectedMembership = Rx<MembershipTypeModel?>(null);
   
+  // Método seguro para mostrar snackbars sin errores de overlay
+  void _showSnackbarSafe(String title, String message, {bool isError = false}) {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        final context = Get.context;
+        if (context != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$title: $message'),
+              backgroundColor: isError ? Colors.red : Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (e) {
+        print('Error mostrando snackbar: $e');
+      }
+    });
+  }
+  
   @override
   void onInit() {
     super.onInit();
@@ -92,6 +112,7 @@ class MembresiasController extends GetxController {
   // Crear un nuevo tipo de membresía
   Future<bool> createMembership() async {
     if (!formKey.currentState!.validate()) {
+      print('❌ Formulario no válido');
       return false;
     }
     
@@ -99,6 +120,7 @@ class MembresiasController extends GetxController {
     errorMessage.value = '';
     
     try {
+      print('📝 Creando membresía: ${nameController.text.trim()}');
       final newMembership = MembershipTypeModel(
         name: nameController.text.trim(),
         description: descriptionController.text.trim(),
@@ -107,32 +129,25 @@ class MembresiasController extends GetxController {
         isActive: isActiveChecked.value,
       );
       
+      print('📤 Enviando a Supabase...');
       final createdMembership = await membershipProvider.createMembershipType(newMembership);
+      print('📥 Respuesta recibida: $createdMembership');
+      
       if (createdMembership != null) {
+        print('✅ Membresía creada con ID: ${createdMembership.id}');
         memberships.add(createdMembership);
         clearForm();
         Get.back();
-        Get.snackbar(
-          'Éxito',
-          'Tipo de membresía creado correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        _showSnackbarSafe('Éxito', 'Tipo de membresía creado correctamente');
         return true;
       } else {
+        print('❌ createdMembership es null');
         throw Exception('No se pudo crear el tipo de membresía');
       }
     } catch (e) {
       errorMessage.value = 'Error al crear tipo de membresía: $e';
-      print(errorMessage.value);
-      Get.snackbar(
-        'Error',
-        errorMessage.value,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      print('❌ ${errorMessage.value}');
+      _showSnackbarSafe('Error', errorMessage.value, isError: true);
       return false;
     } finally {
       isSaving.value = false;
@@ -167,13 +182,7 @@ class MembresiasController extends GetxController {
         
         clearForm();
         Get.back();
-        Get.snackbar(
-          'Éxito',
-          'Tipo de membresía actualizado correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        _showSnackbarSafe('Éxito', 'Tipo de membresía actualizado correctamente');
         return true;
       } else {
         throw Exception('No se pudo actualizar el tipo de membresía');
@@ -181,13 +190,7 @@ class MembresiasController extends GetxController {
     } catch (e) {
       errorMessage.value = 'Error al actualizar tipo de membresía: $e';
       print(errorMessage.value);
-      Get.snackbar(
-        'Error',
-        errorMessage.value,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _showSnackbarSafe('Error', errorMessage.value, isError: true);
       return false;
     } finally {
       isSaving.value = false;
@@ -216,14 +219,11 @@ class MembresiasController extends GetxController {
           memberships[index] = membership.copyWith(isActive: !membership.isActive);
         }
         
-        Get.snackbar(
+        _showSnackbarSafe(
           'Éxito',
           membership.isActive 
               ? 'Tipo de membresía desactivado correctamente' 
               : 'Tipo de membresía activado correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
         );
         return true;
       } else {
@@ -232,13 +232,7 @@ class MembresiasController extends GetxController {
     } catch (e) {
       errorMessage.value = 'Error al cambiar estado del tipo de membresía: $e';
       print(errorMessage.value);
-      Get.snackbar(
-        'Error',
-        errorMessage.value,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _showSnackbarSafe('Error', errorMessage.value, isError: true);
       return false;
     } finally {
       isLoading.value = false;
@@ -270,13 +264,7 @@ class MembresiasController extends GetxController {
         // Eliminar de la lista local
         memberships.removeWhere((m) => m.id == id);
         
-        Get.snackbar(
-          'Éxito',
-          'Tipo de membresía eliminado correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        _showSnackbarSafe('Éxito', 'Tipo de membresía eliminado correctamente');
         return true;
       } else {
         throw Exception('No se pudo eliminar el tipo de membresía');
@@ -284,13 +272,7 @@ class MembresiasController extends GetxController {
     } catch (e) {
       errorMessage.value = 'Error al eliminar tipo de membresía: $e';
       print(errorMessage.value);
-      Get.snackbar(
-        'Error',
-        errorMessage.value,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _showSnackbarSafe('Error', errorMessage.value, isError: true);
       return false;
     } finally {
       isLoading.value = false;

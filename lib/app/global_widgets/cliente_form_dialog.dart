@@ -70,7 +70,9 @@ class ClienteFormDialog extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
         body: SafeArea(
-          child: contentBox(context, GlobalKey<FormState>(), !isEditing || isRenewing, Rx<File?>(null), isFullScreen: true),
+          child: contentBox(context, GlobalKey<FormState>(),
+              !isEditing || isRenewing, Rx<File?>(null),
+              isFullScreen: true),
         ),
       );
     }
@@ -96,7 +98,8 @@ class ClienteFormDialog extends StatelessWidget {
       elevation: 0,
       backgroundColor: Colors.transparent,
       contentPadding: EdgeInsets.zero,
-      content: contentBox(context, formKey, isNewRegistration, photoFile, isFullScreen: false),
+      content: contentBox(context, formKey, isNewRegistration, photoFile,
+          isFullScreen: false),
     );
   }
 
@@ -109,12 +112,12 @@ class ClienteFormDialog extends StatelessWidget {
   }) {
     // Inicializar el número de teléfono correctamente para edición
     PhoneNumber initialPhoneNumber;
-    
+
     if (isEditing && phoneController.text.isNotEmpty) {
       try {
         // Intentar parsear el número existente del cliente
         final phone = phoneController.text.trim();
-        
+
         if (phone.startsWith('+52')) {
           // Extraer solo el número sin el código de país para el widget
           final phoneWithoutCountryCode = phone.substring(3);
@@ -140,7 +143,7 @@ class ClienteFormDialog extends StatelessWidget {
       // Para nuevos clientes, usar México como default
       initialPhoneNumber = PhoneNumber(isoCode: 'MX');
     }
-    
+
     String formattedPhoneNumber = phoneController.text;
 
     return Container(
@@ -171,7 +174,9 @@ class ClienteFormDialog extends StatelessWidget {
                     ),
                     Text(
                       isEditing
-                          ? (isRenewing ? 'Renovar Membresía' : 'Editar Cliente')
+                          ? (isRenewing
+                              ? 'Renovar Membresía'
+                              : 'Editar Cliente')
                           : 'Nuevo Cliente',
                       style: TextStyle(
                         fontSize: 24,
@@ -185,11 +190,12 @@ class ClienteFormDialog extends StatelessWidget {
             Flexible(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
-                  24, 
-                  isFullScreen ? 16 : 20, // Menos padding top cuando hay AppBar
-                  24, 
-                  24
-                ),
+                    24,
+                    isFullScreen
+                        ? 16
+                        : 20, // Menos padding top cuando hay AppBar
+                    24,
+                    24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -206,7 +212,7 @@ class ClienteFormDialog extends StatelessWidget {
                         controller: userNumberController,
                         decoration: InputDecoration(
                           labelText: 'Número de Usuario',
-                          hintText: 'Ej: 001, 123',
+                          hintText: 'Ej: 001, ABC123',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -215,17 +221,18 @@ class ClienteFormDialog extends StatelessWidget {
                           fillColor: AppColors.containerBackground,
                         ),
                         style: TextStyle(color: AppColors.accent),
-                        keyboardType: TextInputType.number,
+                        keyboardType: TextInputType.text,
                         readOnly: isEditing,
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly, // Solo números
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'[a-zA-Z0-9]')), // Letras y números
                         ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Por favor ingrese un número de usuario';
                           }
-                          if (!RegExp(r'^\d+$').hasMatch(value)) {
-                            return 'Solo se permiten números';
+                          if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+                            return 'Solo se permiten letras y números';
                           }
                           return null;
                         },
@@ -243,15 +250,18 @@ class ClienteFormDialog extends StatelessWidget {
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                prefixIcon: const Icon(Icons.nfc), // Cambiado a icono NFC
+                                prefixIcon: const Icon(
+                                    Icons.nfc), // Cambiado a icono NFC
                                 filled: true,
                                 fillColor: AppColors.containerBackground,
                               ),
                               style: TextStyle(color: AppColors.textPrimary),
-                              readOnly: true, // Solo lectura - no se puede escribir manualmente
+                              readOnly:
+                                  true, // Solo lectura - no se puede escribir manualmente
                               validator: (value) {
                                 if (value != null && value.isNotEmpty) {
-                                  if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+                                  if (!RegExp(r'^[a-zA-Z0-9]+$')
+                                      .hasMatch(value)) {
                                     return 'Solo se permiten letras y números';
                                   }
                                   if (value.length < 4) {
@@ -304,8 +314,10 @@ class ClienteFormDialog extends StatelessWidget {
                         style: TextStyle(color: AppColors.textPrimary),
                         textCapitalization: TextCapitalization.words,
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]')), // Solo letras y espacios
-                          LengthLimitingTextInputFormatter(100), // Máximo 100 caracteres
+                          FilteringTextInputFormatter.allow(RegExp(
+                              r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]')), // Solo letras y espacios
+                          LengthLimitingTextInputFormatter(
+                              100), // Máximo 100 caracteres
                         ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -314,7 +326,8 @@ class ClienteFormDialog extends StatelessWidget {
                           if (value.trim().length < 2) {
                             return 'El nombre debe tener al menos 2 caracteres';
                           }
-                          if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$').hasMatch(value)) {
+                          if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$')
+                              .hasMatch(value)) {
                             return 'Solo se permiten letras y espacios';
                           }
                           return null;
@@ -332,14 +345,16 @@ class ClienteFormDialog extends StatelessWidget {
                           }
                         },
                         selectorConfig: const SelectorConfig(
-                          selectorType: PhoneInputSelectorType.DIALOG,
+                          selectorType: PhoneInputSelectorType.DROPDOWN,
                           setSelectorButtonAsPrefixIcon: true,
+                          useEmoji: true,
                         ),
                         ignoreBlank: false,
                         autoValidateMode: AutovalidateMode.onUserInteraction,
                         initialValue: initialPhoneNumber,
                         formatInput: true,
-                        keyboardType: TextInputType.phone, // Teclado numérico de teléfono (solo números)
+                        keyboardType: TextInputType
+                            .phone, // Teclado numérico de teléfono (solo números)
                         textStyle: TextStyle(color: AppColors.textPrimary),
                         selectorTextStyle: TextStyle(
                           color: AppColors.textPrimary,
@@ -376,7 +391,7 @@ class ClienteFormDialog extends StatelessWidget {
                         // Crear una lista filtrada sin duplicados (comparación case-insensitive)
                         final List<String> filteredTypes = [];
                         final Set<String> seenTypes = {};
-                        
+
                         for (String typeName in membershipTypes) {
                           final normalizedName = typeName.trim().toLowerCase();
                           if (!seenTypes.contains(normalizedName)) {
@@ -384,24 +399,27 @@ class ClienteFormDialog extends StatelessWidget {
                             filteredTypes.add(typeName.trim());
                           }
                         }
-                        
+
                         // Obtener el valor actual
-                        String currentValue = selectedMembershipType.value.trim();
-                        
+                        String currentValue =
+                            selectedMembershipType.value.trim();
+
                         // Verificar que el valor actual esté en la lista filtrada (comparación exacta)
                         String? validValue;
                         for (String type in filteredTypes) {
-                          if (type.toLowerCase() == currentValue.toLowerCase()) {
-                            validValue = type; // Usar el valor exacto de la lista
+                          if (type.toLowerCase() ==
+                              currentValue.toLowerCase()) {
+                            validValue =
+                                type; // Usar el valor exacto de la lista
                             break;
                           }
                         }
-                        
+
                         // Si no se encontró un valor válido, usar el primero disponible
                         if (validValue == null && filteredTypes.isNotEmpty) {
                           validValue = filteredTypes.first;
                         }
-                        
+
                         return DropdownButtonFormField<String>(
                           decoration: InputDecoration(
                             labelText: 'Tipo de Membresía',
@@ -420,9 +438,10 @@ class ClienteFormDialog extends StatelessWidget {
                             double price = 0.0;
                             bool isActive = true;
                             if (membershipTypeModels != null) {
-                              final model = membershipTypeModels!.firstWhereOrNull(
-                                (m) => m.name.toLowerCase().trim() == typeName.toLowerCase().trim()
-                              );
+                              final model = membershipTypeModels!
+                                  .firstWhereOrNull((m) =>
+                                      m.name.toLowerCase().trim() ==
+                                      typeName.toLowerCase().trim());
                               if (model != null) {
                                 price = model.price;
                                 isActive = model.isActive;
@@ -430,24 +449,31 @@ class ClienteFormDialog extends StatelessWidget {
                             }
                             // Fallback a precios estáticos si no se encontró en los modelos
                             if (price == 0.0) {
-                              price = UserModel.membershipPrices[typeName.toLowerCase().trim()] ?? 0.0;
+                              price = UserModel.membershipPrices[
+                                      typeName.toLowerCase().trim()] ??
+                                  0.0;
                             }
-                            
+
                             // Formatear el nombre con primera letra en mayúscula
-                            final displayName = typeName[0].toUpperCase() + typeName.substring(1);
-                            
+                            final displayName = typeName[0].toUpperCase() +
+                                typeName.substring(1);
+
                             // Agregar indicador si está inactiva
-                            final displayText = isActive 
+                            final displayText = isActive
                                 ? '$displayName (\$${price.toStringAsFixed(0)})'
                                 : '$displayName (\$${price.toStringAsFixed(0)}) - INACTIVA';
-                            
+
                             return DropdownMenuItem(
                               value: typeName,
                               child: Text(
                                 displayText,
                                 style: TextStyle(
-                                  color: isActive ? AppColors.textPrimary : AppColors.disabled,
-                                  fontStyle: isActive ? FontStyle.normal : FontStyle.italic,
+                                  color: isActive
+                                      ? AppColors.textPrimary
+                                      : AppColors.disabled,
+                                  fontStyle: isActive
+                                      ? FontStyle.normal
+                                      : FontStyle.italic,
                                 ),
                               ),
                             );
@@ -457,14 +483,15 @@ class ClienteFormDialog extends StatelessWidget {
                               // Verificar si la membresía seleccionada está activa
                               bool isActive = true;
                               if (membershipTypeModels != null) {
-                                final selectedModel = membershipTypeModels!.firstWhereOrNull(
-                                  (m) => m.name.toLowerCase().trim() == value.toLowerCase().trim()
-                                );
+                                final selectedModel = membershipTypeModels!
+                                    .firstWhereOrNull((m) =>
+                                        m.name.toLowerCase().trim() ==
+                                        value.toLowerCase().trim());
                                 if (selectedModel != null) {
                                   isActive = selectedModel.isActive;
                                 }
                               }
-                              
+
                               // Si está editando y la membresía seleccionada está inactiva, mostrar advertencia
                               if (isEditing && !isActive) {
                                 Get.snackbar(
@@ -476,9 +503,9 @@ class ClienteFormDialog extends StatelessWidget {
                                   duration: const Duration(seconds: 4),
                                 );
                               }
-                              
+
                               selectedMembershipType.value = value;
-                              
+
                               // Usar el controlador para actualizar los costos
                               final controller = Get.find<ClientesController>();
                               controller.updateMembershipCost();
@@ -502,20 +529,19 @@ class ClienteFormDialog extends StatelessWidget {
                         dropdownColor: AppColors.cardBackground,
                         style: TextStyle(color: AppColors.textPrimary),
                         value: selectedPaymentMethod.value,
-                        items:
-                            paymentMethods
-                                .map(
-                                  (method) => DropdownMenuItem(
-                                    value: method,
-                                    child: Text(
-                                      method,
-                                      style: TextStyle(
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
+                        items: paymentMethods
+                            .map(
+                              (method) => DropdownMenuItem(
+                                value: method,
+                                child: Text(
+                                  method,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (value) {
                           if (value != null) {
                             selectedPaymentMethod.value = value;
@@ -559,20 +585,20 @@ class ClienteFormDialog extends StatelessWidget {
                             final controller = Get.find<ClientesController>();
                             return controller.registrationFee.value > 0
                                 ? Column(
-                                  children: [
-                                    Divider(
-                                      color: AppColors.disabled,
-                                      height: 16,
-                                    ),
-                                    _buildCostRow(
-                                      'Registro:',
-                                      controller.registrationFee.value,
-                                    ),
-                                  ],
-                                )
+                                    children: [
+                                      Divider(
+                                        color: AppColors.disabled,
+                                        height: 16,
+                                      ),
+                                      _buildCostRow(
+                                        'Registro:',
+                                        controller.registrationFee.value,
+                                      ),
+                                    ],
+                                  )
                                 : const SizedBox.shrink();
                           }),
-                          
+
                           // Sección de promociones
                           if (!isEditing || isRenewing) ...[
                             const SizedBox(height: 12),
@@ -615,7 +641,8 @@ class ClienteFormDialog extends StatelessWidget {
                                   GetBuilder<ClientesController>(
                                     id: 'promotions',
                                     builder: (controller) {
-                                      if (controller.availablePromotions.isEmpty) {
+                                      if (controller
+                                          .availablePromotions.isEmpty) {
                                         return Text(
                                           'No hay promociones disponibles',
                                           style: TextStyle(
@@ -629,7 +656,8 @@ class ClienteFormDialog extends StatelessWidget {
                                         children: [
                                           // Opción "Sin promoción"
                                           Obx(() {
-                                            final currentController = Get.find<ClientesController>();
+                                            final currentController =
+                                                Get.find<ClientesController>();
                                             return RadioListTile<String?>(
                                               title: Text(
                                                 'Sin promoción',
@@ -643,45 +671,69 @@ class ClienteFormDialog extends StatelessWidget {
                                                 'Total: \$${(currentController.membershipCost.value + currentController.registrationFee.value).toStringAsFixed(2)}',
                                                 style: TextStyle(
                                                   fontSize: 13,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
                                               value: null,
-                                              groupValue: currentController.selectedPromotion.value?.id,
+                                              groupValue: currentController
+                                                  .selectedPromotion.value?.id,
                                               onChanged: (value) {
-                                                currentController.applyPromotion(null);
+                                                currentController
+                                                    .applyPromotion(null);
                                               },
                                               dense: true,
                                               contentPadding: EdgeInsets.zero,
                                             );
                                           }),
-                                          
+
                                           // Lista de promociones disponibles
-                                          ...controller.availablePromotions.map((promotion) {
+                                          ...controller.availablePromotions
+                                              .map((promotion) {
                                             return Obx(() {
-                                              final currentController = Get.find<ClientesController>();
-                                              final discount = _calculatePromotionDiscount(promotion, currentController.membershipCost.value, currentController.registrationFee.value);
-                                              final finalAmount = (currentController.membershipCost.value + currentController.registrationFee.value) - discount;
-                                              
+                                              final currentController = Get
+                                                  .find<ClientesController>();
+                                              final discount =
+                                                  _calculatePromotionDiscount(
+                                                      promotion,
+                                                      currentController
+                                                          .membershipCost.value,
+                                                      currentController
+                                                          .registrationFee
+                                                          .value);
+                                              final finalAmount =
+                                                  (currentController
+                                                              .membershipCost
+                                                              .value +
+                                                          currentController
+                                                              .registrationFee
+                                                              .value) -
+                                                      discount;
+
                                               return RadioListTile<String>(
                                                 title: Text(
                                                   promotion.name,
                                                   style: TextStyle(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
-                                                    color: AppColors.textPrimary,
+                                                    color:
+                                                        AppColors.textPrimary,
                                                   ),
                                                 ),
                                                 subtitle: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
-                                                    if (promotion.description?.isNotEmpty == true)
+                                                    if (promotion.description
+                                                            ?.isNotEmpty ==
+                                                        true)
                                                       Text(
                                                         promotion.description!,
                                                         style: TextStyle(
                                                           fontSize: 12,
-                                                          color: AppColors.textSecondary,
+                                                          color: AppColors
+                                                              .textSecondary,
                                                         ),
                                                       ),
                                                     const SizedBox(height: 2),
@@ -689,16 +741,23 @@ class ClienteFormDialog extends StatelessWidget {
                                                       'Descuento: -\$${discount.toStringAsFixed(2)} | Total: \$${finalAmount.toStringAsFixed(2)}',
                                                       style: TextStyle(
                                                         fontSize: 13,
-                                                        color: Colors.green.shade400,
-                                                        fontWeight: FontWeight.w600,
+                                                        color: Colors
+                                                            .green.shade400,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                                 value: promotion.id!,
-                                                groupValue: currentController.selectedPromotion.value?.id,
+                                                groupValue: currentController
+                                                    .selectedPromotion
+                                                    .value
+                                                    ?.id,
                                                 onChanged: (value) {
-                                                  currentController.applyPromotion(promotion);
+                                                  currentController
+                                                      .applyPromotion(
+                                                          promotion);
                                                 },
                                                 dense: true,
                                                 contentPadding: EdgeInsets.zero,
@@ -713,13 +772,13 @@ class ClienteFormDialog extends StatelessWidget {
                               ),
                             ),
                           ],
-                          
+
                           Divider(color: AppColors.disabled, height: 16),
-                          
+
                           // Mostrar descuento si hay promoción aplicada
                           Obx(() {
                             final controller = Get.find<ClientesController>();
-                            if (controller.selectedPromotion.value != null && 
+                            if (controller.selectedPromotion.value != null &&
                                 controller.promotionDiscount.value > 0) {
                               return Column(
                                 children: [
@@ -732,7 +791,8 @@ class ClienteFormDialog extends StatelessWidget {
                                     'Descuento (${controller.selectedPromotion.value!.name}):',
                                     -controller.promotionDiscount.value,
                                   ),
-                                  Divider(color: AppColors.disabled, height: 12),
+                                  Divider(
+                                      color: AppColors.disabled, height: 12),
                                   _buildCostRow(
                                     'Total final:',
                                     controller.finalAmount.value,
@@ -777,29 +837,37 @@ class ClienteFormDialog extends StatelessWidget {
                             if (formKey.currentState!.validate()) {
                               final now = DateTime.now();
                               // Duración de membresía según el modelo seleccionado
-                              final typeKey = selectedMembershipType.value.toLowerCase().trim();
+                              final typeKey = selectedMembershipType.value
+                                  .toLowerCase()
+                                  .trim();
                               int durationDays = 30; // Valor por defecto
-                              
+
                               // Buscar en los modelos para obtener la duración correcta
                               if (membershipTypeModels != null) {
                                 // Buscar en todos los modelos, no solo en los activos
                                 final selectedModel = membershipTypeModels!
-                                    .firstWhereOrNull((m) => m.name.toLowerCase().trim() == typeKey);
+                                    .firstWhereOrNull((m) =>
+                                        m.name.toLowerCase().trim() == typeKey);
                                 if (selectedModel != null) {
                                   durationDays = selectedModel.durationDays;
                                 } else {
                                   // Fallback a los valores estáticos
-                                  durationDays = UserModel.membershipDurations[typeKey] ?? 30;
+                                  durationDays =
+                                      UserModel.membershipDurations[typeKey] ??
+                                          30;
                                 }
                               } else {
                                 // Fallback a los valores estáticos
-                                durationDays = UserModel.membershipDurations[typeKey] ?? 30;
+                                durationDays =
+                                    UserModel.membershipDurations[typeKey] ??
+                                        30;
                               }
-                              
+
                               // Calcular la nueva fecha de expiración:
                               // - Si es edición/renovación: desde la fecha actual
                               // - Si es nuevo cliente: desde la fecha actual
-                              final expirationDate = now.add(Duration(days: durationDays));
+                              final expirationDate =
+                                  now.add(Duration(days: durationDays));
 
                               String finalPhoneNumber = phoneController.text;
                               if (!finalPhoneNumber.startsWith('+')) {
@@ -808,25 +876,50 @@ class ClienteFormDialog extends StatelessWidget {
 
                               // Obtener el precio actual de la membresía seleccionada
                               double currentPrice = membershipCost.value;
-                              
+
                               final user = UserModel(
                                 name: nombreController.text,
                                 phone: finalPhoneNumber,
                                 membershipType: selectedMembershipType.value,
                                 membershipPrice: currentPrice,
-                                joinDate: now, // Se preservará en la vista con copyWith
+                                joinDate:
+                                    now, // Se preservará en la vista con copyWith
                                 expirationDate: expirationDate,
                                 isActive: true,
                                 userNumber: userNumberController.text,
-                                rfidCard: rfidController.text.isEmpty ? null : rfidController.text,
-                                lastPaymentDate: now, // Siempre actualizar fecha de último pago
-                                
+                                rfidCard: rfidController.text.isEmpty
+                                    ? null
+                                    : rfidController.text,
+                                lastPaymentDate:
+                                    now, // Siempre actualizar fecha de último pago
+
                                 // Información de promoción aplicada
-                                currentPromotionId: Get.find<ClientesController>().selectedPromotion.value?.id,
-                                currentPromotionName: Get.find<ClientesController>().selectedPromotion.value?.name,
-                                promotionDiscountAmount: Get.find<ClientesController>().promotionDiscount.value,
-                                promotionAppliedDate: Get.find<ClientesController>().selectedPromotion.value != null ? now : null,
-                                promotionExpiresDate: Get.find<ClientesController>().selectedPromotion.value?.endDate,
+                                currentPromotionId:
+                                    Get.find<ClientesController>()
+                                        .selectedPromotion
+                                        .value
+                                        ?.id,
+                                currentPromotionName:
+                                    Get.find<ClientesController>()
+                                        .selectedPromotion
+                                        .value
+                                        ?.name,
+                                promotionDiscountAmount:
+                                    Get.find<ClientesController>()
+                                        .promotionDiscount
+                                        .value,
+                                promotionAppliedDate:
+                                    Get.find<ClientesController>()
+                                                .selectedPromotion
+                                                .value !=
+                                            null
+                                        ? now
+                                        : null,
+                                promotionExpiresDate:
+                                    Get.find<ClientesController>()
+                                        .selectedPromotion
+                                        .value
+                                        ?.endDate,
                               );
 
                               onSave(user, photoFile.value);
@@ -892,7 +985,7 @@ class ClienteFormDialog extends StatelessWidget {
   Future<void> _showRfidReaderDialog(BuildContext context) async {
     final isReading = true.obs;
     final detectedUid = Rx<String?>(null);
-    
+
     // Pausar el servicio de escaneo en segundo plano si está activo
     BackgroundRfidService? backgroundService;
     try {
@@ -900,7 +993,8 @@ class ClienteFormDialog extends StatelessWidget {
         backgroundService = Get.find<BackgroundRfidService>();
         if (backgroundService.isScanning.value) {
           backgroundService.pauseScanning();
-          print('⏸️ Servicio de escaneo en segundo plano pausado para registro');
+          print(
+              '⏸️ Servicio de escaneo en segundo plano pausado para registro');
         }
       }
     } catch (e) {
@@ -911,7 +1005,7 @@ class ClienteFormDialog extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Obx(
+      builder: (dialogContext) => Obx(
         () => RfidReaderAnimation(
           isReading: isReading.value,
           detectedUid: detectedUid.value,
@@ -920,13 +1014,14 @@ class ClienteFormDialog extends StatelessWidget {
             if (detectedUid.value != null) {
               // Asignar el UID detectado al controlador de texto
               rfidController.text = detectedUid.value!;
-              Get.back();
             } else {
               // Si el usuario cancela durante la lectura, también cerramos
               isReading.value = false;
-              Get.back();
             }
-            
+
+            // Cerrar el diálogo usando el contexto correcto del Navigator
+            Navigator.of(dialogContext).pop();
+
             // Reanudar el servicio de escaneo en segundo plano
             backgroundService?.resumeScanning();
           },
@@ -941,13 +1036,17 @@ class ClienteFormDialog extends StatelessWidget {
     try {
       // Intentar iniciar el lector ESP32 real
       bool readerStarted = await RfidReaderService.startReading();
-      
+
       if (readerStarted) {
         // Si el lector inició correctamente, revisar periódicamente si hay una tarjeta
         int attempts = 0;
-        final maxAttempts = RfidConfig.maxReadingTimeoutSeconds * 1000 ~/ RfidConfig.pollingIntervalMs;
-        
-        while (isReading.value && attempts < maxAttempts && detectedUid.value == null) {
+        final maxAttempts = RfidConfig.maxReadingTimeoutSeconds *
+            1000 ~/
+            RfidConfig.pollingIntervalMs;
+
+        while (isReading.value &&
+            attempts < maxAttempts &&
+            detectedUid.value == null) {
           // Verificar si hay una tarjeta usando el endpoint silencioso
           final uid = await RfidReaderService.checkForCardSilent();
           if (uid != null) {
@@ -957,11 +1056,13 @@ class ClienteFormDialog extends StatelessWidget {
             break;
           }
           attempts++;
-          await Future.delayed(Duration(milliseconds: RfidConfig.pollingIntervalMs));
+          await Future.delayed(
+              Duration(milliseconds: RfidConfig.pollingIntervalMs));
         }
       } else {
         // Si no se pudo iniciar el lector real, mostrar un mensaje de error
-        if (isReading.value) {  // Verificar que el usuario no haya cancelado
+        if (isReading.value) {
+          // Verificar que el usuario no haya cancelado
           Get.snackbar(
             'Error de conexión',
             'No se pudo conectar con el lector RFID. Verifica la configuración.',
@@ -971,7 +1072,9 @@ class ClienteFormDialog extends StatelessWidget {
             duration: const Duration(seconds: 3),
           );
           isReading.value = false;
-          Get.back(); // Cerrar el diálogo
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(); // Cerrar el diálogo
+          }
           backgroundService?.resumeScanning(); // Reanudar servicio
         }
       }
@@ -987,28 +1090,31 @@ class ClienteFormDialog extends StatelessWidget {
           duration: const Duration(seconds: 3),
         );
         isReading.value = false;
-        Get.back(); // Cerrar el diálogo
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(); // Cerrar el diálogo
+        }
         backgroundService?.resumeScanning(); // Reanudar servicio
       }
     }
   }
-  
+
   // Método para calcular el descuento de una promoción
-  double _calculatePromotionDiscount(PromotionModel promotion, double membershipCost, double registrationFee) {
+  double _calculatePromotionDiscount(
+      PromotionModel promotion, double membershipCost, double registrationFee) {
     if (!promotion.isCurrentlyValid) return 0.0;
-    
+
     double discount = 0.0;
-    
+
     // Verificar si aplica a registro
     if (promotion.appliesTo_('registration') || promotion.appliesTo_('both')) {
       discount += promotion.calculateDiscount(registrationFee);
     }
-    
-    // Verificar si aplica a membresía  
+
+    // Verificar si aplica a membresía
     if (promotion.appliesTo_('membership') || promotion.appliesTo_('both')) {
       discount += promotion.calculateDiscount(membershipCost);
     }
-    
+
     return discount;
   }
 }

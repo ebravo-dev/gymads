@@ -54,8 +54,8 @@ const uint8_t APDU_GET_DATA[] = {
 
 // =================== CONFIGURACIÓN WIFI ===================
 // TODO: Cambiar estas credenciales por las de tu red WiFi
-const char* WIFI_SSID = "FamiliaBlanco_2.4";
-const char* WIFI_PASSWORD = "*E2d0e0r46";
+const char* WIFI_SSID = "Totalplay-2.4G-2368";
+const char* WIFI_PASSWORD = "N5q6aS55GGjDsYt7";
 
 // =================== CONFIGURACIÓN DE ESCANEO RFID ===================
 // Intervalo mínimo entre lecturas de la misma tarjeta (en milisegundos)
@@ -65,9 +65,9 @@ const unsigned long CARD_READ_INTERVAL_MS = 3000;
 
 // =================== CONFIGURACIÓN DE IP ESTÁTICA ===================
 // Configuración de IP estática
-bool useStaticIP = false;  // Establecer a false para usar DHCP
-IPAddress staticIP(192, 168, 1, 109);  // IP estática que quieres asignar al ESP32
-IPAddress gateway(192, 168, 1, 1);     // IP del router (puerta de enlace)
+bool useStaticIP = true;  // Establecer a false para usar DHCP
+IPAddress staticIP(192, 168, 100, 109);  // IP estática que quieres asignar al ESP32
+IPAddress gateway(192, 168, 100, 109);     // IP del router (puerta de enlace)
 IPAddress subnet(255, 255, 255, 0);    // Máscara de subred
 IPAddress dns(8, 8, 8, 8);             // Servidor DNS (Google)
 
