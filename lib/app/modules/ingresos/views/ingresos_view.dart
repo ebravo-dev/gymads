@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gymads/core/theme/app_colors.dart';
@@ -61,22 +59,8 @@ class IngresosView extends GetView<IngresosController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Filtros y período
-                  _buildFilters(context),
-
-                  SizedBox(
-                      height: ResponsiveValues.getSpacing(context,
-                          mobile: 20, smallPhone: 16, tablet: 24)),
-
                   // Tarjetas de estadísticas
                   _buildStatsCards(context),
-
-                  SizedBox(
-                      height: ResponsiveValues.getSpacing(context,
-                          mobile: 20, smallPhone: 16, tablet: 24)),
-
-                  // Gráfica de ingresos
-                  _buildIncomeChart(context),
 
                   SizedBox(
                       height: ResponsiveValues.getSpacing(context,
@@ -91,162 +75,6 @@ class IngresosView extends GetView<IngresosController> {
         }),
       ),
     );
-  }
-
-  Widget _buildFilters(BuildContext context) {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
-            mobile: 16, smallPhone: 12, tablet: 20)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Filtros',
-              style: TextStyle(
-                fontSize: ResponsiveValues.getFontSize(context,
-                    mobile: 18, smallPhone: 16, tablet: 20),
-                fontWeight: FontWeight.bold,
-                color: AppColors.titleColor,
-              ),
-            ),
-
-            SizedBox(
-                height: ResponsiveValues.getSpacing(context,
-                    mobile: 16, smallPhone: 12, tablet: 20)),
-
-            // Selector de período
-            Obx(() => Wrap(
-                  spacing: ResponsiveValues.getSpacing(context,
-                      mobile: 8, smallPhone: 6, tablet: 12),
-                  children: controller.periodos.map((periodo) {
-                    final isSelected =
-                        controller.selectedPeriodo.value == periodo;
-                    return FilterChip(
-                      label: Text(periodo.capitalize!),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        try {
-                          if (selected) controller.changePeriodo(periodo);
-                        } catch (e) {
-                          print('❌ Error al cambiar período: $e');
-                          SnackbarHelper.error(
-                            'Error',
-                            'Error al cambiar período',
-                          );
-                        }
-                      },
-                      selectedColor: AppColors.accent.withOpacity(0.3),
-                      checkmarkColor: AppColors.accent,
-                    );
-                  }).toList(),
-                )),
-
-            SizedBox(
-                height: ResponsiveValues.getSpacing(context,
-                    mobile: 12, smallPhone: 8, tablet: 16)),
-
-            // Filtros adicionales
-            if (ResponsiveValues.isTablet(context))
-              Row(
-                children: [
-                  Expanded(child: _buildConceptoFilter()),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildMetodoPagoFilter()),
-                ],
-              )
-            else
-              Column(
-                children: [
-                  _buildConceptoFilter(),
-                  const SizedBox(height: 12),
-                  _buildMetodoPagoFilter(),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConceptoFilter() {
-    return Obx(() => DropdownButtonFormField<String?>(
-          value: controller.selectedConcepto.value,
-          dropdownColor: AppColors.cardBackground,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Filtrar por concepto',
-            labelStyle: const TextStyle(color: AppColors.textSecondary),
-            filled: true,
-            fillColor: AppColors.containerBackground,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Todos los conceptos'),
-            ),
-            ...controller.conceptos.map((concepto) {
-              return DropdownMenuItem<String?>(
-                value: concepto,
-                child: Text(_getConceptoDisplayName(concepto)),
-              );
-            }),
-          ],
-          onChanged: (value) {
-            try {
-              controller.changeConcepto(value);
-            } catch (e) {
-              print('❌ Error en filtro de concepto: $e');
-            }
-          },
-        ));
-  }
-
-  Widget _buildMetodoPagoFilter() {
-    return Obx(() => DropdownButtonFormField<String?>(
-          value: controller.selectedMetodoPago.value,
-          dropdownColor: AppColors.cardBackground,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Filtrar por método de pago',
-            labelStyle: const TextStyle(color: AppColors.textSecondary),
-            filled: true,
-            fillColor: AppColors.containerBackground,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Todos los métodos'),
-            ),
-            ...controller.metodosPago.map((metodo) {
-              return DropdownMenuItem<String?>(
-                value: metodo,
-                child: Text(metodo.capitalize!),
-              );
-            }),
-          ],
-          onChanged: (value) {
-            try {
-              controller.changeMetodoPago(value);
-            } catch (e) {
-              print('❌ Error en filtro de método de pago: $e');
-            }
-          },
-        ));
   }
 
   Widget _buildStatsCards(BuildContext context) {
@@ -411,454 +239,6 @@ class IngresosView extends GetView<IngresosController> {
     );
   }
 
-  Widget _buildIncomeChart(BuildContext context) {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
-            mobile: 16, smallPhone: 12, tablet: 20)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Gráfica de Ingresos',
-                  style: TextStyle(
-                    fontSize: ResponsiveValues.getFontSize(context,
-                        mobile: 18, smallPhone: 16, tablet: 20),
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.titleColor,
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Selector de tipo de gráfica
-                _buildChartTypeSelector(),
-              ],
-            ),
-            SizedBox(
-                height: ResponsiveValues.getSpacing(context,
-                    mobile: 20, smallPhone: 16, tablet: 24)),
-            Obx(() {
-              if (!controller.tieneDatosGrafica) {
-                return SizedBox(
-                  height: 200,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.bar_chart,
-                          size: 48,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No hay datos para mostrar en la gráfica',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              // Seleccionar el tipo de gráfica a mostrar
-              switch (controller.selectedChartType.value) {
-                case 'barras':
-                  return _buildBarChart(context);
-                case 'pastel':
-                  return _buildPieChart(context);
-                case 'lineas':
-                  return _buildLineChart(context);
-                default:
-                  return _buildBarChart(context);
-              }
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Gráfica de barras
-  Widget _buildBarChart(BuildContext context) {
-    final datos = controller.datosGrafica;
-    if (datos.isEmpty) {
-      return const SizedBox(height: 200);
-    }
-
-    final maxValue = datos.values.reduce((a, b) => a > b ? a : b);
-    final entries = datos.entries.toList();
-
-    // Lista de colores para las barras
-    final List<Color> barColors = [
-      Colors.orange.shade600,
-      Colors.deepOrange.shade500,
-      Colors.orange.shade700,
-      Colors.amber.shade600,
-      Colors.deepOrange.shade600,
-      Colors.orange.shade500,
-      Colors.amber.shade700,
-      Colors.deepOrange.shade400,
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Gráfica de barras
-        SizedBox(
-          height: 250,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: entries.length,
-            itemBuilder: (context, index) {
-              final entry = entries[index];
-              final height = maxValue > 0 ? (entry.value / maxValue) * 180 : 0;
-              final colorIndex = index % barColors.length;
-
-              return Container(
-                width: 60,
-                margin: const EdgeInsets.only(right: 12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    // Valor
-                    Text(
-                      controller.formatCurrency(entry.value),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Barra
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 500),
-                      width: 30,
-                      height: height.toDouble(),
-                      decoration: BoxDecoration(
-                        color: barColors[colorIndex],
-                        borderRadius: BorderRadius.circular(4),
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            barColors[colorIndex],
-                            barColors[colorIndex].withOpacity(0.7),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Etiqueta
-                    Text(
-                      entry.key,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-
-        // Leyenda
-        Padding(
-          padding: const EdgeInsets.only(top: 16),
-          child: Text(
-            'Total: ${controller.formatCurrency(controller.totalIngresosActual)}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Gráfica de pastel
-  Widget _buildPieChart(BuildContext context) {
-    final datos = controller.getDatosPastel();
-    if (datos.isEmpty) {
-      return const SizedBox(
-          height: 200, child: Center(child: Text("No hay datos para mostrar")));
-    }
-
-    final entries = datos.entries.toList();
-    final total = controller.getTotalPastel();
-    final colores = controller.getColoresPastel();
-
-    return SizedBox(
-      height: 300,
-      child: Column(
-        children: [
-          // Gráfica de pastel
-          SizedBox(
-            height: 200,
-            child: Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Segmentos del pastel
-                  ...List.generate(entries.length, (index) {
-                    final entry = entries[index];
-                    final percentage = entry.value / total;
-                    final colorIndex = index % colores.length;
-
-                    // Ángulo de inicio y fin del segmento
-                    final startAngle = index > 0
-                        ? entries.sublist(0, index).fold(
-                            0.0, (prev, e) => prev + (e.value / total) * 2 * pi)
-                        : 0.0;
-
-                    return CustomPaint(
-                      size: const Size(200, 200),
-                      painter: PieChartPainter(
-                        color: colores[colorIndex],
-                        startAngle: startAngle,
-                        sweepAngle: percentage * 2 * pi,
-                        percentage: percentage,
-                      ),
-                    );
-                  }),
-
-                  // Círculo interior
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBackground,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 4,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        controller.formatCurrency(total),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Leyenda
-          const SizedBox(height: 20),
-
-          Expanded(
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: List.generate(entries.length, (index) {
-                  final entry = entries[index];
-                  final colorIndex = index % colores.length;
-                  final percentage =
-                      ((entry.value / total) * 100).toStringAsFixed(1);
-
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          color: colores[colorIndex],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${_getConceptoDisplayName(entry.key)} (${percentage}%)',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Gráfica de líneas
-  Widget _buildLineChart(BuildContext context) {
-    final datos = controller.getDatosLinea();
-    if (datos.isEmpty) {
-      return const SizedBox(
-          height: 200, child: Center(child: Text("No hay datos para mostrar")));
-    }
-
-    final entries = datos.entries.toList();
-    entries.sort((a, b) => a.key.compareTo(b.key)); // Ordenar por fecha/clave
-
-    final maxValue = datos.values.reduce((a, b) => a > b ? a : b);
-    final dataPoints = entries.map((e) => e.value).toList();
-    final labels = entries.map((e) => e.key).toList();
-
-    return SizedBox(
-      height: 250,
-      child: Column(
-        children: [
-          // Título
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              'Total: ${controller.formatCurrency(controller.totalIngresosActual)}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-
-          // Gráfica de líneas
-          Expanded(
-            child: CustomPaint(
-              size: Size(double.infinity, 200),
-              painter: LineChartPainter(
-                dataPoints: dataPoints,
-                labels: labels,
-                maxValue: maxValue,
-                lineColor: Colors.orange.shade600,
-              ),
-            ),
-          ),
-
-          // Etiquetas del eje X
-          SizedBox(
-            height: 30,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: entries.length,
-              itemBuilder: (context, index) {
-                final width = MediaQuery.of(context).size.width /
-                    (entries.length > 6 ? 6 : entries.length);
-                return SizedBox(
-                  width: width,
-                  child: Center(
-                    child: Text(
-                      entries[index].key,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Selector de tipo de gráfica
-  Widget _buildChartTypeSelector() {
-    return Obx(() => SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              ChoiceChip(
-                label: const Text('Barras'),
-                selected: controller.selectedChartType.value == 'barras',
-                onSelected: (selected) {
-                  if (selected) controller.changeChartType('barras');
-                },
-                backgroundColor: AppColors.containerBackground,
-                selectedColor: AppColors.accent.withOpacity(0.3),
-                labelStyle: TextStyle(
-                  color: controller.selectedChartType.value == 'barras'
-                      ? AppColors.accent
-                      : AppColors.textSecondary,
-                  fontWeight: controller.selectedChartType.value == 'barras'
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Pastel'),
-                selected: controller.selectedChartType.value == 'pastel',
-                onSelected: (selected) {
-                  if (selected) controller.changeChartType('pastel');
-                },
-                backgroundColor: AppColors.containerBackground,
-                selectedColor: AppColors.info.withOpacity(0.3),
-                labelStyle: TextStyle(
-                  color: controller.selectedChartType.value == 'pastel'
-                      ? AppColors.info
-                      : AppColors.textSecondary,
-                  fontWeight: controller.selectedChartType.value == 'pastel'
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Líneas'),
-                selected: controller.selectedChartType.value == 'lineas',
-                onSelected: (selected) {
-                  if (selected) controller.changeChartType('lineas');
-                },
-                backgroundColor: AppColors.containerBackground,
-                selectedColor: AppColors.success.withOpacity(0.3),
-                labelStyle: TextStyle(
-                  color: controller.selectedChartType.value == 'lineas'
-                      ? AppColors.success
-                      : AppColors.textSecondary,
-                  fontWeight: controller.selectedChartType.value == 'lineas'
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ));
-  }
-
   Widget _buildRecentTransactions(BuildContext context) {
     return Card(
       color: AppColors.cardBackground,
@@ -885,9 +265,7 @@ class IngresosView extends GetView<IngresosController> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    // TODO: Navegar a vista completa de transacciones
-                  },
+                  onPressed: () => _showAllTransactionsDialog(context),
                   child: const Text('Ver todas'),
                 ),
               ],
@@ -1099,19 +477,6 @@ class IngresosView extends GetView<IngresosController> {
     }
   }
 
-  String _getConceptoDisplayName(String concepto) {
-    switch (concepto) {
-      case 'nuevo_registro':
-        return 'Nuevo Registro';
-      case 'renovacion':
-        return 'Renovación';
-      case 'registro':
-        return 'Solo Registro';
-      default:
-        return concepto;
-    }
-  }
-
   IconData _getIconForConcepto(String concepto) {
     switch (concepto) {
       case 'nuevo_registro':
@@ -1128,159 +493,150 @@ class IngresosView extends GetView<IngresosController> {
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
-}
 
-// Custom painters para gráficas
-class PieChartPainter extends CustomPainter {
-  final Color color;
-  final double startAngle;
-  final double sweepAngle;
-  final double percentage;
+  void _showAllTransactionsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: ResponsiveValues.getSpacing(context,
+                mobile: 16, smallPhone: 12, tablet: 40),
+            vertical: ResponsiveValues.getSpacing(context,
+                mobile: 24, smallPhone: 16, tablet: 40),
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth:
+                  ResponsiveValues.isTablet(context) ? 800 : double.infinity,
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
+                      mobile: 16, smallPhone: 12, tablet: 20)),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Todas las Transacciones',
+                          style: TextStyle(
+                            fontSize: ResponsiveValues.getFontSize(context,
+                                mobile: 18, smallPhone: 16, tablet: 22),
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.titleColor,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close,
+                            color: AppColors.textPrimary),
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                      ),
+                    ],
+                  ),
+                ),
 
-  PieChartPainter({
-    required this.color,
-    required this.startAngle,
-    required this.sweepAngle,
-    required this.percentage,
-  });
+                // Lista de transacciones
+                Flexible(
+                  child: Obx(() {
+                    if (!controller.tieneIngresos) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.receipt_long,
+                                size: 64,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No hay transacciones registradas',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width, size.height) / 2 - 10;
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.all(ResponsiveValues.getSpacing(
+                          context,
+                          mobile: 16,
+                          smallPhone: 12,
+                          tablet: 20)),
+                      itemCount: controller.ingresos.length,
+                      itemBuilder: (context, index) {
+                        final ingreso = controller.ingresos[index];
+                        return _buildTransactionTile(context, ingreso);
+                      },
+                    );
+                  }),
+                ),
 
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    // Dibujar segmento del pastel
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
-      true,
-      paint,
-    );
-
-    // Dibujar borde sutil
-    final borderPaint = Paint()
-      ..color = AppColors.disabled.withOpacity(0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
-      true,
-      borderPaint,
+                // Footer con total
+                Container(
+                  padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
+                      mobile: 16, smallPhone: 12, tablet: 20)),
+                  decoration: BoxDecoration(
+                    color: AppColors.containerBackground,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Obx(() => Text(
+                            '${controller.ingresos.length} transacciones',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
+                          )),
+                      Obx(() => Text(
+                            'Total: ${controller.formatCurrency(controller.totalIngresosActual)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.success,
+                              fontSize: ResponsiveValues.getFontSize(context,
+                                  mobile: 16, smallPhone: 14, tablet: 18),
+                            ),
+                          )),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
-
-  @override
-  bool shouldRepaint(PieChartPainter oldDelegate) =>
-      color != oldDelegate.color ||
-      startAngle != oldDelegate.startAngle ||
-      sweepAngle != oldDelegate.sweepAngle ||
-      percentage != oldDelegate.percentage;
-}
-
-class LineChartPainter extends CustomPainter {
-  final List<double> dataPoints;
-  final List<String> labels;
-  final double maxValue;
-  final Color lineColor;
-
-  LineChartPainter({
-    required this.dataPoints,
-    required this.labels,
-    required this.maxValue,
-    required this.lineColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (dataPoints.isEmpty || maxValue <= 0) return;
-
-    final paint = Paint()
-      ..color = lineColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round;
-
-    final dotPaint = Paint()
-      ..color = lineColor
-      ..style = PaintingStyle.fill;
-
-    // Dibujar líneas de guía horizontales
-    final gridPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    // Dibujar 5 líneas de guía horizontales
-    for (int i = 0; i <= 4; i++) {
-      final y = size.height - (size.height * i / 4);
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        gridPaint,
-      );
-    }
-
-    final path = Path();
-
-    // Calculamos el ancho de cada punto en el eje X
-    final pointWidth =
-        size.width / (dataPoints.length - 1 > 0 ? dataPoints.length - 1 : 1);
-
-    // Iniciamos el path
-    bool isFirstPoint = true;
-    List<Offset> points = [];
-
-    for (int i = 0; i < dataPoints.length; i++) {
-      final value = dataPoints[i];
-      final x = i * pointWidth;
-      final y = size.height - (value / maxValue * size.height * 0.9);
-      final point = Offset(x, y);
-
-      points.add(point);
-
-      if (isFirstPoint) {
-        path.moveTo(x, y);
-        isFirstPoint = false;
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    // Dibujar la línea
-    canvas.drawPath(path, paint);
-
-    // Dibujar los puntos
-    for (final point in points) {
-      canvas.drawCircle(point, 5, dotPaint);
-    }
-
-    // Dibujar área bajo la curva
-    if (points.isNotEmpty) {
-      final areaPaint = Paint()
-        ..color = lineColor.withOpacity(0.2)
-        ..style = PaintingStyle.fill;
-
-      final areaPath = Path()..addPath(path, Offset.zero);
-      areaPath.lineTo(points.last.dx, size.height);
-      areaPath.lineTo(points.first.dx, size.height);
-      areaPath.lineTo(points.first.dx, points.first.dy);
-
-      canvas.drawPath(areaPath, areaPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(LineChartPainter oldDelegate) =>
-      dataPoints != oldDelegate.dataPoints ||
-      labels != oldDelegate.labels ||
-      maxValue != oldDelegate.maxValue ||
-      lineColor != oldDelegate.lineColor;
 }

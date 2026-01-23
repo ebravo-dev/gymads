@@ -49,107 +49,99 @@ class ClientesView extends GetView<ClientesController> {
                       fontSize: 16,
                       color: AppColors.textSecondary,
                     ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Si no está cargando, mostrar el contenido normal
-        return Column(
-          children: [
-            // Barra de búsqueda y filtros
-            Padding(
-              padding: EdgeInsets.all(ResponsiveValues.getSpacing(context, 
-                mobile: 16, 
-                smallPhone: 12,
-                tablet: 24
-              )),
-              child: Column(
-                children: [
-                  // Barra de búsqueda
-                  TextField(
-                    style: const TextStyle(color: AppColors.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'Buscar cliente...',
-                      hintStyle: const TextStyle(color: AppColors.textHint),
-                      prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-                      filled: true,
-                      fillColor: AppColors.containerBackground,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    ),
-                    onChanged: (value) => controller.searchQuery.value = value,
                   ),
-                  SizedBox(height: ResponsiveValues.getSpacing(context,
-                    mobile: 12,
-                    smallPhone: 8,
-                    tablet: 16
-                  )),
                 ],
               ),
-            ),
+            );
+          }
 
-            // Lista de clientes
-            Expanded(
-              child: Obx(() {
-                final filteredClientes = controller.filteredClientes;
-
-                if (filteredClientes.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.people_outline,
-                          size: ResponsiveValues.getIconSize(context,
-                            mobile: 80,
-                            smallPhone: 60,
-                            tablet: 100
-                          ),
-                          color: AppColors.textSecondary,
+          // Si no está cargando, mostrar el contenido normal
+          return Column(
+            children: [
+              // Barra de búsqueda y filtros
+              Padding(
+                padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
+                    mobile: 16, smallPhone: 12, tablet: 24)),
+                child: Column(
+                  children: [
+                    // Barra de búsqueda
+                    TextField(
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar cliente...',
+                        hintStyle: const TextStyle(color: AppColors.textHint),
+                        prefixIcon: const Icon(Icons.search,
+                            color: AppColors.textSecondary),
+                        filled: true,
+                        fillColor: AppColors.containerBackground,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
                         ),
-                        SizedBox(height: ResponsiveValues.getSpacing(context,
-                          mobile: 20,
-                          smallPhone: 16,
-                          tablet: 24
-                        )),
-                        Text(
-                          controller.clientes.isEmpty
-                              ? 'No hay clientes registrados'
-                              : 'No hay resultados para tu búsqueda',
-                          style: const TextStyle(
-                            fontSize: 16,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      ),
+                      onChanged: (value) =>
+                          controller.searchQuery.value = value,
+                    ),
+                    SizedBox(
+                        height: ResponsiveValues.getSpacing(context,
+                            mobile: 12, smallPhone: 8, tablet: 16)),
+                  ],
+                ),
+              ),
+
+              // Lista de clientes
+              Expanded(
+                child: Obx(() {
+                  final filteredClientes = controller.filteredClientes;
+
+                  if (filteredClientes.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.people_outline,
+                            size: ResponsiveValues.getIconSize(context,
+                                mobile: 80, smallPhone: 60, tablet: 100),
                             color: AppColors.textSecondary,
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: filteredClientes.length,
-                  padding: const EdgeInsets.only(bottom: 80),
-                  itemBuilder: (context, index) {
-                    final cliente = filteredClientes[index];
-                    
-                    return ClienteCard(
-                      cliente: cliente,
-                      onTap: () => _showClienteDetails(cliente),
-                      onEdit: () => _showEditDialog(cliente),
-                      onDelete: () => _showDeleteConfirmation(cliente),
-                      onRenovar: () => _showRenovarDialog(cliente),
+                          SizedBox(
+                              height: ResponsiveValues.getSpacing(context,
+                                  mobile: 20, smallPhone: 16, tablet: 24)),
+                          Text(
+                            controller.clientes.isEmpty
+                                ? 'No hay clientes registrados'
+                                : 'No hay resultados para tu búsqueda',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     );
-                  },
-                );
-              }),
-            ),
-          ],
-        );
+                  }
+
+                  return ListView.builder(
+                    itemCount: filteredClientes.length,
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemBuilder: (context, index) {
+                      final cliente = filteredClientes[index];
+
+                      return ClienteCard(
+                        cliente: cliente,
+                        onTap: () => _showClienteDetails(cliente),
+                        onEdit: () => _showEditDialog(cliente),
+                        onDelete: () => _showDeleteConfirmation(cliente),
+                        onRenovar: () => _showRenovarDialog(cliente),
+                      );
+                    },
+                  );
+                }),
+              ),
+            ],
+          );
         }),
       ),
     );
@@ -164,10 +156,10 @@ class ClientesView extends GetView<ClientesController> {
   void _showAddDialog() async {
     // Recargar las membresías de la base de datos para tener la lista actualizada
     await controller.fetchMembershipTypes();
-    
+
     // Limpiar el formulario después de cargar las membresías
     controller.clearForm();
-    
+
     // Obtener un número de usuario único
     final userNumber = await controller.generateUniqueUserNumber();
     controller.userNumberController.text = userNumber.toString();
@@ -202,7 +194,7 @@ class ClientesView extends GetView<ClientesController> {
   void _showEditDialog(UserModel cliente) async {
     // Solo configurar el formulario para edición - setupFormForEdit manejará cargar las membresías
     await controller.setupFormForEdit(cliente);
-    
+
     // Ya no es necesario llamar métodos adicionales, initializeForEdit se llama dentro de setupFormForEdit
 
     Get.to(
@@ -242,18 +234,51 @@ class ClientesView extends GetView<ClientesController> {
 
   // Mostrar confirmación para eliminar
   void _showDeleteConfirmation(UserModel cliente) {
-    Get.defaultDialog(
-      title: 'Eliminar Cliente',
-      middleText: '¿Estás seguro de que deseas eliminar a ${cliente.name}?',
-      textConfirm: 'Eliminar',
-      textCancel: 'Cancelar',
-      confirmTextColor: Colors.white,
-      cancelTextColor: Colors.white,
-      buttonColor: Colors.red,
-      onConfirm: () {
-        controller.deleteCliente(cliente.id!);
-        Get.back();
-      },
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Eliminar Cliente',
+          style: TextStyle(
+            color: AppColors.titleColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar a ${cliente.name}?\n\nEsta acción no se puede deshacer.',
+          style: const TextStyle(color: AppColors.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              controller.deleteCliente(cliente.id!);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -261,7 +286,7 @@ class ClientesView extends GetView<ClientesController> {
   void _showRenovarDialog(UserModel cliente) async {
     // Configurar el formulario para edición/renovación - esto cargará todas las membresías
     await controller.setupFormForEdit(cliente);
-    
+
     // Usar el método específico para renovación
     controller.initializeForRenewal(cliente);
 
