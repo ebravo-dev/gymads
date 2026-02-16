@@ -1,5 +1,6 @@
 import 'package:gymads/app/data/models/product_model.dart';
 import 'package:gymads/app/data/services/supabase_service.dart';
+import 'package:gymads/app/data/services/tenant_query_helper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProductRepository {
@@ -11,6 +12,7 @@ class ProductRepository {
       final response = await _supabase
           .from('products')
           .select()
+          .eq('branch_id', TenantQueryHelper.branchIdOrNull ?? '')
           .order('name', ascending: true);
 
       return response.map<Product>((json) => Product.fromJson(json)).toList();
@@ -26,6 +28,7 @@ class ProductRepository {
       final response = await _supabase
           .from('products')
           .select()
+          .eq('branch_id', TenantQueryHelper.branchIdOrNull ?? '')
           .eq('is_active', true)
           .order('name', ascending: true);
 
@@ -42,6 +45,7 @@ class ProductRepository {
       final response = await _supabase
           .from('products')
           .select()
+          .eq('branch_id', TenantQueryHelper.branchIdOrNull ?? '')
           .eq('category', category)
           .eq('is_active', true)
           .order('name', ascending: true);
@@ -59,6 +63,7 @@ class ProductRepository {
       final response = await _supabase
           .from('products')
           .select()
+          .eq('branch_id', TenantQueryHelper.branchIdOrNull ?? '')
           .eq('is_active', true)
           .lte('stock', threshold)
           .order('stock', ascending: true);
@@ -76,6 +81,7 @@ class ProductRepository {
       final response = await _supabase
           .from('products')
           .select()
+          .eq('branch_id', TenantQueryHelper.branchIdOrNull ?? '')
           .ilike('name', '%$query%')
           .eq('is_active', true)
           .order('name', ascending: true);
@@ -92,7 +98,7 @@ class ProductRepository {
     try {
       final response = await _supabase
           .from('products')
-          .insert(product.toJsonForInsert())
+          .insert(TenantQueryHelper.withTenant(product.toJsonForInsert()))
           .select()
           .single();
 
@@ -153,7 +159,9 @@ class ProductRepository {
   // Registrar una transacción de producto
   Future<bool> recordTransaction(ProductTransaction transaction) async {
     try {
-      await _supabase.from('product_transactions').insert(transaction.toJson());
+      await _supabase.from('product_transactions').insert(
+            TenantQueryHelper.withTenant(transaction.toJson()),
+          );
 
       // Actualizar el stock del producto según el tipo de transacción
       final product = await _supabase
@@ -213,6 +221,7 @@ class ProductRepository {
       final response = await _supabase
           .from('product_categories')
           .select()
+          .eq('gym_id', TenantQueryHelper.gymIdOrNull ?? '')
           .eq('is_active', true)
           .order('name', ascending: true);
 
@@ -230,7 +239,7 @@ class ProductRepository {
     try {
       final response = await _supabase
           .from('product_categories')
-          .insert(category.toJson())
+          .insert(TenantQueryHelper.withGym(category.toJson()))
           .select()
           .single();
 

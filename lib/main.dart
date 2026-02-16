@@ -1,12 +1,14 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:gymads/app/bindings/initial_binding.dart';
 import 'package:gymads/app/data/config/rfid_config.dart';
 import 'package:gymads/app/data/services/background_rfid_service.dart';
 import 'package:gymads/app/data/services/image_cache_service.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
-import 'package:gymads/app/data/services/supabase_service.dart';
+import 'package:gymads/app/data/services/tenant_context_service.dart';
+import 'package:gymads/app/modules/auth/controllers/auth_controller.dart';
 import 'package:gymads/app/modules/clientes/services/qr_cache_service.dart';
 import 'package:gymads/app/routes/app_pages.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,6 +17,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
+/// Stores the initial route after checking session
+String _initialRoute = Routes.LOGIN;
+
 void main() async {
   // Carga las variables de entorno
   await dotenv.load(fileName: ".env");
@@ -22,40 +27,53 @@ void main() async {
   // Asegura la inicialización de los bindings de Flutter
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize GetStorage for local caching
+  await GetStorage.init();
+
   // Inicializa Supabase (cliente principal) - SOLO UNA VEZ
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
     debug: true,
   );
-  print('Supabase inicializado correctamente');
+  print('✅ Supabase inicializado correctamente');
 
-  // Autentica al usuario administrador
-  await SupabaseService.authenticate();
+  // Initialize TenantContextService
+  Get.put(TenantContextService(), permanent: true);
+  await TenantContextService.to.init();
+  print('✅ TenantContextService inicializado');
 
-  // Verifica la conexión a la base de datos
-  await SupabaseService.testDatabaseConnection();
-  print('Conexión a la base de datos verificada');
+  // Check for existing session
+  final authController = Get.put(AuthController(), permanent: true);
+  final hasSession = await authController.checkSession();
+
+  if (hasSession) {
+    print('✅ Sesión existente restaurada');
+    _initialRoute = Routes.HOME;
+  } else {
+    print('📍 No hay sesión, mostrando login');
+    _initialRoute = Routes.LOGIN;
+  }
 
   // Inicializa y registra el servicio de caché de imágenes
   final imageCacheService = ImageCacheService.instance;
   await imageCacheService.initialize();
   Get.put(imageCacheService, permanent: true);
-  print('Servicio de caché de imágenes inicializado');
+  print('✅ Servicio de caché de imágenes inicializado');
 
   // Inicializa y registra el servicio de caché de QR
   final qrCacheService = QrCacheService();
   qrCacheService.initialize();
   Get.put(qrCacheService, permanent: true);
-  print('Servicio de caché de QR codes inicializado');
+  print('✅ Servicio de caché de QR codes inicializado');
 
   // Inicializa la configuración del lector RFID
   await RfidConfig.loadConfig();
-  print('Configuración RFID cargada');
+  print('✅ Configuración RFID cargada');
 
   // Registra el servicio de RFID de forma perezosa
   Get.lazyPut<BackgroundRfidService>(() => BackgroundRfidService());
-  print('BackgroundRfidService registrado');
+  print('✅ BackgroundRfidService registrado');
 
   // Inicia la aplicación
   runApp(const MyApp());
@@ -72,6 +90,13 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    // Solo inicia RFID si el usuario está autenticado
+    if (TenantContextService.to.isAuthenticated) {
+      _initRfidService();
+    }
+  }
+
+  Future<void> _initRfidService() async {
     // Inicia el servicio RFID después de que el primer frame se renderice
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       print('⚙️ Post-frame: Iniciando servicio RFID...');
@@ -94,11 +119,15 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: "Gymads",
+      title: "GymOne",
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-      initialRoute: AppPages.INITIAL,
+      initialRoute: _initialRoute,
       getPages: AppPages.routes,
       initialBinding: InitialBinding(),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
     );
   }
 }

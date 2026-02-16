@@ -2,19 +2,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../data/services/rfid_reader_service.dart';
+import '../../../data/services/tenant_context_service.dart';
+import '../../../data/models/staff_profile_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../core/utils/snackbar_helper.dart';
+import '../../../routes/app_pages.dart';
 
 class ConfiguracionController extends GetxController {
   // Variables observables para la configuración
   final RxBool isLoading = false.obs;
 
-  // Variables para información de cuenta
-  final RxString userName = 'Eder Blanco'.obs;
-  final RxString userEmail = 'eder@gymads.com'.obs;
-  final RxString userRole = 'Admin'.obs;
+  // Variables para información de cuenta (populated from TenantContextService)
+  final RxString userName = ''.obs;
+  final RxString userEmail = ''.obs;
+  final RxString userRole = ''.obs;
+  final RxString firstName = ''.obs;
+  final RxString lastName = ''.obs;
+  final RxString gymName = ''.obs;
+  final RxString branchName = ''.obs;
 
   // Variables para configuración del lector RFID
   final RxBool rfidConnectionStatus = false.obs;
@@ -34,16 +42,128 @@ class ConfiguracionController extends GetxController {
   final RxString qrCodeFormat = 'auto'.obs;
 
   @override
-  @override
   void onInit() {
     super.onInit();
+    _loadUserInfo();
     _loadConfiguration();
-    // No llamar _initializeESP32Connection() aquí porque _loadConfiguration ya lo hace
   }
 
   @override
   void onClose() {
     super.onClose();
+  }
+
+  // =================== USER INFO FROM SESSION ===================
+
+  void _loadUserInfo() {
+    final tenant = TenantContextService.to;
+    final user = Supabase.instance.client.auth.currentUser;
+
+    // Name
+    final profile = tenant.staffProfile;
+    firstName.value = profile?.firstName ?? '';
+    lastName.value = profile?.lastName ?? '';
+    userName.value =
+        tenant.displayName ?? user?.email?.split('@').first ?? 'Usuario';
+    userEmail.value = user?.email ?? '';
+    userRole.value = _formatRole(profile?.role);
+    gymName.value = '';
+    branchName.value = '';
+
+    // Try to load gym/branch names
+    _loadGymInfo();
+  }
+
+  String _formatRole(String? role) {
+    switch (role) {
+      case 'owner_admin':
+        return 'Dueño / Admin';
+      case 'branch_staff':
+        return 'Staff de Sucursal';
+      default:
+        return 'Admin';
+    }
+  }
+
+  Future<void> _loadGymInfo() async {
+    try {
+      final tenant = TenantContextService.to;
+      if (tenant.currentGymId != null) {
+        final gymData = await Supabase.instance.client
+            .from('gyms')
+            .select('name')
+            .eq('id', tenant.currentGymId!)
+            .maybeSingle();
+        if (gymData != null) {
+          gymName.value = gymData['name'] as String? ?? '';
+        }
+      }
+      if (tenant.currentBranchId != null) {
+        final branchData = await Supabase.instance.client
+            .from('branches')
+            .select('name')
+            .eq('id', tenant.currentBranchId!)
+            .maybeSingle();
+        if (branchData != null) {
+          branchName.value = branchData['name'] as String? ?? '';
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Could not load gym/branch names: $e');
+    }
+  }
+
+  // =================== UPDATE PROFILE ===================
+
+  Future<void> updateFirstName(String value) async {
+    await _updateProfileField('first_name', value);
+    firstName.value = value;
+    _refreshDisplayName();
+  }
+
+  Future<void> updateLastName(String value) async {
+    await _updateProfileField('last_name', value);
+    lastName.value = value;
+    _refreshDisplayName();
+  }
+
+  Future<void> _updateProfileField(String field, String value) async {
+    try {
+      isLoading.value = true;
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      // Build display_name
+      String newFirst = field == 'first_name' ? value : firstName.value;
+      String newLast = field == 'last_name' ? value : lastName.value;
+      String displayName = '$newFirst $newLast'.trim();
+
+      await Supabase.instance.client.from('staff_profiles').update({
+        field: value,
+        'display_name': displayName,
+      }).eq('user_id', userId);
+
+      // Refresh TenantContextService cache
+      final profileData = await Supabase.instance.client
+          .from('staff_profiles')
+          .select()
+          .eq('user_id', userId)
+          .single();
+
+      await TenantContextService.to
+          .setProfile(StaffProfileModel.fromJson(profileData));
+
+      SnackbarHelper.success('Guardado', 'Información actualizada');
+    } catch (e) {
+      if (kDebugMode) print('❌ Error updating profile: $e');
+      SnackbarHelper.error('Error', 'No se pudo actualizar: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void _refreshDisplayName() {
+    userName.value = '${firstName.value} ${lastName.value}'.trim();
   }
 
   // =================== MÉTODOS DE INICIALIZACIÓN ===================
@@ -54,11 +174,6 @@ class ConfiguracionController extends GetxController {
 
       // Cargar configuración desde SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-
-      // Configuración de usuario
-      userName.value = prefs.getString('user_name') ?? 'Eder Blanco';
-      userEmail.value = prefs.getString('user_email') ?? 'eder@gymads.com';
-      userRole.value = prefs.getString('user_role') ?? 'Admin';
 
       // Configuración de audio
       soundEnabled.value = prefs.getBool('sound_enabled') ?? true;
@@ -71,14 +186,12 @@ class ConfiguracionController extends GetxController {
       // Cargar IP manual si existe
       String? savedIP = prefs.getString('esp32_ip_manual');
       if (savedIP != null && savedIP.isNotEmpty) {
-        // Intentar conectar con la IP guardada sin mostrar notificación
         await connectToESP32WithIP(savedIP, showNotification: false);
       }
 
       await RfidConfig.loadConfig();
       await _checkRfidConnection();
     } catch (e) {
-      // No mostrar notificación de error, solo log en consola
       if (kDebugMode) {
         print('❌ Error al cargar configuración: $e');
       }
@@ -89,14 +202,13 @@ class ConfiguracionController extends GetxController {
 
   // =================== MÉTODOS DE CONEXIÓN ESP32 ===================
 
-  /// Conectar manualmente con IP específica (método principal de conexión)
+  /// Conectar manualmente con IP específica
   Future<void> connectToESP32WithIP(String ipAddress,
       {bool showNotification = true}) async {
     try {
       isLoading.value = true;
       esp32StatusMessage.value = 'Conectando a $ipAddress...';
 
-      // Verificar formato de IP válido
       final RegExp ipRegex = RegExp(
           r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
       if (!ipRegex.hasMatch(ipAddress)) {
@@ -119,7 +231,6 @@ class ConfiguracionController extends GetxController {
               'Conectado', 'ESP32 conectado exitosamente a $ipAddress');
         }
 
-        // Guardar la IP para uso futuro
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('esp32_ip_manual', ipAddress);
       } else {
@@ -128,7 +239,7 @@ class ConfiguracionController extends GetxController {
 
         if (showNotification) {
           SnackbarHelper.error('Error de conexión',
-              'No se pudo conectar al ESP32 en $ipAddress. Verifique que el dispositivo esté encendido y en la misma red.');
+              'No se pudo conectar al ESP32 en $ipAddress.');
         }
       }
     } catch (e) {
@@ -166,14 +277,12 @@ class ConfiguracionController extends GetxController {
 
   Future<void> _checkRfidConnection() async {
     try {
-      // Verificar si hay configuración RFID
       bool isConfigured = RfidConfig.isConfigured;
       rfidConnectionStatus.value = isConfigured;
 
       if (isConfigured) {
         connectionStatusMessage.value = 'RFID configurado';
         if (RfidConfig.baseUrl != null) {
-          // Extraer IP de la URL
           String url = RfidConfig.baseUrl!;
           final RegExp ipRegex = RegExp(r'(\d+\.\d+\.\d+\.\d+)');
           final match = ipRegex.firstMatch(url);
@@ -196,7 +305,6 @@ class ConfiguracionController extends GetxController {
       isLoading.value = true;
       connectionStatusMessage.value = 'Probando conexión...';
 
-      // Intentar leer una tarjeta para probar la conexión
       String? cardUid = await RfidReaderService.checkForCard();
 
       if (cardUid != null) {
@@ -226,29 +334,12 @@ class ConfiguracionController extends GetxController {
 
   // =================== MÉTODOS DE CONFIGURACIÓN ===================
 
-  /// Guardar configuración de usuario
-  Future<void> saveUserConfiguration() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString('user_name', userName.value);
-      await prefs.setString('user_email', userEmail.value);
-      await prefs.setString('user_role', userRole.value);
-
-      SnackbarHelper.success('Guardado', 'Configuración de usuario guardada');
-    } catch (e) {
-      SnackbarHelper.error('Error', 'Error al guardar configuración: $e');
-    }
-  }
-
   /// Guardar configuración de audio
   Future<void> saveAudioConfiguration() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
       await prefs.setBool('sound_enabled', soundEnabled.value);
       await prefs.setDouble('sound_volume', soundVolume.value);
-
       SnackbarHelper.success('Guardado', 'Configuración de audio guardada');
     } catch (e) {
       SnackbarHelper.error(
@@ -260,98 +351,23 @@ class ConfiguracionController extends GetxController {
   Future<void> saveQRConfiguration() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
       await prefs.setBool('qr_enabled', qrEnabled.value);
       await prefs.setString('qr_format', qrCodeFormat.value);
-
       SnackbarHelper.success('Guardado', 'Configuración de QR guardada');
     } catch (e) {
       SnackbarHelper.error('Error', 'Error al guardar configuración de QR: $e');
     }
   }
 
-  /// Restablecer configuración
-  Future<void> resetConfiguration() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-
-      // Restablecer valores por defecto
-      userName.value = 'Eder Blanco';
-      userEmail.value = 'eder@gymads.com';
-      userRole.value = 'Admin';
-      soundEnabled.value = true;
-      soundVolume.value = 0.8;
-      qrEnabled.value = true;
-      qrCodeFormat.value = 'auto';
-
-      SnackbarHelper.info(
-          'Restablecido', 'Configuración restablecida a valores por defecto');
-    } catch (e) {
-      SnackbarHelper.error('Error', 'Error al restablecer configuración: $e');
-    }
-  }
-
-  // =================== MÉTODOS DE INFORMACIÓN ===================
-
-  /// Mostrar información sobre la conexión WiFi
-  void showWifiInfo() {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Conexión WiFi con IP Estática'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('El sistema ahora usa conexión WiFi directa con IP estática:'),
-            SizedBox(height: 8),
-            Text('✓ IP fija: 192.168.1.100'),
-            Text('✓ Sin configuración necesaria'),
-            Text('✓ Mayor estabilidad y rendimiento'),
-            SizedBox(height: 12),
-            Text('IMPORTANTE:', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(
-                'El ESP32 debe estar en la misma red WiFi que este dispositivo.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
-    );
-  }
-
   // =================== MÉTODOS PARA NAVEGACIÓN DE CONFIGURACIÓN ===================
 
-  /// Abrir configuración de cuenta
+  /// Abrir configuración de cuenta — navega a CuentaView
   void openAccountSettings() {
-    // Mostrar un diálogo simple por ahora
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Configuración de Cuenta'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Esta funcionalidad será implementada próximamente.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Aceptar'),
-          ),
-        ],
-      ),
-    );
+    Get.toNamed(Routes.CUENTA);
   }
 
   /// Abrir configuración de aplicación
   void openAppSettings() {
-    // Mostrar un diálogo simple por ahora
     Get.dialog(
       AlertDialog(
         title: const Text('Configuración de Aplicación'),
@@ -372,28 +388,58 @@ class ConfiguracionController extends GetxController {
     );
   }
 
-  /// Cerrar sesión
+  // =================== LOGOUT ===================
+
+  /// Cerrar sesión con confirmación
   void logout() {
     Get.dialog(
       AlertDialog(
-        title: const Text('Cerrar Sesión'),
-        content: const Text('¿Está seguro que desea cerrar la sesión?'),
+        backgroundColor: AppColors.cardBackground,
+        title: const Text(
+          'Cerrar Sesión',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: const Text(
+          '¿Estás seguro que deseas cerrar la sesión?',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
             child: const Text('Cancelar'),
           ),
           TextButton(
-            onPressed: () {
-              // Aquí implementar la lógica de cierre de sesión
-              Get.back();
-              SnackbarHelper.info(
-                  'Cerrar Sesión', 'Funcionalidad en desarrollo');
+            onPressed: () async {
+              Get.back(); // close dialog
+              await _performLogout();
             },
-            child: const Text('Cerrar Sesión'),
+            child: const Text(
+              'Cerrar Sesión',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _performLogout() async {
+    try {
+      isLoading.value = true;
+
+      // Sign out from Supabase
+      await Supabase.instance.client.auth.signOut();
+
+      // Clear tenant context
+      await TenantContextService.to.clearProfile();
+
+      // Navigate to login
+      Get.offAllNamed(Routes.LOGIN);
+    } catch (e) {
+      if (kDebugMode) print('❌ Error during logout: $e');
+      SnackbarHelper.error('Error', 'Error al cerrar sesión: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

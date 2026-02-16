@@ -3,6 +3,9 @@ part of 'app_pages.dart';
 
 abstract class Routes {
   Routes._();
+  static const LOGIN = _Paths.LOGIN;
+  static const REGISTER = _Paths.REGISTER;
+  static const EMAIL_CONFIRMATION = _Paths.EMAIL_CONFIRMATION;
   static const HOME = _Paths.HOME;
   static const CHECADOR = _Paths.CHECADOR;
   static const CLIENTES = _Paths.CLIENTES;
@@ -13,12 +16,16 @@ abstract class Routes {
   static const MEMBRESIAS = _Paths.MEMBRESIAS;
   static const PROMOCIONES = _Paths.PROMOCIONES;
   static const CONFIGURACION = _Paths.CONFIGURACION;
+  static const CUENTA = _Paths.CUENTA;
   static const POINT_OF_SALE = _Paths.POINT_OF_SALE;
   static const ACCESS_LOGS = _Paths.ACCESS_LOGS;
 }
 
 abstract class _Paths {
   _Paths._();
+  static const LOGIN = '/login';
+  static const REGISTER = '/register';
+  static const EMAIL_CONFIRMATION = '/email-confirmation';
   static const HOME = '/home';
   static const CHECADOR = '/checador';
   static const CLIENTES = '/clientes';
@@ -29,6 +36,7 @@ abstract class _Paths {
   static const MEMBRESIAS = '/membresias';
   static const PROMOCIONES = '/promociones';
   static const CONFIGURACION = '/configuracion';
+  static const CUENTA = '/configuracion/cuenta';
   static const POINT_OF_SALE = '/point-of-sale';
   static const ACCESS_LOGS = '/access-logs';
 }

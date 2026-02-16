@@ -2,12 +2,18 @@ import 'package:get/get.dart';
 
 import '../modules/access_logs/bindings/access_logs_binding.dart';
 import '../modules/access_logs/views/access_logs_view.dart';
+import '../modules/auth/bindings/auth_binding.dart';
+import '../modules/auth/views/login_view.dart';
+import '../modules/auth/views/register_view.dart';
+import '../modules/auth/views/email_confirmation_view.dart';
+import '../modules/auth/controllers/register_controller.dart';
 import '../modules/checador/bindings/checador_binding.dart';
 import '../modules/checador/views/checador_view.dart';
 import '../modules/clientes/bindings/clientes_binding.dart';
 import '../modules/clientes/views/clientes_view.dart';
 import '../modules/configuracion/bindings/configuracion_binding.dart';
 import '../modules/configuracion/views/configuracion_view.dart';
+import '../modules/configuracion/views/cuenta_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/ingresos/bindings/ingresos_binding.dart';
@@ -29,9 +35,25 @@ part 'app_routes.dart';
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.HOME;
+  static const INITIAL = Routes.LOGIN;
 
   static final routes = [
+    GetPage(
+      name: _Paths.LOGIN,
+      page: () => const LoginView(),
+      binding: AuthBinding(),
+    ),
+    GetPage(
+      name: _Paths.REGISTER,
+      page: () => const RegisterView(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<RegisterController>(() => RegisterController());
+      }),
+    ),
+    GetPage(
+      name: _Paths.EMAIL_CONFIRMATION,
+      page: () => const EmailConfirmationView(),
+    ),
     GetPage(
       name: _Paths.HOME,
       page: () => const HomeView(),
@@ -80,6 +102,11 @@ class AppPages {
     GetPage(
       name: _Paths.CONFIGURACION,
       page: () => const ConfiguracionView(),
+      binding: ConfiguracionBinding(),
+    ),
+    GetPage(
+      name: _Paths.CUENTA,
+      page: () => const CuentaView(),
       binding: ConfiguracionBinding(),
     ),
     GetPage(

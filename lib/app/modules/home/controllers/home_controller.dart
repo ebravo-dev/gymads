@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../routes/app_pages.dart';
+import '../../auth/controllers/auth_controller.dart';
 
 class HomeController extends GetxController {
   // Estado observable para controlar cuando se está creando un usuario
@@ -46,7 +47,7 @@ class HomeController extends GetxController {
     statusMessages.add('Navegando a Punto de Venta...');
     Get.toNamed(Routes.POINT_OF_SALE);
   }
-  
+
   void goToMembresias() {
     statusMessages.add('Navegando a Gestión de Membresías...');
     Get.toNamed(Routes.MEMBRESIAS);
@@ -65,5 +66,10 @@ class HomeController extends GetxController {
   /// Limpia los mensajes de estado
   void clearMessages() {
     statusMessages.clear();
+  }
+
+  /// Cerrar sesión
+  void logout() {
+    Get.find<AuthController>().logout();
   }
 }

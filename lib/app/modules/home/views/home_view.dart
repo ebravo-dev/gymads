@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/responsive_utils.dart';
+import '../../../data/services/tenant_context_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/button_menu_widget.dart';
@@ -17,7 +18,7 @@ class HomeView extends GetView<HomeController> {
     // Utilizamos las funciones de valores responsivos
     final bool isTabletSize = MediaQuery.of(context).size.width > 600;
     final bool isSmallPhone = MediaQuery.of(context).size.width < 360;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
@@ -40,19 +41,16 @@ class HomeView extends GetView<HomeController> {
           style: TextStyle(
             fontWeight: FontWeight.w900,
             color: const Color.fromARGB(255, 16, 213, 232),
-            fontSize: ResponsiveValues.getFontSize(context, 
-              mobile: 42, 
-              smallPhone: 36, 
-              tablet: 48
-            ),
+            fontSize: ResponsiveValues.getFontSize(context,
+                mobile: 42, smallPhone: 36, tablet: 48),
             letterSpacing: 3,
           ),
         ),
-        
-        // Botón de configuración solo con icono
+
+        // Botón de configuración y logout
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12.0),
+            padding: const EdgeInsets.only(right: 4.0),
             child: IconButton(
               onPressed: () => Get.toNamed(Routes.CONFIGURACION),
               icon: Container(
@@ -81,13 +79,9 @@ class HomeView extends GetView<HomeController> {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveValues.getSpacing(context, 
-                mobile: 8,
-                smallPhone: 6,
-                tablet: 12
-              ), 
-              vertical: 0
-            ),
+                horizontal: ResponsiveValues.getSpacing(context,
+                    mobile: 8, smallPhone: 6, tablet: 12),
+                vertical: 0),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // Adaptamos el diseño al espacio disponible
@@ -98,23 +92,14 @@ class HomeView extends GetView<HomeController> {
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveValues.getSpacing(context, 
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
+                        horizontal: ResponsiveValues.getSpacing(context,
+                            mobile: 16, smallPhone: 12, tablet: 24),
                         vertical: ResponsiveValues.getSpacing(context,
-                          mobile: 18,
-                          smallPhone: 14,
-                          tablet: 24
-                        ),
+                            mobile: 18, smallPhone: 14, tablet: 24),
                       ),
                       margin: EdgeInsets.symmetric(
                         horizontal: ResponsiveValues.getSpacing(context,
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
+                            mobile: 16, smallPhone: 12, tablet: 24),
                         vertical: 0,
                       ),
                       decoration: BoxDecoration(
@@ -136,10 +121,7 @@ class HomeView extends GetView<HomeController> {
                             controller.getGreeting(),
                             style: TextStyle(
                               fontSize: ResponsiveValues.getFontSize(context,
-                                mobile: 18,
-                                smallPhone: 16,
-                                tablet: 20
-                              ),
+                                  mobile: 18, smallPhone: 16, tablet: 20),
                               fontWeight: FontWeight.w500,
                               color: Colors.white.withOpacity(0.8),
                               shadows: const [
@@ -154,13 +136,10 @@ class HomeView extends GetView<HomeController> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Bienvenido Eder',
+                            'Bienvenido ${(TenantContextService.to.firstName ?? TenantContextService.to.displayName ?? "").split(" ").first}',
                             style: TextStyle(
                               fontSize: ResponsiveValues.getFontSize(context,
-                                mobile: 26,
-                                smallPhone: 24,
-                                tablet: 30
-                              ),
+                                  mobile: 26, smallPhone: 24, tablet: 30),
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               shadows: const [
@@ -180,12 +159,8 @@ class HomeView extends GetView<HomeController> {
                     // Menú de opciones
                     Container(
                       padding: EdgeInsets.all(isSmallPhone ? 12 : 16),
-                      margin: EdgeInsets.fromLTRB(
-                        isSmallPhone ? 12 : 16, 
-                        0, 
-                        isSmallPhone ? 12 : 16, 
-                        16
-                      ),
+                      margin: EdgeInsets.fromLTRB(isSmallPhone ? 12 : 16, 0,
+                          isSmallPhone ? 12 : 16, 16),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(16),
@@ -201,20 +176,14 @@ class HomeView extends GetView<HomeController> {
                       child: GridView.count(
                         crossAxisCount: isTabletSize ? 3 : 2,
                         mainAxisSpacing: ResponsiveValues.getSpacing(context,
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
+                            mobile: 16, smallPhone: 12, tablet: 24),
                         crossAxisSpacing: ResponsiveValues.getSpacing(context,
-                          mobile: 16,
-                          smallPhone: 12,
-                          tablet: 24
-                        ),
-                        padding: EdgeInsets.all(ResponsiveValues.getSpacing(context,
-                          mobile: 8,
-                          smallPhone: 6,
-                          tablet: 12
-                        )),
+                            mobile: 16, smallPhone: 12, tablet: 24),
+                        padding: EdgeInsets.all(ResponsiveValues.getSpacing(
+                            context,
+                            mobile: 8,
+                            smallPhone: 6,
+                            tablet: 12)),
                         // Establecer childAspectRatio para controlar la altura
                         childAspectRatio: isSmallPhone ? 0.85 : 0.95,
                         // Importante: establecer shrinkWrap a true para evitar problemas de altura
@@ -239,7 +208,7 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.green.shade300,
                             onTap: controller.goToInventario,
                           ),
-                          
+
                           // Opción de Punto de Venta
                           ButtonMenuWidget(
                             icon: Icons.point_of_sale,
@@ -248,7 +217,7 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.blue.shade300,
                             onTap: controller.goToPointOfSale,
                           ),
-                          
+
                           // Opción de Registrar Pago
                           ButtonMenuWidget(
                             icon: Icons.attach_money,
@@ -257,7 +226,7 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.amber.shade300,
                             onTap: controller.goToPaymentRegistration,
                           ),
-                          
+
                           // Opción de Clientes
                           ButtonMenuWidget(
                             icon: Icons.person_add,
@@ -266,7 +235,7 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.green.shade300,
                             onTap: controller.goToClientes,
                           ),
-                          
+
                           // Opción de Membresías
                           ButtonMenuWidget(
                             icon: Icons.card_membership,
@@ -275,7 +244,7 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.purple.shade300,
                             onTap: controller.goToMembresias,
                           ),
-                          
+
                           // Opción de Promociones
                           ButtonMenuWidget(
                             icon: Icons.local_offer,
@@ -284,7 +253,7 @@ class HomeView extends GetView<HomeController> {
                             color: Colors.orange.shade300,
                             onTap: controller.goToPromociones,
                           ),
-                          
+
                           // Opción de Entradas y Salidas
                           ButtonMenuWidget(
                             icon: Icons.assessment,
