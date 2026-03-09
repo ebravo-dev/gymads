@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/config/rfid_config.dart';
 import '../../../data/services/rfid_reader_service.dart';
 import '../../../data/services/tenant_context_service.dart';
+import '../../../data/services/branding_service.dart';
+import '../views/branding_settings_view.dart';
 import '../../../data/models/staff_profile_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../core/utils/snackbar_helper.dart';
@@ -23,6 +25,7 @@ class ConfiguracionController extends GetxController {
   final RxString lastName = ''.obs;
   final RxString gymName = ''.obs;
   final RxString branchName = ''.obs;
+  final RxString brandColor = '#10D5E8'.obs;
 
   // Variables para configuración del lector RFID
   final RxBool rfidConnectionStatus = false.obs;
@@ -91,11 +94,12 @@ class ConfiguracionController extends GetxController {
       if (tenant.currentGymId != null) {
         final gymData = await Supabase.instance.client
             .from('gyms')
-            .select('name')
+            .select('name, brand_color')
             .eq('id', tenant.currentGymId!)
             .maybeSingle();
         if (gymData != null) {
           gymName.value = gymData['name'] as String? ?? '';
+          brandColor.value = gymData['brand_color'] as String? ?? '#10D5E8';
         }
       }
       if (tenant.currentBranchId != null) {
@@ -110,6 +114,60 @@ class ConfiguracionController extends GetxController {
       }
     } catch (e) {
       if (kDebugMode) print('⚠️ Could not load gym/branch names: $e');
+    }
+  }
+
+  // =================== UPDATE GYM BRANDING ===================
+
+  Future<void> updateGymName(String value) async {
+    final gymId = TenantContextService.to.currentGymId;
+    if (gymId == null) return;
+    try {
+      await Supabase.instance.client
+          .from('gyms')
+          .update({'name': value}).eq('id', gymId);
+      gymName.value = value;
+      // Refresh the staff profile to update cached gym name
+      await _refreshTenantProfile();
+      SnackbarHelper.success('¡Listo!', 'Nombre del gimnasio actualizado');
+    } catch (e) {
+      if (kDebugMode) print('Error updating gym name: $e');
+      SnackbarHelper.error('Error', 'No se pudo actualizar el nombre');
+    }
+  }
+
+  Future<void> updateBrandColor(String hexColor) async {
+    final gymId = TenantContextService.to.currentGymId;
+    if (gymId == null) return;
+    try {
+      await Supabase.instance.client
+          .from('gyms')
+          .update({'brand_color': hexColor}).eq('id', gymId);
+      brandColor.value = hexColor;
+      await _refreshTenantProfile();
+      SnackbarHelper.success('¡Listo!', 'Color de marca actualizado');
+    } catch (e) {
+      if (kDebugMode) print('Error updating brand color: $e');
+      SnackbarHelper.error('Error', 'No se pudo actualizar el color');
+    }
+  }
+
+  Future<void> _refreshTenantProfile() async {
+    try {
+      final userId = TenantContextService.to.userId;
+      if (userId == null) return;
+      final response = await Supabase.instance.client
+          .from('staff_profiles')
+          .select('*, gyms(name, brand_color, brand_font)')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .maybeSingle();
+      if (response != null) {
+        final profile = StaffProfileModel.fromJson(response);
+        await TenantContextService.to.setProfile(profile);
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error refreshing tenant profile: $e');
     }
   }
 
@@ -366,26 +424,30 @@ class ConfiguracionController extends GetxController {
     Get.toNamed(Routes.CUENTA);
   }
 
-  /// Abrir configuración de aplicación
+  /// Open application settings — full-screen branding page
   void openAppSettings() {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Configuración de Aplicación'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Esta funcionalidad será implementada próximamente.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Aceptar'),
-          ),
-        ],
-      ),
-    );
+    Get.to(() => BrandingSettingsView());
+  }
+
+  /// Backup branding to DB (fire-and-forget)
+  Future<void> backupBranding(
+      {String? name, String? color, String? font}) async {
+    final gymId = TenantContextService.to.currentGymId;
+    if (gymId == null) return;
+    try {
+      final updates = <String, dynamic>{};
+      if (name != null) updates['name'] = name;
+      if (color != null) updates['brand_color'] = color;
+      if (font != null) updates['brand_font'] = font;
+      if (updates.isNotEmpty) {
+        await Supabase.instance.client
+            .from('gyms')
+            .update(updates)
+            .eq('id', gymId);
+      }
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Could not backup branding to DB: $e');
+    }
   }
 
   // =================== LOGOUT ===================

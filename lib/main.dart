@@ -8,6 +8,7 @@ import 'package:gymads/app/data/services/background_rfid_service.dart';
 import 'package:gymads/app/data/services/image_cache_service.dart';
 import 'package:gymads/app/data/services/rfid_reader_service.dart';
 import 'package:gymads/app/data/services/tenant_context_service.dart';
+import 'package:gymads/app/data/services/branding_service.dart';
 import 'package:gymads/app/modules/auth/controllers/auth_controller.dart';
 import 'package:gymads/app/modules/clientes/services/qr_cache_service.dart';
 import 'package:gymads/app/routes/app_pages.dart';
@@ -43,12 +44,24 @@ void main() async {
   await TenantContextService.to.init();
   print('✅ TenantContextService inicializado');
 
+  // Initialize BrandingService (local-first)
+  Get.put(BrandingService(), permanent: true);
+  await BrandingService.to.init();
+  print('✅ BrandingService inicializado');
+
   // Check for existing session
   final authController = Get.put(AuthController(), permanent: true);
   final hasSession = await authController.checkSession();
 
   if (hasSession) {
     print('✅ Sesión existente restaurada');
+    // Seed branding from DB if no local data exists (first login on device)
+    final profile = TenantContextService.to.staffProfile;
+    BrandingService.to.syncFromDb(
+      dbGymName: profile?.gymName,
+      dbBrandColor: profile?.brandColor,
+      dbBrandFont: profile?.brandFont,
+    );
     _initialRoute = Routes.HOME;
   } else {
     print('📍 No hay sesión, mostrando login');

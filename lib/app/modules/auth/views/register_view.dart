@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../data/services/branding_service.dart';
 import '../controllers/register_controller.dart';
 
 /// Registration view with stepper form
@@ -169,19 +171,55 @@ class RegisterView extends GetView<RegisterController> {
   // =======================================
 
   Widget _buildCurrentStep(BuildContext context) {
+    // Step 2 (gym branding) uses a special layout:
+    // pinned preview at top, scrollable form below
+    if (controller.currentStep.value == 1) {
+      return _buildStep2Layout(context);
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
           _buildStepIndicator(),
           const SizedBox(height: 8),
-          // Error message
           Obx(() => controller.errorMessage.value != null
               ? _buildErrorMessage()
               : const SizedBox.shrink()),
-          // Step content
           _buildStepContent(),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  /// Step 2 special layout: pinned preview + scrollable form
+  Widget _buildStep2Layout(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          _buildStepIndicator(),
+          const SizedBox(height: 8),
+          Obx(() => controller.errorMessage.value != null
+              ? _buildErrorMessage()
+              : const SizedBox.shrink()),
+
+          // Pinned preview (always visible)
+          _buildBrandingPreview(),
+          const SizedBox(height: 12),
+
+          // Scrollable form card
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildStep2FormCard(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -313,24 +351,227 @@ class RegisterView extends GetView<RegisterController> {
   // =======================================
 
   Widget _buildStep2GymInfo() {
+    // Not used directly anymore — _buildStep2Layout calls the split methods
+    return Column(
+      children: [
+        _buildBrandingPreview(),
+        const SizedBox(height: 12),
+        _buildStep2FormCard(),
+      ],
+    );
+  }
+
+  /// Compact preview banner — always visible at top of Step 2
+  Widget _buildBrandingPreview() {
+    return Obx(() {
+      final gymText = controller.gymNameText.value.isNotEmpty
+          ? controller.gymNameText.value.toUpperCase()
+          : 'TU GIMNASIO';
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _parseHexColor(controller.selectedBrandColor.value)
+                .withOpacity(0.4),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'VISTA PREVIA',
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.white.withOpacity(0.35),
+                letterSpacing: 3,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                gymText,
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: _getFontStyle(
+                  controller.selectedFont.value,
+                  fontSize: 26 *
+                      BrandingService.fontSizeMultiplier(
+                          controller.selectedFont.value),
+                  color: _parseHexColor(controller.selectedBrandColor.value),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Powered by GYMONE',
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.white.withOpacity(0.3),
+                letterSpacing: 2,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Form card with gym name, branch, color picker, font picker
+  Widget _buildStep2FormCard() {
+    final presetColors = [
+      '#10D5E8',
+      '#FF5733',
+      '#FFC300',
+      '#28B463',
+      '#8E44AD',
+      '#3498DB',
+      '#E74C3C',
+      '#F39C12',
+      '#1ABC9C',
+      '#E91E63',
+    ];
+
+    final fontOptions = [
+      'Default',
+      'Bebas Neue',
+      'Oswald',
+      'Montserrat',
+      'Poppins',
+      'Righteous',
+    ];
+
     return _buildCard(
       children: [
         _buildSectionTitle('Tu Gimnasio', Icons.fitness_center),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         _buildTextField(
           controller: controller.gymNameController,
           label: 'Nombre del gimnasio o cadena',
           icon: Icons.store,
           textInputAction: TextInputAction.next,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildTextField(
           controller: controller.mainBranchNameController,
           label: 'Nombre de la sucursal principal',
           icon: Icons.location_on_outlined,
           textInputAction: TextInputAction.done,
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 20),
+
+        // Color Picker
+        Text(
+          'Color de marca',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Obx(() => Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: presetColors.map((hex) {
+                final isSelected = controller.selectedBrandColor.value == hex;
+                final color = _parseHexColor(hex);
+                return GestureDetector(
+                  onTap: () => controller.selectedBrandColor.value = hex,
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? Colors.white : Colors.transparent,
+                        width: 2.5,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: color.withOpacity(0.5),
+                                blurRadius: 6,
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check, color: Colors.white, size: 16)
+                        : null,
+                  ),
+                );
+              }).toList(),
+            )),
+        const SizedBox(height: 20),
+
+        // Font Picker
+        Text(
+          'Tipografía',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 38,
+          child: Obx(() {
+            final currentFont = controller.selectedFont.value;
+            return ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: fontOptions.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final font = fontOptions[index];
+                final isSelected = currentFont == font;
+                return GestureDetector(
+                  onTap: () => controller.selectedFont.value = font,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.blueAccent.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.blueAccent
+                            : Colors.white.withOpacity(0.2),
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        font,
+                        style: _getFontStyle(
+                          font,
+                          fontSize: 13,
+                          color:
+                              isSelected ? Colors.blueAccent : Colors.white70,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+        const SizedBox(height: 24),
+
         _buildNextButton('Siguiente', () {
           final gymError =
               controller.validateGymName(controller.gymNameController.text);
@@ -351,6 +592,68 @@ class RegisterView extends GetView<RegisterController> {
         }),
       ],
     );
+  }
+
+  Color _parseHexColor(String hex) {
+    try {
+      final clean = hex.replaceAll('#', '');
+      return Color(int.parse('FF$clean', radix: 16));
+    } catch (_) {
+      return const Color(0xFF10D5E8);
+    }
+  }
+
+  TextStyle _getFontStyle(
+    String fontName, {
+    double fontSize = 14,
+    Color color = Colors.white,
+    FontWeight fontWeight = FontWeight.normal,
+    double letterSpacing = 0,
+  }) {
+    switch (fontName) {
+      case 'Bebas Neue':
+        return GoogleFonts.bebasNeue(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: fontWeight,
+          letterSpacing: letterSpacing,
+        );
+      case 'Oswald':
+        return GoogleFonts.oswald(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: fontWeight,
+          letterSpacing: letterSpacing,
+        );
+      case 'Montserrat':
+        return GoogleFonts.montserrat(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: fontWeight,
+          letterSpacing: letterSpacing,
+        );
+      case 'Poppins':
+        return GoogleFonts.poppins(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: fontWeight,
+          letterSpacing: letterSpacing,
+        );
+      case 'Righteous':
+        return GoogleFonts.righteous(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: fontWeight,
+          letterSpacing: letterSpacing,
+        );
+      default:
+        return TextStyle(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: fontWeight,
+          letterSpacing: letterSpacing,
+        );
+    }
   }
 
   // =======================================

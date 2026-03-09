@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../data/providers/staff_profile_provider.dart';
+import '../../../data/services/tenant_context_service.dart';
+import '../../../data/services/branding_service.dart';
 import '../../../routes/app_pages.dart';
 
 /// Controller for registration (creating a new gym account)
@@ -15,6 +18,7 @@ import '../../../routes/app_pages.dart';
 ///    c. Navigates to email confirmation screen
 class RegisterController extends GetxController {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final StaffProfileProvider _staffProfileProvider = StaffProfileProvider();
 
   // Form controllers — Name split into Nombre(s) + Apellidos
   final firstNameController = TextEditingController();
@@ -37,6 +41,9 @@ class RegisterController extends GetxController {
   final RxBool obscureConfirmPassword = true.obs;
   final RxBool wantsMultipleBranches = false.obs;
   final RxInt currentStep = 0.obs;
+  final RxString selectedBrandColor = '#10D5E8'.obs;
+  final RxString selectedFont = 'Default'.obs;
+  final RxString gymNameText = ''.obs; // reactive mirror for preview
 
   // Form key
   final formKey = GlobalKey<FormState>();
@@ -66,6 +73,14 @@ class RegisterController extends GetxController {
       c.dispose();
     }
     super.onClose();
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    gymNameController.addListener(() {
+      gymNameText.value = gymNameController.text;
+    });
   }
 
   // ============================================
@@ -230,12 +245,34 @@ class RegisterController extends GetxController {
       });
 
       print('✅ Gym registered: $result');
-      print('🎉 Registration complete! Navigate to email confirmation...');
 
-      // 3. Navigate to email confirmation screen
-      Get.offAllNamed(Routes.EMAIL_CONFIRMATION, arguments: {
-        'email': emailController.text.trim(),
-      });
+      // 3. Auto-login: fetch staff profile and set tenant context
+      print('🔑 Auto-login: fetching staff profile...');
+      final staffProfile = await _staffProfileProvider.getByUserId(userId);
+
+      if (staffProfile != null && staffProfile.isActive) {
+        await TenantContextService.to.setProfile(staffProfile);
+
+        // Always set branding from registration form values
+        BrandingService.to.setGymTitle(gymNameController.text.trim());
+        BrandingService.to.setBrandColor(selectedBrandColor.value);
+        BrandingService.to.setBrandFont(selectedFont.value);
+
+        // Always save brand color and font to gym in DB
+        try {
+          await _supabase.from('gyms').update({
+            'brand_color': selectedBrandColor.value,
+            'brand_font': selectedFont.value,
+          }).eq('id', staffProfile.gymId);
+        } catch (_) {}
+
+        print('✅ Auto-login complete! Navigating to Home...');
+        Get.offAllNamed(Routes.HOME);
+      } else {
+        // Fallback: staff profile not ready yet, go to login
+        print('⚠️ Staff profile not ready, redirecting to login');
+        Get.offAllNamed(Routes.LOGIN);
+      }
     } on AuthException catch (e) {
       print('❌ Auth error: ${e.message}');
       if (e.message.contains('already registered')) {

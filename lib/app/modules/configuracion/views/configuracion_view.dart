@@ -112,16 +112,15 @@ class ConfiguracionView extends GetView<ConfiguracionController> {
 
         const SizedBox(height: 12),
 
-        // Opción de Aplicación (preparado para futuro)
+        // Opción de Aplicación (branding & preferences)
         _buildOptionTile(
           icon: Icons.settings_applications,
           iconColor: AppColors.accent,
           title: 'Aplicación',
-          subtitle: 'Preferencias generales y configuración',
+          subtitle: 'Personaliza nombre, color y preferencias',
           onTap: () => controller.openAppSettings(),
           trailing: const Icon(Icons.arrow_forward_ios,
               size: 16, color: AppColors.textSecondary),
-          enabled: false, // Deshabilitado por ahora
         ),
 
         const SizedBox(height: 24),

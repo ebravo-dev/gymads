@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/staff_profile_model.dart';
 import '../../../data/providers/staff_profile_provider.dart';
 import '../../../data/services/tenant_context_service.dart';
+import '../../../data/services/branding_service.dart';
 import '../../../routes/app_pages.dart';
 
 /// Controller for authentication (login/logout)
@@ -116,6 +117,13 @@ class AuthController extends GetxController {
 
       // 3. Set tenant context
       await TenantContextService.to.setProfile(staffProfile);
+
+      // 3b. Seed branding from DB if no local data exists
+      BrandingService.to.syncFromDb(
+        dbGymName: staffProfile.gymName,
+        dbBrandColor: staffProfile.brandColor,
+        dbBrandFont: staffProfile.brandFont,
+      );
 
       // 4. Clear form
       emailController.clear();

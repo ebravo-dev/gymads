@@ -13,7 +13,7 @@ class StaffProfileProvider {
     try {
       final response = await _supabase
           .from('staff_profiles')
-          .select('*')
+          .select('*, gyms(name, brand_color, brand_font)')
           .eq('user_id', userId)
           .eq('is_active', true)
           .maybeSingle();

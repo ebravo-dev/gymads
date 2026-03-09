@@ -11,6 +11,10 @@ class StaffProfileModel {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  // Gym branding fields (joined from gyms table)
+  final String? gymName;
+  final String? brandColor;
+  final String? brandFont;
 
   StaffProfileModel({
     required this.id,
@@ -24,9 +28,14 @@ class StaffProfileModel {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.gymName,
+    this.brandColor,
+    this.brandFont,
   });
 
   factory StaffProfileModel.fromJson(Map<String, dynamic> json) {
+    // Handle joined gym data (from select with gyms(...))
+    final gymData = json['gyms'] as Map<String, dynamic>?;
     return StaffProfileModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -39,6 +48,11 @@ class StaffProfileModel {
       isActive: json['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      gymName: gymData?['name'] as String? ?? json['gym_name'] as String?,
+      brandColor:
+          gymData?['brand_color'] as String? ?? json['brand_color'] as String?,
+      brandFont:
+          gymData?['brand_font'] as String? ?? json['brand_font'] as String?,
     );
   }
 
@@ -55,6 +69,9 @@ class StaffProfileModel {
       'is_active': isActive,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'gym_name': gymName,
+      'brand_color': brandColor,
+      'brand_font': brandFont,
     };
   }
 
@@ -84,6 +101,9 @@ class StaffProfileModel {
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? gymName,
+    String? brandColor,
+    String? brandFont,
   }) {
     return StaffProfileModel(
       id: id ?? this.id,
@@ -97,6 +117,9 @@ class StaffProfileModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      gymName: gymName ?? this.gymName,
+      brandColor: brandColor ?? this.brandColor,
+      brandFont: brandFont ?? this.brandFont,
     );
   }
 

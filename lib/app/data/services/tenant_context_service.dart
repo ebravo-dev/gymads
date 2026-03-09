@@ -47,6 +47,15 @@ class TenantContextService extends GetxService {
   /// Check if current user is branch_staff
   bool get isBranchStaff => _staffProfile.value?.isBranchStaff ?? false;
 
+  /// Gym name (for branding)
+  String? get gymName => _staffProfile.value?.gymName;
+
+  /// Gym brand color hex (e.g. '#10D5E8')
+  String? get brandColor => _staffProfile.value?.brandColor;
+
+  /// Gym brand font name
+  String? get brandFont => _staffProfile.value?.brandFont;
+
   /// Get the full staff profile
   StaffProfileModel? get staffProfile => _staffProfile.value;
 

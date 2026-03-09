@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/responsive_utils.dart';
+import '../../../data/services/branding_service.dart';
 import '../../../data/services/tenant_context_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/home_controller.dart';
@@ -36,17 +37,42 @@ class HomeView extends GetView<HomeController> {
               ),
         centerTitle: true,
         toolbarHeight: isTabletSize ? 170 : 150,
-        title: Text(
-          'GYMONE',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: const Color.fromARGB(255, 16, 213, 232),
-            fontSize: ResponsiveValues.getFontSize(context,
-                mobile: 42, smallPhone: 36, tablet: 48),
-            letterSpacing: 3,
-          ),
-        ),
-
+        title: Obx(() {
+          final gymName = BrandingService.to.gymTitle.value.toUpperCase();
+          final brandColor = BrandingService.to.brandColor;
+          final baseFontSize = ResponsiveValues.getFontSize(context,
+              mobile: 34, smallPhone: 26, tablet: 40);
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  gymName,
+                  maxLines: 1,
+                  style: BrandingService.to.getFontStyle(
+                    fontSize: baseFontSize *
+                        BrandingService.fontSizeMultiplier(
+                            BrandingService.to.brandFontName.value),
+                    color: brandColor,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Powered by GYMONE',
+                style: TextStyle(
+                  fontSize: ResponsiveValues.getFontSize(context,
+                      mobile: 10, smallPhone: 9, tablet: 12),
+                  color: Colors.white.withOpacity(0.4),
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          );
+        }),
         // Botón de configuración y logout
         actions: [
           Padding(
@@ -257,7 +283,7 @@ class HomeView extends GetView<HomeController> {
                           // Opción de Entradas y Salidas
                           ButtonMenuWidget(
                             icon: Icons.assessment,
-                            label: 'Entradas/Salidas',
+                            label: 'Entradas',
                             description: 'Historial de accesos',
                             color: Colors.teal.shade300,
                             onTap: controller.goToAccessLogs,
