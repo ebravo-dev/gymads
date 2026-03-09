@@ -102,12 +102,25 @@ class ConfiguracionView extends GetView<ConfiguracionController> {
           icon: Icons.nfc,
           iconColor: AppColors.titleColor,
           title: 'Lector RFID',
-          subtitle: controller.rfidConnectionStatus.value
-              ? 'Conectado y funcionando'
-              : 'IP Fija: 192.168.1.100',
-          onTap: () => controller.testRfidConnection(),
-          trailing:
-              _buildStatusIndicator(controller.rfidConnectionStatus.value),
+          subtitle: controller.rfidEnabled.value
+              ? controller.connectionStatusMessage.value
+              : 'Desactivado',
+          onTap: () => controller.rfidEnabled.value
+              ? controller.cancelRfidScan()
+              : controller.testRfidConnection(),
+          trailing: Switch(
+            value: controller.rfidEnabled.value,
+            onChanged: (enabled) {
+              if (enabled) {
+                controller.testRfidConnection();
+              } else {
+                controller.cancelRfidScan();
+              }
+            },
+            activeColor: AppColors.titleColor,
+            inactiveThumbColor: AppColors.textHint,
+            inactiveTrackColor: AppColors.textHint.withOpacity(0.2),
+          ),
         ),
 
         const SizedBox(height: 12),

@@ -29,8 +29,11 @@ class ConfiguracionController extends GetxController {
 
   // Variables para configuración del lector RFID
   final RxBool rfidConnectionStatus = false.obs;
-  final RxString connectionStatusMessage = 'Verificando conexión...'.obs;
+  final RxString connectionStatusMessage = 'Desactivado'.obs;
   final RxString esp32IpAddress = ''.obs;
+  final RxBool isRfidScanning = false.obs;
+  final RxBool rfidEnabled = false.obs;
+  bool _rfidScanCancelled = false;
 
   // Variables para ESP32 con IP manual
   final RxBool esp32Connected = false.obs;
@@ -241,14 +244,19 @@ class ConfiguracionController extends GetxController {
       qrEnabled.value = prefs.getBool('qr_enabled') ?? true;
       qrCodeFormat.value = prefs.getString('qr_format') ?? 'auto';
 
-      // Cargar IP manual si existe
-      String? savedIP = prefs.getString('esp32_ip_manual');
-      if (savedIP != null && savedIP.isNotEmpty) {
-        await connectToESP32WithIP(savedIP, showNotification: false);
+      // RFID — only scan if enabled
+      rfidEnabled.value = prefs.getBool('rfid_enabled') ?? false;
+      if (rfidEnabled.value && !_rfidScanCancelled) {
+        isRfidScanning.value = true;
+        connectionStatusMessage.value = 'Buscando lector RFID...';
+        await RfidConfig.loadConfig();
+        isRfidScanning.value = false;
+        if (!_rfidScanCancelled) {
+          await _checkRfidConnection();
+        }
+      } else if (!rfidEnabled.value) {
+        connectionStatusMessage.value = 'Desactivado';
       }
-
-      await RfidConfig.loadConfig();
-      await _checkRfidConnection();
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error al cargar configuración: $e');
@@ -335,11 +343,11 @@ class ConfiguracionController extends GetxController {
 
   Future<void> _checkRfidConnection() async {
     try {
-      bool isConfigured = RfidConfig.isConfigured;
-      rfidConnectionStatus.value = isConfigured;
+      final available = await RfidConfig.isESP32Available();
+      rfidConnectionStatus.value = available;
 
-      if (isConfigured) {
-        connectionStatusMessage.value = 'RFID configurado';
+      if (available) {
+        connectionStatusMessage.value = 'Conectado y funcionando';
         if (RfidConfig.baseUrl != null) {
           String url = RfidConfig.baseUrl!;
           final RegExp ipRegex = RegExp(r'(\d+\.\d+\.\d+\.\d+)');
@@ -349,45 +357,100 @@ class ConfiguracionController extends GetxController {
           }
         }
       } else {
-        connectionStatusMessage.value = 'RFID no configurado';
+        connectionStatusMessage.value = 'Sin conexión al lector';
       }
     } catch (e) {
       rfidConnectionStatus.value = false;
-      connectionStatusMessage.value = 'Error al verificar RFID: $e';
+      connectionStatusMessage.value = 'Error al verificar: $e';
     }
   }
 
-  /// Probar conexión RFID
+  /// Probar conexión RFID (also enables RFID)
   Future<void> testRfidConnection() async {
     try {
+      _rfidScanCancelled = false;
+      rfidEnabled.value = true;
+      isRfidScanning.value = true;
       isLoading.value = true;
-      connectionStatusMessage.value = 'Probando conexión...';
+      connectionStatusMessage.value = 'Buscando lector RFID...';
 
+      // Persist enabled state
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('rfid_enabled', true);
+
+      await RfidConfig.loadConfig();
+      if (_rfidScanCancelled) return;
+
+      // Real connectivity check
+      connectionStatusMessage.value = 'Verificando conexión...';
+      final bool isAvailable = await RfidConfig.isESP32Available();
+      if (_rfidScanCancelled) return;
+
+      if (!isAvailable) {
+        rfidConnectionStatus.value = false;
+        connectionStatusMessage.value = 'Sin conexión al lector';
+        SnackbarHelper.error('Sin conexión',
+            'No se pudo conectar al lector RFID. Verifica que esté encendido y en la misma red WiFi.');
+        return;
+      }
+
+      // Device is reachable, try reading a card
+      connectionStatusMessage.value = 'Probando lectura...';
       String? cardUid = await RfidReaderService.checkForCard();
+      if (_rfidScanCancelled) return;
 
       if (cardUid != null) {
         rfidConnectionStatus.value = true;
-        connectionStatusMessage.value = 'RFID conectado - Tarjeta detectada';
+        connectionStatusMessage.value = 'Conectado - Tarjeta detectada';
         SnackbarHelper.success('Conexión exitosa',
             'El lector RFID está funcionando correctamente');
-      } else if (RfidConfig.isConfigured) {
+      } else {
         rfidConnectionStatus.value = true;
-        connectionStatusMessage.value = 'RFID conectado - Sin tarjeta';
+        connectionStatusMessage.value = 'Conectado - Sin tarjeta';
         SnackbarHelper.info('Conexión OK',
             'El lector RFID está conectado pero no hay tarjeta presente');
-      } else {
-        rfidConnectionStatus.value = false;
-        connectionStatusMessage.value = 'RFID no configurado';
-        SnackbarHelper.info(
-            'Sin configurar', 'El lector RFID no está configurado');
       }
-    } catch (e) {
-      rfidConnectionStatus.value = false;
-      connectionStatusMessage.value = 'Error: $e';
-      SnackbarHelper.error('Error', 'Error al probar conexión: $e');
+    } on Exception catch (e) {
+      if (!_rfidScanCancelled) {
+        rfidConnectionStatus.value = false;
+        final msg = e.toString();
+        if (msg.contains('TimeoutException') || msg.contains('timed out')) {
+          connectionStatusMessage.value = 'Tiempo de espera agotado';
+          SnackbarHelper.error('Timeout',
+              'El lector RFID no respondió a tiempo. Verifica que esté encendido.');
+        } else if (msg.contains('Connection refused') ||
+            msg.contains('ECONNREFUSED')) {
+          connectionStatusMessage.value = 'Conexión rechazada';
+          SnackbarHelper.error('Conexión rechazada',
+              'El lector RFID rechazó la conexión. Verifica la IP configurada.');
+        } else if (msg.contains('Network is unreachable') ||
+            msg.contains('No route to host')) {
+          connectionStatusMessage.value = 'Red no disponible';
+          SnackbarHelper.error('Sin red',
+              'No se puede alcanzar la red del lector. Verifica tu conexión WiFi.');
+        } else {
+          connectionStatusMessage.value = 'Error de conexión';
+          SnackbarHelper.error('Error', 'Error al conectar: $msg');
+        }
+      }
     } finally {
+      isRfidScanning.value = false;
       isLoading.value = false;
     }
+  }
+
+  /// Cancel ongoing RFID scan / disable RFID
+  void cancelRfidScan() async {
+    _rfidScanCancelled = true;
+    rfidEnabled.value = false;
+    isRfidScanning.value = false;
+    rfidConnectionStatus.value = false;
+    isLoading.value = false;
+    connectionStatusMessage.value = 'Desactivado';
+
+    // Persist disabled state
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('rfid_enabled', false);
   }
 
   // =================== MÉTODOS DE CONFIGURACIÓN ===================
