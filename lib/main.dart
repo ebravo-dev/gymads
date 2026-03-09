@@ -13,6 +13,7 @@ import 'package:gymads/app/modules/auth/controllers/auth_controller.dart';
 import 'package:gymads/app/modules/clientes/services/qr_cache_service.dart';
 import 'package:gymads/app/routes/app_pages.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// GlobalKey para acceder al ScaffoldMessenger desde cualquier parte de la app
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
@@ -80,9 +81,15 @@ void main() async {
   Get.put(qrCacheService, permanent: true);
   print('✅ Servicio de caché de QR codes inicializado');
 
-  // Inicializa la configuración del lector RFID
-  await RfidConfig.loadConfig();
-  print('✅ Configuración RFID cargada');
+  // Inicializa la configuración del lector RFID SOLO si está activado
+  final prefs = await SharedPreferences.getInstance();
+  final rfidEnabled = prefs.getBool('rfid_enabled') ?? false;
+  if (rfidEnabled) {
+    await RfidConfig.loadConfig();
+    print('✅ Configuración RFID cargada');
+  } else {
+    print('⏭️ RFID desactivado, omitiendo configuración');
+  }
 
   // Registra el servicio de RFID de forma perezosa
   Get.lazyPut<BackgroundRfidService>(() => BackgroundRfidService());
@@ -103,13 +110,20 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Solo inicia RFID si el usuario está autenticado
+    // Solo inicia RFID si el usuario está autenticado Y RFID está habilitado
     if (TenantContextService.to.isAuthenticated) {
-      _initRfidService();
+      _initRfidServiceIfEnabled();
     }
   }
 
-  Future<void> _initRfidService() async {
+  Future<void> _initRfidServiceIfEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rfidEnabled = prefs.getBool('rfid_enabled') ?? false;
+    if (!rfidEnabled) {
+      print('⏭️ RFID desactivado, omitiendo servicio de escaneo');
+      return;
+    }
+
     // Inicia el servicio RFID después de que el primer frame se renderice
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       print('⚙️ Post-frame: Iniciando servicio RFID...');

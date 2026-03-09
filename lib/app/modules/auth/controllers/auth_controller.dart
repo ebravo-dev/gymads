@@ -118,11 +118,12 @@ class AuthController extends GetxController {
       // 3. Set tenant context
       await TenantContextService.to.setProfile(staffProfile);
 
-      // 3b. Seed branding from DB if no local data exists
+      // 3b. Sync branding from DB (force to overwrite any stale local data)
       BrandingService.to.syncFromDb(
         dbGymName: staffProfile.gymName,
         dbBrandColor: staffProfile.brandColor,
         dbBrandFont: staffProfile.brandFont,
+        force: true,
       );
 
       // 4. Clear form
@@ -154,11 +155,26 @@ class AuthController extends GetxController {
 
   /// Logout current user
   Future<void> logout() async {
+    // Backup current branding to DB before clearing
+    try {
+      final gymId = TenantContextService.to.currentGymId;
+      if (gymId != null) {
+        await _supabase.from('gyms').update({
+          'brand_color': BrandingService.to.brandColorHex.value,
+          'brand_font': BrandingService.to.brandFontName.value,
+        }).eq('id', gymId);
+      }
+    } catch (e) {
+      print('⚠️ Error backing up branding: $e');
+    }
+
     try {
       await _supabase.auth.signOut();
     } catch (e) {
       print('⚠️ Error signing out: $e');
     }
+    // Clear branding so next account starts fresh
+    BrandingService.to.clearBranding();
     await TenantContextService.to.clearProfile();
     Get.offAllNamed(Routes.LOGIN);
   }

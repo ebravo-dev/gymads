@@ -523,53 +523,104 @@ class RegisterView extends GetView<RegisterController> {
           ),
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 38,
-          child: Obx(() {
-            final currentFont = controller.selectedFont.value;
-            return ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: fontOptions.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final font = fontOptions[index];
-                final isSelected = currentFont == font;
-                return GestureDetector(
-                  onTap: () => controller.selectedFont.value = font,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
+        Obx(() {
+          final currentFont = controller.selectedFont.value;
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: fontOptions.map((font) {
+              final isSelected = currentFont == font;
+              return GestureDetector(
+                onTap: () => controller.selectedFont.value = font,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.blueAccent.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
                       color: isSelected
-                          ? Colors.blueAccent.withOpacity(0.2)
-                          : Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.blueAccent
-                            : Colors.white.withOpacity(0.2),
-                        width: isSelected ? 2 : 1,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        font,
-                        style: _getFontStyle(
-                          font,
-                          fontSize: 13,
-                          color:
-                              isSelected ? Colors.blueAccent : Colors.white70,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
+                          ? Colors.blueAccent
+                          : Colors.white.withOpacity(0.2),
+                      width: isSelected ? 2 : 1,
                     ),
                   ),
-                );
-              },
-            );
-          }),
-        ),
+                  child: Text(
+                    font,
+                    style: _getFontStyle(
+                      font,
+                      fontSize: 13,
+                      color: isSelected ? Colors.blueAccent : Colors.white70,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        }),
+        const SizedBox(height: 24),
+
+        // RFID Reader toggle
+        Obx(() => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: controller.hasRfidReader.value
+                      ? Colors.blueAccent.withOpacity(0.5)
+                      : Colors.white.withOpacity(0.1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.nfc,
+                    color: controller.hasRfidReader.value
+                        ? Colors.blueAccent
+                        : Colors.white38,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '¿Tienes lector RFID?',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          controller.hasRfidReader.value
+                              ? 'Se buscará al iniciar'
+                              : 'Se puede activar después',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.4),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: controller.hasRfidReader.value,
+                    onChanged: (v) => controller.hasRfidReader.value = v,
+                    activeColor: Colors.blueAccent,
+                    inactiveThumbColor: Colors.white38,
+                    inactiveTrackColor: Colors.white12,
+                  ),
+                ],
+              ),
+            )),
         const SizedBox(height: 24),
 
         _buildNextButton('Siguiente', () {

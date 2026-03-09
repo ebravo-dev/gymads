@@ -39,7 +39,9 @@ class BrandingService extends GetxService {
       bool force = false}) {
     final hasLocalTitle = _storage.hasData(_gymTitleKey);
     final hasLocalColor = _storage.hasData(_brandColorKey);
+    final hasLocalFont = _storage.hasData(_brandFontKey);
 
+    // Gym name
     if (force || !hasLocalTitle) {
       if (dbGymName != null && dbGymName.isNotEmpty) {
         gymTitle.value = dbGymName;
@@ -47,21 +49,24 @@ class BrandingService extends GetxService {
       }
     }
 
+    // Brand color — always write on force, use default if DB is null
     if (force || !hasLocalColor) {
-      if (dbBrandColor != null && dbBrandColor.isNotEmpty) {
-        brandColorHex.value = dbBrandColor;
-        _storage.write(_brandColorKey, dbBrandColor);
-      }
+      final color = (dbBrandColor != null && dbBrandColor.isNotEmpty)
+          ? dbBrandColor
+          : '#10D5E8';
+      brandColorHex.value = color;
+      _storage.write(_brandColorKey, color);
     }
 
-    // Font sync — read from DB if provided
-    if (dbBrandFont != null &&
-        dbBrandFont.isNotEmpty &&
-        dbBrandFont != 'default') {
-      if (force || !_storage.hasData(_brandFontKey)) {
-        brandFontName.value = dbBrandFont;
-        _storage.write(_brandFontKey, dbBrandFont);
-      }
+    // Brand font — always write on force, use default if DB is null
+    if (force || !hasLocalFont) {
+      final font = (dbBrandFont != null &&
+              dbBrandFont.isNotEmpty &&
+              dbBrandFont != 'default')
+          ? dbBrandFont
+          : 'Default';
+      brandFontName.value = font;
+      _storage.write(_brandFontKey, font);
     }
   }
 
@@ -81,6 +86,16 @@ class BrandingService extends GetxService {
   void setBrandFont(String font) {
     brandFontName.value = font;
     _storage.write(_brandFontKey, font);
+  }
+
+  /// Clear all branding data (call on logout)
+  void clearBranding() {
+    gymTitle.value = 'GYMONE';
+    brandColorHex.value = '#10D5E8';
+    brandFontName.value = 'Default';
+    _storage.remove(_gymTitleKey);
+    _storage.remove(_brandColorKey);
+    _storage.remove(_brandFontKey);
   }
 
   /// Parse the current brand color hex to a Flutter Color

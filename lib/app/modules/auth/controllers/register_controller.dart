@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/providers/staff_profile_provider.dart';
 import '../../../data/services/tenant_context_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/branding_service.dart';
 import '../../../routes/app_pages.dart';
 
@@ -44,6 +45,7 @@ class RegisterController extends GetxController {
   final RxString selectedBrandColor = '#10D5E8'.obs;
   final RxString selectedFont = 'Default'.obs;
   final RxString gymNameText = ''.obs; // reactive mirror for preview
+  final RxBool hasRfidReader = false.obs;
 
   // Form key
   final formKey = GlobalKey<FormState>();
@@ -265,6 +267,10 @@ class RegisterController extends GetxController {
             'brand_font': selectedFont.value,
           }).eq('id', staffProfile.gymId);
         } catch (_) {}
+
+        // Save RFID preference
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('rfid_enabled', hasRfidReader.value);
 
         print('✅ Auto-login complete! Navigating to Home...');
         Get.offAllNamed(Routes.HOME);
