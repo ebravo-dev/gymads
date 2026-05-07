@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gymads/app/core/utils/snackbar_helper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../routes/app_pages.dart';
 
@@ -240,23 +241,9 @@ class EmailConfirmationView extends StatelessWidget {
         type: OtpType.signup,
         email: email,
       );
-      Get.snackbar(
-        '✉️ Correo reenviado',
-        'Revisa tu bandeja de entrada',
-        backgroundColor: Colors.green.withOpacity(0.8),
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
-      );
+        SnackbarHelper.success('✉️ Correo reenviado', 'Revisa tu bandeja de entrada');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudo reenviar. Intenta más tarde.',
-        backgroundColor: Colors.redAccent.withOpacity(0.8),
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
-      );
+        SnackbarHelper.error('Error', 'No se pudo reenviar. Intenta más tarde.');
     }
   }
 }

@@ -242,7 +242,6 @@ class ChecadorController extends GetxController {
         userName.value = user.name;
         daysLeft.value = user.daysRemaining;
         userPhotoUrl.value = user.photoUrl ?? '';
-        membershipType.value = user.membershipType;
 
         // Siempre es entrada (sin salidas)
         const nextAccessType = 'entrada';

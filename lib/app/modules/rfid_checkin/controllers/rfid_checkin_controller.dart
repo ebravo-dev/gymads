@@ -272,7 +272,6 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userName.value = user.name;
         daysLeft.value = user.daysRemaining;
         userPhotoUrl.value = user.photoUrl ?? '';
-        membershipType.value = user.membershipType;
         
         // Reproducir sonido y mostrar bienvenida
         AudioService.playWelcomeSound();
@@ -313,7 +312,6 @@ class RfidCheckinController extends GetxController with GetSingleTickerProviderS
         userName.value = user.name;
         daysLeft.value = user.daysRemaining;
         userPhotoUrl.value = user.photoUrl ?? '';
-        membershipType.value = user.membershipType;
         
         // Reproducir sonido y mostrar bienvenida
         AudioService.playWelcomeSound();

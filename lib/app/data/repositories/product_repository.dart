@@ -218,18 +218,21 @@ class ProductRepository {
   // Obtener todas las categorías de productos
   Future<List<ProductCategory>> getAllCategories() async {
     try {
+      final gymId = TenantQueryHelper.gymIdOrNull ?? '';
+      print('🔵 [Repo] Querying categories for gym_id: "$gymId"');
       final response = await _supabase
           .from('product_categories')
           .select()
-          .eq('gym_id', TenantQueryHelper.gymIdOrNull ?? '')
+          .eq('gym_id', gymId)
           .eq('is_active', true)
           .order('name', ascending: true);
 
+      print('🔵 [Repo] Got ${response.length} categories from DB');
       return response
           .map<ProductCategory>((json) => ProductCategory.fromJson(json))
           .toList();
     } catch (e) {
-      print('Error al obtener categorías: $e');
+      print('❌ Error al obtener categorías: $e');
       return [];
     }
   }

@@ -99,7 +99,6 @@ class ChecadorView extends GetView<ChecadorController> {
             () => WelcomeScreenWidget(
               userName: controller.userName.value,
               userPhotoUrl: controller.userPhotoUrl.value,
-              membershipType: controller.membershipType.value,
               daysLeft: controller.daysLeft.value,
               isVisible: controller.isShowingDialog.value,
             ),

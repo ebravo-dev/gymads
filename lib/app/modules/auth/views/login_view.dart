@@ -173,6 +173,29 @@ class LoginView extends GetView<AuthController> {
 
           // Login button
           _buildLoginButton(),
+          const SizedBox(height: 20),
+
+          // Divider
+          Row(
+            children: [
+              Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'o',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Google Sign-In button
+          _buildGoogleButton(),
         ],
       ),
     );
@@ -319,6 +342,50 @@ class LoginView extends GetView<AuthController> {
                       ),
                     ],
                   ),
+          ),
+        ));
+  }
+
+  Widget _buildGoogleButton() {
+    return Obx(() => SizedBox(
+          height: 50,
+          child: OutlinedButton(
+            onPressed:
+                controller.isLoading.value ? null : controller.loginWithGoogle,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.white24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              backgroundColor: Colors.white.withOpacity(0.05),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Image.asset(
+                    'assets/images/google_logo.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Continuar con Google',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ));
   }

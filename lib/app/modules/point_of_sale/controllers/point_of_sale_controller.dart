@@ -5,6 +5,7 @@ import '../../../data/models/product_model.dart';
 import '../../../data/models/sale_model.dart';
 import '../../../data/repositories/product_repository.dart';
 import '../../../data/repositories/sale_repository.dart';
+import '../../ingresos/controllers/ingresos_controller.dart';
 
 class PointOfSaleController extends GetxController {
   final ProductRepository _productRepository = ProductRepository();
@@ -237,7 +238,7 @@ class PointOfSaleController extends GetxController {
       final sale = Sale(
         // No incluir clienteId para ventas directas de productos
         clienteNombre: 'Venta Directa',
-        concepto: 'Venta de productos',
+        concepto: 'producto',
         tipoMembresia: 'ninguna',
         montoBase: _totalAmount.value,
         montoFinal: _finalAmount.value,
@@ -267,6 +268,9 @@ class PointOfSaleController extends GetxController {
 
         // Recargar productos para actualizar stock
         await loadProducts();
+
+        // Refrescar datos de ingresos globalmente
+        IngresosController.refreshIngresosGlobally();
 
         return true;
       } else {

@@ -97,34 +97,6 @@ class ConfiguracionView extends GetView<ConfiguracionController> {
 
         const SizedBox(height: 12),
 
-        // Opción de Lector RFID
-        _buildOptionTile(
-          icon: Icons.nfc,
-          iconColor: AppColors.titleColor,
-          title: 'Lector RFID',
-          subtitle: controller.rfidEnabled.value
-              ? controller.connectionStatusMessage.value
-              : 'Desactivado',
-          onTap: () => controller.rfidEnabled.value
-              ? controller.cancelRfidScan()
-              : controller.testRfidConnection(),
-          trailing: Switch(
-            value: controller.rfidEnabled.value,
-            onChanged: (enabled) {
-              if (enabled) {
-                controller.testRfidConnection();
-              } else {
-                controller.cancelRfidScan();
-              }
-            },
-            activeColor: AppColors.titleColor,
-            inactiveThumbColor: AppColors.textHint,
-            inactiveTrackColor: AppColors.textHint.withOpacity(0.2),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
         // Opción de Aplicación (branding & preferences)
         _buildOptionTile(
           icon: Icons.settings_applications,

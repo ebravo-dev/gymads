@@ -10,6 +10,7 @@ import 'audio_service.dart';
 import 'access_log_service.dart';
 import '../../core/utils/auth_utils.dart';
 import '../../routes/app_pages.dart';
+import '../config/rfid_config.dart';
 
 /// Servicio global para escaneo RFID en segundo plano
 /// Se ejecuta continuamente y maneja las detecciones de tarjetas
@@ -103,6 +104,8 @@ class BackgroundRfidService extends GetxService {
     if (kDebugMode) {
       print('🔄 BackgroundRfidService inicializado');
     }
+    // Siempre iniciar el escaneo al instanciar el servicio
+    startScanning();
   }
 
   /// Iniciar el escaneo en segundo plano
@@ -119,6 +122,9 @@ class BackgroundRfidService extends GetxService {
     if (kDebugMode) {
       print('🚀 Iniciando servicio de escaneo RFID en segundo plano...');
     }
+
+    // Cargar configuración de RFID (IP, etc) si es necesario
+    await RfidConfig.loadConfig();
 
     // Iniciar polling cada 500ms (medio segundo)
     _pollingTimer =
@@ -280,6 +286,55 @@ class BackgroundRfidService extends GetxService {
 
     // Mostrar notificación de denegado
     _showDeniedNotification('Usuario no registrado');
+
+    // Mostrar diálogo para agregar cliente
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E), // AppColors.cardBackground
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Tarjeta No Registrada',
+          style: TextStyle(
+            color: Colors.white, // AppColors.titleColor
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'La tarjeta escaneada ($uid) no pertenece a ningún cliente.\n\n¿Deseas registrar un nuevo cliente con esta tarjeta?',
+          style: const TextStyle(color: Colors.white70), // AppColors.textPrimary
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(
+                color: Colors.grey, // AppColors.textSecondary
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back(); // Cerrar diálogo
+              // Navegar a clientes pasando el RFID como argumento
+              Get.toNamed(Routes.CLIENTES, arguments: {'new_rfid': uid});
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1DB954), // AppColors.accent
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Agregar Cliente',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Manejar usuario inactivo
@@ -299,8 +354,21 @@ class BackgroundRfidService extends GetxService {
       verificationType: 'rfid',
     );
 
-    // Mostrar notificación de denegado
-    _showDeniedNotification('Membresía inactiva');
+    currentUser.value = user;
+
+    final currentRoute = Get.currentRoute;
+    if (currentRoute == Routes.HOME || currentRoute == '/') {
+      // Estamos en home, mostrar diálogo completo
+      showWelcomeDialog.value = true;
+
+      // Cerrar después de 8 segundos para dar tiempo a interactuar
+      await Future.delayed(const Duration(seconds: 8));
+      showWelcomeDialog.value = false;
+      currentUser.value = null;
+    } else {
+      // Mostrar notificación de denegado
+      _showDeniedNotification('Membresía inactiva');
+    }
   }
 
   /// Manejar usuario activo
@@ -347,8 +415,8 @@ class BackgroundRfidService extends GetxService {
       // Estamos en home, mostrar diálogo completo
       showWelcomeDialog.value = true;
 
-      // Cerrar después de 4 segundos
-      await Future.delayed(const Duration(seconds: 4));
+      // Cerrar después de 8 segundos para dar tiempo a interactuar
+      await Future.delayed(const Duration(seconds: 8));
       showWelcomeDialog.value = false;
       currentUser.value = null;
     } else {

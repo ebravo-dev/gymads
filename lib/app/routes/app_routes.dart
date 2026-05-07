@@ -13,12 +13,12 @@ abstract class Routes {
   static const PRODUCT_FORM = _Paths.PRODUCT_FORM;
   static const INGRESOS = _Paths.INGRESOS;
   static const RFID_CHECKIN = _Paths.RFID_CHECKIN;
-  static const MEMBRESIAS = _Paths.MEMBRESIAS;
-  static const PROMOCIONES = _Paths.PROMOCIONES;
+  static const ABONAR = _Paths.ABONAR;
   static const CONFIGURACION = _Paths.CONFIGURACION;
   static const CUENTA = _Paths.CUENTA;
   static const POINT_OF_SALE = _Paths.POINT_OF_SALE;
   static const ACCESS_LOGS = _Paths.ACCESS_LOGS;
+  static const GOOGLE_COMPLETE = _Paths.GOOGLE_COMPLETE;
 }
 
 abstract class _Paths {
@@ -33,10 +33,10 @@ abstract class _Paths {
   static const PRODUCT_FORM = '/inventario/product-form';
   static const INGRESOS = '/ingresos';
   static const RFID_CHECKIN = '/rfid-checkin';
-  static const MEMBRESIAS = '/membresias';
-  static const PROMOCIONES = '/promociones';
+  static const ABONAR = '/abonar';
   static const CONFIGURACION = '/configuracion';
   static const CUENTA = '/configuracion/cuenta';
   static const POINT_OF_SALE = '/point-of-sale';
   static const ACCESS_LOGS = '/access-logs';
+  static const GOOGLE_COMPLETE = '/google-complete-register';
 }

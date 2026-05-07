@@ -23,12 +23,12 @@ import '../modules/inventario/views/inventario_view.dart';
 import '../modules/inventario/views/product_form_view.dart';
 import '../modules/rfid_checkin/bindings/rfid_checkin_binding.dart';
 import '../modules/rfid_checkin/views/rfid_checkin_view.dart';
-import '../modules/membresias/bindings/membresias_binding.dart';
-import '../modules/membresias/views/membresias_view.dart';
-import '../modules/promociones/bindings/promociones_binding.dart';
-import '../modules/promociones/views/promociones_view.dart';
+import '../modules/abonar/bindings/abonar_binding.dart';
+import '../modules/abonar/views/abonar_view.dart';
 import '../modules/point_of_sale/bindings/point_of_sale_binding.dart';
 import '../modules/point_of_sale/views/point_of_sale_view.dart';
+
+import '../modules/auth/views/google_complete_register_view.dart';
 
 part 'app_routes.dart';
 
@@ -48,6 +48,16 @@ class AppPages {
       page: () => const RegisterView(),
       binding: BindingsBuilder(() {
         Get.lazyPut<RegisterController>(() => RegisterController());
+      }),
+    ),
+    GetPage(
+      name: _Paths.GOOGLE_COMPLETE,
+      page: () => const GoogleCompleteRegisterView(),
+      binding: BindingsBuilder(() {
+        // RegisterController should already be created by auth flow
+        if (!Get.isRegistered<RegisterController>()) {
+          Get.lazyPut<RegisterController>(() => RegisterController());
+        }
       }),
     ),
     GetPage(
@@ -90,14 +100,9 @@ class AppPages {
       binding: RfidCheckinBinding(),
     ),
     GetPage(
-      name: _Paths.MEMBRESIAS,
-      page: () => const MembresiasView(),
-      binding: MembresiasBinding(),
-    ),
-    GetPage(
-      name: _Paths.PROMOCIONES,
-      page: () => const PromocionesView(),
-      binding: PromocionesBinding(),
+      name: _Paths.ABONAR,
+      page: () => const AbonarView(),
+      binding: AbonarBinding(),
     ),
     GetPage(
       name: _Paths.CONFIGURACION,

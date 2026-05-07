@@ -567,4 +567,173 @@ class ConfiguracionController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  // =================== DELETE GYM & ACCOUNT ===================
+
+  /// Delete entire gym data and owner account via Supabase RPC
+  Future<void> deleteGymAndAccount() async {
+    final gymId = TenantContextService.to.currentGymId;
+    if (gymId == null) {
+      SnackbarHelper.error('Error', 'No se encontró el gimnasio');
+      return;
+    }
+
+    // First confirmation
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red[400], size: 28),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                '¿Borrar todos los datos?',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Esta acción eliminará permanentemente:\n\n'
+          '• Todos los clientes y membresías\n'
+          '• Todo el inventario y ventas\n'
+          '• Todos los registros de acceso\n'
+          '• Todos los pagos e ingresos\n'
+          '• El gimnasio y sus sucursales\n'
+          '• Tu cuenta de usuario\n\n'
+          'Esta acción NO se puede deshacer.',
+          style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(
+              'Sí, borrar todo',
+              style: TextStyle(color: Colors.red[400], fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Second confirmation — type gym name
+    final nameConfirmed = await Get.dialog<bool>(
+      _ConfirmDeleteDialog(gymName: gymName.value),
+    );
+
+    if (nameConfirmed != true) return;
+
+    // Execute deletion
+    try {
+      isLoading.value = true;
+
+      final result = await Supabase.instance.client
+          .rpc('delete_gym_cascade', params: {'p_gym_id': gymId});
+
+      if (kDebugMode) print('🗑️ delete_gym_cascade result: $result');
+
+      // Clear local data
+      await TenantContextService.to.clearProfile();
+
+      // Navigate to login
+      Get.offAllNamed(Routes.LOGIN);
+
+      // Show success after navigation
+      Future.delayed(const Duration(milliseconds: 500), () {
+        SnackbarHelper.success(
+            'Cuenta eliminada', 'Todos los datos han sido borrados');
+      });
+    } catch (e) {
+      if (kDebugMode) print('❌ Error deleting gym: $e');
+      SnackbarHelper.error(
+          'Error', 'No se pudieron borrar los datos: ${e.toString()}');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+}
+
+/// Dialog that requires typing the gym name to confirm deletion
+class _ConfirmDeleteDialog extends StatelessWidget {
+  final String gymName;
+  _ConfirmDeleteDialog({required this.gymName});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = TextEditingController();
+    final isMatch = false.obs;
+
+    return Obx(() => AlertDialog(
+          backgroundColor: AppColors.cardBackground,
+          title: const Text(
+            'Confirmar eliminación',
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
+                  children: [
+                    const TextSpan(text: 'Para confirmar, escribe el nombre de tu gimnasio:\n\n'),
+                    TextSpan(
+                      text: gymName,
+                      style: TextStyle(
+                        color: Colors.red[400],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Escribe el nombre aquí',
+                  hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.red[400]!),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                ),
+                onChanged: (val) {
+                  isMatch.value = val.trim().toLowerCase() == gymName.trim().toLowerCase();
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(result: false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: isMatch.value ? () => Get.back(result: true) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[700],
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey[800],
+              ),
+              child: const Text('Borrar permanentemente'),
+            ),
+          ],
+        ));
+  }
 }

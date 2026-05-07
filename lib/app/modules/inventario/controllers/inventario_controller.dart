@@ -101,9 +101,14 @@ class InventarioController extends GetxController {
 
   Future<void> loadCategories() async {
     try {
+      print('🔵 [Inventario] Loading categories...');
       categories.value = await productRepository.getAllCategories();
+      print('🔵 [Inventario] Loaded ${categories.length} categories');
+      for (final c in categories) {
+        print('   → ${c.name} (${c.id})');
+      }
     } catch (e) {
-      print('Error al cargar categorías: $e');
+      print('❌ Error al cargar categorías: $e');
     }
   }
 

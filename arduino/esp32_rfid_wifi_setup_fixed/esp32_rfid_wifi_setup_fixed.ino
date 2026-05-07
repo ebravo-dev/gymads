@@ -2,20 +2,26 @@
  * GYMADS - ESP32 RFID Reader con WiFi
  * LECTOR RFID CON CONEXIÓN WIFI AUTOMÁTICA PARA GYMADS
  * 
- * Versión 4.3.0 - Solo WiFi (Sin Bluetooth) - PN532 + HCE + Auto-Recovery
+ * Versión 5.0.0 - Solo WiFi (Sin Bluetooth) - PN532 RFID Only + Auto-Recovery
  * Dispositivo: ESP32
  * 
- * Función: Leer tarjetas RFID físicas y emulación HCE (Host Card Emulation)
+ * Función: Leer tarjetas RFID físicas y llaveros NFC
  * Sistema simplificado para lectura de tarjetas RFID con conectividad WiFi
- * Versión: 4.3.0 - WiFi robusto con reconexión automática + Watchdog + Keep-alive
+ * Versión: 5.0.0 - WiFi robusto con reconexión automática + Watchdog + Keep-alive
  * 
- * MEJORAS v4.3.0:
+ * CAMBIOS v5.0.0:
+ * - Eliminada emulación HCE (Host Card Emulation)
+ * - Solo lectura de tarjetas y llaveros RFID físicos
+ * - Simplificado el flujo de lectura RFID
+ * - Eliminadas constantes APDU y funciones HCE
+ * - ELIMINADO SOPORTE PARA LEDS EXTERNOS (SOLO LED WIFI)
+ * 
+ * MEJORAS HEREDADAS v4.3.0:
  * - Watchdog Timer para reinicio automático si el sistema se congela
  * - Reconexión WiFi mejorada y más frecuente
  * - Keep-alive para mantener conexiones activas
  * - Reinicio automático del servidor HTTP si deja de responder
  * - Monitoreo de memoria libre
- * - Heartbeat LED para indicar que el sistema está funcionando
  * - Auto-reinicio después de múltiples fallos de conexión
  */
 
@@ -27,30 +33,6 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include <esp_task_wdt.h>  // Watchdog Timer
-
-// =================== CONFIGURACIÓN HCE (APDU) ===================
-// AID (Application ID) para la app de emulación HCE
-const uint8_t AID[] = {0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
-const uint8_t AID_LENGTH = 7;
-
-// Comandos APDU
-const uint8_t APDU_SELECT[] = {
-  0x00,  // CLA (Class)
-  0xA4,  // INS (Instruction: SELECT)
-  0x04,  // P1 (Parameter 1)
-  0x00,  // P2 (Parameter 2)
-  0x07,  // Lc (Length: 7 bytes)
-  0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,  // AID
-  0x00   // Le (Expected response length)
-};
-
-const uint8_t APDU_GET_DATA[] = {
-  0x00,  // CLA (Class)
-  0xCA,  // INS (Instruction: GET DATA)
-  0x00,  // P1 (Parameter 1)
-  0x00,  // P2 (Parameter 2)
-  0x00   // Le (Expected response length)
-};
 
 // =================== CONFIGURACIÓN WIFI ===================
 // TODO: Cambiar estas credenciales por las de tu red WiFi
@@ -82,14 +64,11 @@ IPAddress dns(8, 8, 8, 8);             // Servidor DNS (Google)
 
 // =================== PINES DEL HARDWARE ===================
 // Pines del lector RFID PN532 (I2C)
-#define PN532_SDA     21   // GPIO 21
-#define PN532_SCL     22   // GPIO 22
+#define PN532_SDA     26   // GPIO 21
+#define PN532_SCL     27   // GPIO 22
 
 // Pines de LEDs indicadores
 #define LED_WIFI      2    // LED integrado del ESP32
-#define LED_VERDE     15   // Membresía activa (cambiado de 21)
-#define LED_AMARILLO  18   // Membresía por vencer (cambiado de 22)
-#define LED_ROJO      5   // Membresía vencida/no encontrada
 
 // =================== ESTADOS DE MEMBRESÍA ===================
 #define MEMBERSHIP_ACTIVE      "active"
@@ -108,13 +87,8 @@ WebServer server(80);
 // Variables de estado
 bool wifiConnected = false;
 String lastUid = "NO_CARD";
-bool lastWasHCE = false;  // Indica si la última lectura fue de HCE o tarjeta física
 String networkType = "none";  // Tipo de red: "static", "dhcp", "none"
 bool staticIPConfigured = false; // Indica si se aplicó correctamente la IP estática
-
-// Variables para control de tiempos de LEDs
-unsigned long ledStateTimeout = 0;
-const unsigned long LED_TIMEOUT = 3000;  // LEDs de estado se apagan después de 3 segundos
 
 // Variables para control de escaneo RFID (evitar lecturas duplicadas)
 unsigned long lastCardReadTime = 0;
@@ -130,7 +104,6 @@ unsigned long lastWiFiCheck = 0;
 unsigned long lastServerRestart = 0;
 unsigned long lastHeartbeat = 0;
 unsigned long lastMemoryCheck = 0;
-unsigned long lastSuccessfulRequest = 0;
 int consecutiveWiFiFailures = 0;
 bool serverRunning = false;
 unsigned long systemUptime = 0;
@@ -140,25 +113,19 @@ void connectToWiFi();
 bool setupStaticIP();
 void setupServerRoutes();
 void handleGetUid();
+void handleGetUidOnly();
 void handleStatus();
 void handleDiscover();
-void handleMembershipStatus();
-void controlStatusLeds(String status);
 void handleStatusLeds();
-void turnOffAllStatusLeds();
-void testLedSequence();
 String getCardUID(uint8_t* uid, uint8_t uidLength);
-String getNetworkInfo();
 bool isStaticIPConfigured();
-bool tryReadHCE(String &uid);
-bool detectNFCDevice();
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("=== GYMADS v4.3.0 ===");
-  Serial.println("PN532 + HCE + Auto-Recovery");
+  Serial.println("=== GYMADS v5.0.0 ===");
+  Serial.println("PN532 RFID Only + Auto-Recovery");
 
   // Inicializar Watchdog Timer para auto-reinicio si el sistema se congela
   Serial.println("Init Watchdog Timer...");
@@ -172,15 +139,9 @@ void setup() {
 
   // Configurar LEDs
   pinMode(LED_WIFI, OUTPUT);
-  pinMode(LED_VERDE, OUTPUT);
-  pinMode(LED_ROJO, OUTPUT);
-  pinMode(LED_AMARILLO, OUTPUT);
 
   // Apagar todos los LEDs al inicio
   digitalWrite(LED_WIFI, LOW);
-  digitalWrite(LED_VERDE, LOW);
-  digitalWrite(LED_ROJO, LOW);
-  digitalWrite(LED_AMARILLO, LOW);
 
   // Inicializar I2C para PN532
   Serial.println("Init I2C...");
@@ -220,7 +181,6 @@ void setup() {
     setupServerRoutes();
     server.begin();
     serverRunning = true;
-    lastSuccessfulRequest = millis();
     Serial.print("HTTP Server: ");
     Serial.println(WiFi.localIP());
   }
@@ -232,7 +192,10 @@ void setup() {
   lastMemoryCheck = millis();
   systemUptime = millis();
 
-  testLedSequence();
+  if (wifiConnected) {
+    digitalWrite(LED_WIFI, HIGH);
+  }
+  
   Serial.println("=== SISTEMA LISTO ===");
   Serial.print("Heap libre: ");
   Serial.print(ESP.getFreeHeap());
@@ -288,70 +251,39 @@ void loop() {
 
   // Solo procesar RFID si estamos conectados a WiFi
   if (wifiConnected && serverRunning) {
-    String cardUid = "";
-    bool cardDetected = false;
-    bool isHCE = false;
+    uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
+    uint8_t uidLength;
     
-    // PASO 1: Detectar dispositivo NFC sin leer UID automáticamente
-    // Usar inListPassiveTarget() en lugar de readPassiveTargetID()
-    // Esto permite que HCE responda antes de leer el UID físico
-    if (detectNFCDevice()) {
-      // PASO 2: Primero intentar leer como HCE usando comandos APDU
-      if (tryReadHCE(cardUid)) {
-        cardDetected = true;
-        isHCE = true;
-      } else {
-        // No es HCE, leer el UID físico de la tarjeta
-        uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
-        uint8_t uidLength;
-        if (nfc->readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
-          cardUid = getCardUID(uid, uidLength);
-          cardDetected = true;
-          isHCE = false;
-        }
-      }
-      
+    // Leer tarjeta/llavero RFID
+    if (nfc->readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
+      String cardUid = getCardUID(uid, uidLength);
       unsigned long currentTime = millis();
 
-      // Verificar si ha pasado suficiente tiempo desde la última lectura
-      // O si es una tarjeta diferente
-      bool canRead = false;
-      
-      if (cardUid != lastScannedCard) {
-        // Es una tarjeta diferente, siempre permitir lectura
-        canRead = true;
+      // Permitir lectura si es tarjeta nueva o si pasó el tiempo de espera
+      if (cardUid != lastScannedCard || (currentTime - lastCardReadTime >= CARD_READ_INTERVAL_MS)) {
         lastScannedCard = cardUid;
         lastCardReadTime = currentTime;
-      } else if (currentTime - lastCardReadTime >= CARD_READ_INTERVAL_MS) {
-        // Es la misma tarjeta pero ha pasado el intervalo mínimo
-        canRead = true;
-        lastCardReadTime = currentTime;
-      }
 
-      // Solo actualizar lastUid si se permite la lectura
-      if (canRead && cardUid != lastUid) {
-        lastUid = cardUid;
-        lastWasHCE = isHCE;
-        Serial.print(isHCE ? "[HCE] " : "[RFID] ");
-        Serial.println(cardUid);
+        if (cardUid != lastUid) {
+          lastUid = cardUid;
+          Serial.print("[RFID] UID: ");
+          Serial.println(cardUid);
+        }
       }
-
-      delay(100); // Pequeño delay para evitar lecturas múltiples
     } else {
       // No hay tarjeta presente, resetear el UID después de un tiempo
       static unsigned long lastNoCardTime = 0;
-      unsigned long currentTime = millis();
       
       if (lastUid != "NO_CARD") {
         if (lastNoCardTime == 0) {
-          lastNoCardTime = currentTime; // Iniciar contador
-        } else if (currentTime - lastNoCardTime > 1000) { // 1 segundo sin tarjeta
+          lastNoCardTime = millis();
+        } else if (millis() - lastNoCardTime > 1000) { // 1 segundo sin tarjeta
           lastUid = "NO_CARD";
           lastScannedCard = "";
           lastNoCardTime = 0;
         }
       } else {
-        lastNoCardTime = 0; // Resetear contador si ya está en NO_CARD
+        lastNoCardTime = 0;
       }
     }
   }
@@ -389,7 +321,6 @@ void loop() {
         setupServerRoutes();
         server.begin();
         serverRunning = true;
-        lastSuccessfulRequest = millis();
         consecutiveWiFiFailures = 0;
         Serial.print("[Server] Escuchando en: ");
         Serial.println(WiFi.localIP());
@@ -411,7 +342,6 @@ void loop() {
         setupServerRoutes();
         server.begin();
         lastServerRestart = currentMillis;
-        lastSuccessfulRequest = currentMillis;
         Serial.println("[Server] Servidor reiniciado correctamente");
       }
     }
@@ -452,13 +382,6 @@ bool isStaticIPConfigured() {
   // Compara la IP actual con la IP estática solicitada
   IPAddress currentIP = WiFi.localIP();
   return currentIP == staticIP;
-}
-
-// Obtener información de red
-String getNetworkInfo() {
-  String info = "Network: " + WiFi.localIP().toString();
-  info += " (" + networkType + ")";
-  return info;
 }
 
 // Conectar a WiFi
@@ -536,9 +459,8 @@ void connectToWiFi() {
 void setupServerRoutes() {
   // Rutas para comunicación con la aplicación Flutter
   server.on("/api/uid", HTTP_GET, handleGetUid);
-  server.on("/api/uid_only", HTTP_GET, handleGetUidOnly);  // Nuevo endpoint silencioso
+  server.on("/api/uid_only", HTTP_GET, handleGetUidOnly);  // Endpoint silencioso
   server.on("/api/status", HTTP_GET, handleStatus);
-  server.on("/api/membership", HTTP_POST, handleMembershipStatus);
   server.on("/api/discover", HTTP_GET, handleDiscover);
 
   // Configurar headers CORS manualmente para mayor compatibilidad
@@ -549,7 +471,6 @@ void setupServerRoutes() {
 void handleGetUid() {
   // Solo enviar el UID, NO resetearlo
   // El reseteo se maneja en el loop principal
-  lastSuccessfulRequest = millis();  // Actualizar tiempo de última solicitud exitosa
   server.sendHeader("Connection", "close");
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "text/plain", lastUid);
@@ -558,17 +479,12 @@ void handleGetUid() {
 // Manejador para la ruta /api/uid_only - Solo devuelve el UID sin activar LEDs
 // Usado para capturar tarjetas al agregar nuevos clientes
 void handleGetUidOnly() {
-  // Este endpoint es idéntico a /api/uid, pero semánticamente diferente
-  // El servicio de fondo usa /api/uid y activa LEDs mediante /api/membership
-  // Los formularios de registro usan /api/uid_only y NO activan LEDs
-  lastSuccessfulRequest = millis();  // Actualizar tiempo de última solicitud exitosa
   server.send(200, "text/plain", lastUid);
 }
 
 // Manejador para la ruta /api/status
 void handleStatus() {
   // Agregar headers para evitar problemas de conexión
-  lastSuccessfulRequest = millis();  // Actualizar tiempo de última solicitud exitosa
   server.sendHeader("Connection", "close");
   server.sendHeader("Access-Control-Allow-Origin", "*");
   
@@ -576,8 +492,6 @@ void handleStatus() {
   doc["status"] = "OK";
   doc["wifi_connected"] = wifiConnected;
   doc["last_uid"] = lastUid;
-  doc["is_hce"] = lastWasHCE;  // Indica si la última lectura fue HCE o tarjeta física
-  doc["card_type"] = lastWasHCE ? "HCE" : "PHYSICAL";
   doc["ip_address"] = WiFi.localIP().toString();
   doc["network_type"] = networkType;
   doc["static_ip_enabled"] = useStaticIP;
@@ -592,37 +506,13 @@ void handleStatus() {
   server.send(200, "application/json", response);
 }
 
-// Manejador para recibir el estado de membresía y controlar LEDs
-void handleMembershipStatus() {
-  lastSuccessfulRequest = millis();  // Actualizar tiempo de última solicitud exitosa
-  if (server.hasArg("plain")) {
-    String body = server.arg("plain");
-    DynamicJsonDocument doc(256);
-
-    DeserializationError error = deserializeJson(doc, body);
-    if (error) {
-      server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
-      return;
-    }
-
-    String status = doc["status"];
-    controlStatusLeds(status);
-
-    server.send(200, "application/json", "{\"success\":true}");
-  } else {
-    server.send(400, "application/json", "{\"error\":\"No data received\"}");
-  }
-}
-
 // Manejador para la ruta /api/discover - Identificación del dispositivo
 void handleDiscover() {
-  lastSuccessfulRequest = millis();  // Actualizar tiempo de última solicitud exitosa
-  DynamicJsonDocument doc(700);
+  DynamicJsonDocument doc(512);
   doc["device_id"] = "ESP32_RFID_GYMADS";
   doc["device_type"] = "RFID_READER";
-  doc["version"] = "4.3.0";
+  doc["version"] = "5.0.0";
   doc["rfid_reader"] = "PN532";
-  doc["hce_support"] = true;  // Soporte para Host Card Emulation
   doc["manufacturer"] = "GYMADS";
   doc["wifi_connected"] = wifiConnected;
   doc["status"] = "ONLINE";
@@ -651,22 +541,6 @@ void handleDiscover() {
 
 // =================== CONTROL DE LEDS ===================
 
-// Controlar LEDs según el estado de membresía
-void controlStatusLeds(String status) {
-  // Apagar todos los LEDs de estado primero
-  turnOffAllStatusLeds();
-
-  if (status == MEMBERSHIP_ACTIVE) {
-    digitalWrite(LED_VERDE, HIGH);
-  } else if (status == MEMBERSHIP_EXPIRING) {
-    digitalWrite(LED_AMARILLO, HIGH);
-  } else if (status == MEMBERSHIP_EXPIRED || status == MEMBERSHIP_NOT_FOUND) {
-    digitalWrite(LED_ROJO, HIGH);
-  }
-  
-  ledStateTimeout = millis() + LED_TIMEOUT;
-}
-
 // Manejar LEDs de estado
 void handleStatusLeds() {
   // LED WiFi: fijo si conectado, apagado si no
@@ -680,34 +554,6 @@ void handleStatusLeds() {
       lastBlink = millis();
     }
   }
-  
-  // Verificar si es tiempo de apagar los LEDs de estado
-  if (ledStateTimeout > 0 && millis() > ledStateTimeout) {
-    turnOffAllStatusLeds();
-    ledStateTimeout = 0;  // Reiniciar el temporizador
-  }
-}
-
-// Apagar todos los LEDs de estado (excepto WiFi)
-void turnOffAllStatusLeds() {
-  digitalWrite(LED_VERDE, LOW);
-  digitalWrite(LED_ROJO, LOW);
-  digitalWrite(LED_AMARILLO, LOW);
-}
-
-// Secuencia de prueba de LEDs al inicializar
-void testLedSequence() {
-  digitalWrite(LED_VERDE, HIGH);
-  digitalWrite(LED_AMARILLO, HIGH);
-  digitalWrite(LED_ROJO, HIGH);
-  delay(200);
-  digitalWrite(LED_VERDE, LOW);
-  digitalWrite(LED_AMARILLO, LOW);
-  digitalWrite(LED_ROJO, LOW);
-  
-  if (wifiConnected) {
-    digitalWrite(LED_WIFI, HIGH);
-  }
 }
 
 // =================== UTILIDADES ===================
@@ -715,89 +561,10 @@ void testLedSequence() {
 // Convierte el UID de la tarjeta a formato String
 String getCardUID(uint8_t* uid, uint8_t uidLength) {
   String cardString = "";
+  char buf[3];
   for (byte i = 0; i < uidLength; i++) {
-    // Añadir un 0 para números hexadecimales menores a 16 (0x10)
-    if (uid[i] < 0x10) {
-      cardString += "0";
-    }
-    cardString += String(uid[i], HEX);
+    snprintf(buf, sizeof(buf), "%02X", uid[i]);
+    cardString += buf;
   }
-  cardString.toUpperCase();
   return cardString;
-}
-
-// =================== FUNCIONES HCE (HOST CARD EMULATION) ===================
-
-// Detectar dispositivo NFC sin leer UID automáticamente
-bool detectNFCDevice() {
-  // inListPassiveTarget() detecta el dispositivo sin leer el UID
-  // Esto permite que HCE responda antes de que se lea el UID físico
-  return nfc->inListPassiveTarget();
-}
-
-// Intentar leer UID de un dispositivo HCE usando comandos APDU
-bool tryReadHCE(String &uid) {
-  uint8_t response[64];
-  uint8_t responseLength = 32;
-  
-  Serial.println("HCE: SELECT AID...");
-  
-  // Enviar SELECT AID usando inDataExchange
-  // IMPORTANTE: responseLength se pasa por referencia (&)
-  bool success = nfc->inDataExchange((uint8_t*)APDU_SELECT, sizeof(APDU_SELECT), response, &responseLength);
-  
-  if (!success || responseLength < 2) {
-    Serial.println("SELECT: No response");
-    return false;
-  }
-  
-  // Verificar status word 90 00
-  uint8_t sw1 = response[responseLength - 2];
-  uint8_t sw2 = response[responseLength - 1];
-  
-  if (sw1 != 0x90 || sw2 != 0x00) {
-    Serial.print("SELECT failed: ");
-    Serial.print(sw1, HEX);
-    Serial.print(" ");
-    Serial.println(sw2, HEX);
-    return false;
-  }
-  
-  Serial.println("HCE: SELECT OK");
-  
-  // Enviar GET DATA
-  Serial.println("HCE: GET DATA...");
-  responseLength = 32;
-  success = nfc->inDataExchange((uint8_t*)APDU_GET_DATA, sizeof(APDU_GET_DATA), response, &responseLength);
-  
-  if (!success || responseLength < 2) {
-    Serial.println("GET DATA: No response");
-    return false;
-  }
-  
-  sw1 = response[responseLength - 2];
-  sw2 = response[responseLength - 1];
-  
-  if (sw1 != 0x90 || sw2 != 0x00) {
-    Serial.print("GET DATA error: ");
-    Serial.print(sw1, HEX);
-    Serial.print(" ");
-    Serial.println(sw2, HEX);
-    return false;
-  }
-  
-  // Extraer UID (sin los 2 bytes finales 90 00)
-  if (responseLength > 2) {
-    uid = "";
-    for (uint8_t i = 0; i < responseLength - 2; i++) {
-      if (response[i] < 0x10) uid += "0";
-      uid += String(response[i], HEX);
-    }
-    uid.toUpperCase();
-    Serial.print("HCE UID: ");
-    Serial.println(uid);
-    return true;
-  }
-  
-  return false;
 }

@@ -27,9 +27,18 @@ class BackgroundWelcomeDialog extends StatelessWidget {
         return WelcomeScreenWidget(
           userName: user.name,
           userPhotoUrl: user.photoUrl ?? '',
-          membershipType: user.membershipType,
           daysLeft: user.daysRemaining,
           isVisible: service.showWelcomeDialog.value,
+          isExpired: user.daysRemaining <= 0 || !user.isActive,
+          onAbonar: (user.daysRemaining <= 0 || !user.isActive) ? () {
+            service.showWelcomeDialog.value = false;
+            Get.toNamed('/abonar', arguments: {'cliente': user});
+          } : null,
+          onEditar: (user.daysRemaining <= 0 || !user.isActive) ? () {
+            service.showWelcomeDialog.value = false;
+            // Ocultar dialog de fondo y navegar al cliente (que permitirá editar)
+            Get.toNamed('/clientes', arguments: {'edit_cliente': user});
+          } : null,
         );
       });
     } catch (e) {

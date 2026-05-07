@@ -6,19 +6,23 @@ import '../../../core/widgets/cached_user_image.dart';
 class WelcomeScreenWidget extends StatefulWidget {
   final String userName;
   final String userPhotoUrl;
-  final String membershipType;
   final int daysLeft;
   final bool isVisible;
+  final bool isExpired;
   final VoidCallback? onClose;
+  final VoidCallback? onAbonar;
+  final VoidCallback? onEditar;
 
   const WelcomeScreenWidget({
     super.key,
     required this.userName,
     required this.userPhotoUrl,
-    required this.membershipType,
     required this.daysLeft,
     required this.isVisible,
+    this.isExpired = false,
     this.onClose,
+    this.onAbonar,
+    this.onEditar,
   });
 
   @override
@@ -125,11 +129,11 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                             child: Transform.translate(
                               offset: Offset(0, 20 * (1 - value)),
                               child: Text(
-                                '¡Bienvenido!',
+                                widget.isExpired ? 'Membresía Vencida' : '¡Bienvenido!',
                                 style: TextStyle(
                                   fontSize: titleSize,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: widget.isExpired ? Colors.redAccent : Colors.white,
                                   shadows: [
                                     Shadow(
                                       color: Colors.black.withOpacity(0.5),
@@ -163,7 +167,7 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                                   height: (photoSize + 20) * value,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: AppColors.primary.withOpacity(0.2),
+                                    color: (widget.isExpired ? Colors.red : AppColors.primary).withOpacity(0.2),
                                   ),
                                 ),
                                 // Aura interior
@@ -172,7 +176,7 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                                   height: (photoSize + 10) * value,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: AppColors.accent.withOpacity(0.3),
+                                    color: (widget.isExpired ? Colors.redAccent : AppColors.accent).withOpacity(0.3),
                                   ),
                                 ),
                                 // Foto
@@ -187,7 +191,7 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.primary.withOpacity(0.5),
+                                        color: (widget.isExpired ? Colors.red : AppColors.primary).withOpacity(0.5),
                                         spreadRadius: 5,
                                         blurRadius: 15,
                                       ),
@@ -203,7 +207,7 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                                         )
                                       : CircleAvatar(
                                           radius: photoSize/2 * value,
-                                          backgroundColor: AppColors.primary,
+                                          backgroundColor: widget.isExpired ? Colors.red : AppColors.primary,
                                           child: Icon(
                                             Icons.person,
                                             size: photoSize/3 * value,
@@ -244,51 +248,7 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                       ),
                       SizedBox(height: isSmallPhone ? 12 : 16),
                       
-                      // Tipo de membresía con animación de entrada
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 1400),
-                        curve: Curves.easeOutQuart,
-                        builder: (context, value, child) {
-                          final safeOpacity = value.clamp(0.0, 1.0);
-                          return Opacity(
-                            opacity: safeOpacity,
-                            child: Transform.translate(
-                              offset: Offset(0, 30 * (1 - value)),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTabletSize ? 28 : 20, 
-                                  vertical: isTabletSize ? 12 : 8
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  widget.membershipType.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: isTabletSize
-                                        ? 22.0
-                                        : (isSmallPhone ? 16.0 : 18.0),
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-                      ),
-                      
-                      SizedBox(height: isSmallPhone ? 12 : 16),
-                      
+
                       // Días restantes con animación de entrada
                       TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0.0, end: 1.0),
@@ -319,7 +279,7 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                                     ),
                                     SizedBox(width: isTabletSize ? 12 : 8),
                                     Text(
-                                      '${widget.daysLeft} días restantes',
+                                      widget.isExpired ? '0 días restantes' : '${widget.daysLeft} días restantes',
                                       style: TextStyle(
                                         fontSize: infoTextSize,
                                         color: Colors.white,
@@ -345,7 +305,7 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                           return Opacity(
                             opacity: safeOpacity,
                             child: Text(
-                              '¡Que tengas un excelente entrenamiento!',
+                              widget.isExpired ? '¡Por favor pasa a recepción!' : '¡Que tengas un excelente entrenamiento!',
                               style: TextStyle(
                                 fontSize: isTabletSize
                                     ? 20.0
@@ -354,6 +314,53 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget>
                                 fontStyle: FontStyle.italic,
                               ),
                               textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
+                      ),
+                      
+                      // Botones de acción
+                      SizedBox(height: isSmallPhone ? 24 : 32),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 2000),
+                        curve: Curves.easeOutQuart,
+                        builder: (context, value, child) {
+                          final safeOpacity = value.clamp(0.0, 1.0);
+                          return Opacity(
+                            opacity: safeOpacity,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (widget.onAbonar != null)
+                                  ElevatedButton.icon(
+                                    onPressed: widget.onAbonar,
+                                    icon: const Icon(Icons.payment, color: Colors.white),
+                                    label: const Text('Abonar', style: TextStyle(color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.accent,
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                if (widget.onAbonar != null && widget.onEditar != null)
+                                  const SizedBox(width: 16),
+                                if (widget.onEditar != null)
+                                  ElevatedButton.icon(
+                                    onPressed: widget.onEditar,
+                                    icon: const Icon(Icons.edit, color: Colors.white),
+                                    label: const Text('Editar', style: TextStyle(color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white.withOpacity(0.2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           );
                         }

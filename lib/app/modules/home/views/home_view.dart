@@ -262,22 +262,13 @@ class HomeView extends GetView<HomeController> {
                             onTap: controller.goToClientes,
                           ),
 
-                          // Opción de Membresías
+                          // Opción de Abonar
                           ButtonMenuWidget(
-                            icon: Icons.card_membership,
-                            label: 'Membresías',
-                            description: 'Tipos de membresía',
-                            color: Colors.purple.shade300,
-                            onTap: controller.goToMembresias,
-                          ),
-
-                          // Opción de Promociones
-                          ButtonMenuWidget(
-                            icon: Icons.local_offer,
-                            label: 'Promociones',
-                            description: 'Descuentos y ofertas',
-                            color: Colors.orange.shade300,
-                            onTap: controller.goToPromociones,
+                            icon: Icons.payment,
+                            label: 'Abonar',
+                            description: 'Abonos de clientes',
+                            color: Colors.deepPurple.shade300,
+                            onTap: controller.goToAbonar,
                           ),
 
                           // Opción de Entradas y Salidas
